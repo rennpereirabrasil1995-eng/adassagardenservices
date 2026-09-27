@@ -127,7 +127,7 @@
 </section>
 
 <section class="block" id="comentarios">
-  <h2>{{ t('companies.comments_title') }}</h2>
+  <h2>{{ t('companies.comments_title') }}{% if comments_total %} <span class="count">{{ comments_total }}</span>{% endif %}</h2>
   <div class="sheet">
     {% for m in comments %}
     <a class="notice{% if m.from_company and not m.seen_at %} unread{% endif %}" href="{{ url_for('jobs.job_detail', job_id=m.job_id, _anchor='comentarios') }}">
@@ -139,6 +139,12 @@
     <p class="empty">{{ t('companies.comments_empty') }}</p>
     {% endfor %}
   </div>
+  {% if all_comments and comments_total > comments|length %}<p class="hint">{{ t('companies.comments_showing', n=comments|length, total=comments_total) }}</p>{% endif %}
+  {% if comments_total > comments|length %}
+  <div class="actions"><a class="btn small" href="{{ url_for('companies.company_detail', company_id=company.id, comentarios='todos', _anchor='comentarios') }}">{{ t('companies.comments_all', n=comments_total) }}</a></div>
+  {% elif all_comments %}
+  <div class="actions"><a class="btn small" href="{{ url_for('companies.company_detail', company_id=company.id, _anchor='comentarios') }}">{{ t('companies.comments_recent_only') }}</a></div>
+  {% endif %}
 </section>
 
 <section class="block">

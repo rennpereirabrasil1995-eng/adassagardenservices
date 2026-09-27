@@ -74,6 +74,9 @@ def new_company():
     return _back(cur.lastrowid)
 
 
+RECENT_COMMENTS = 3  # comentários mostrados na página da empresa (o resto fica atrás de "Ver todos")
+
+
 @bp.route("/empresas/<int:company_id>")
 @owner_required
 def company_detail(company_id):
@@ -88,11 +91,17 @@ def company_detail(company_id):
         "WHERE c.active = 1 AND c.company_id IS NOT ? ORDER BY c.name COLLATE NOCASE", (company_id,)).fetchall()
     logins = db.execute("SELECT * FROM company_users WHERE company_id = ? ORDER BY active DESC, name COLLATE NOCASE",
                         (company_id,)).fetchall()
-    comments = db.execute(  # a conversa com esta empresa (mesmo de jardim que já saiu dela)
+    # a conversa com esta empresa (mesmo de jardim que já saiu dela): só os últimos, pra tela não encher;
+    # "?comentarios=todos" abre a lista inteira (até 100)
+    all_comments = request.args.get("comentarios") == "todos"
+    comments = db.execute(
         "SELECT m.*, j.job_date, c.name AS garden FROM job_comments m JOIN jobs j ON j.id = m.job_id "
-        "JOIN clients c ON c.id = j.client_id WHERE m.company_id = ? ORDER BY m.id DESC LIMIT 10", (company_id,)).fetchall()
+        "JOIN clients c ON c.id = j.client_id WHERE m.company_id = ? ORDER BY m.id DESC LIMIT ?",
+        (company_id, 100 if all_comments else RECENT_COMMENTS)).fetchall()
+    comments_total = db.execute("SELECT COUNT(*) FROM job_comments WHERE company_id = ?", (company_id,)).fetchone()[0]
     return render_template("company_detail.html", company=company, gardens=gardens, others=others, logins=logins,
-                           comments=comments, languages=i18n.LANGUAGES, daily=_daily(company))
+                           comments=comments, comments_total=comments_total, all_comments=all_comments,
+                           languages=i18n.LANGUAGES, daily=_daily(company))
 
 
 def _daily(company):

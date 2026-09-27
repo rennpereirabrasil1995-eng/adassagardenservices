@@ -2454,6 +2454,25 @@ class AppTests(unittest.TestCase):
         # sem serviço hoje: mostra o último dia que teve, com o caminho pro anterior
         self.assertIn("No services on this day.", laura.get(f"/portal/?day={self.day(-5)}").get_data(as_text=True))
 
+    def test_company_page_shows_only_the_latest_comments(self):
+        company_id, elm, private, ana_id, _ = self.company_setup()
+        job = self.create_job(elm, ana_id, self.day(0))
+        self.set_times(job, "09:00", "10:00")
+        laura = self.portal_browser()
+        for i in range(1, 6):
+            laura.post(f"/portal/service/{job}/comment", {"body": f"Company note number {i}"}).close()
+        page = self.owner.get(f"/empresas/{company_id}").get_data(as_text=True)
+        for i in (5, 4, 3):
+            self.assertIn(f"Company note number {i}", page)
+        for i in (2, 1):
+            self.assertNotIn(f"Company note number {i}", page)
+        self.assertIn("See all (5)", page)
+        everything = self.owner.get(f"/empresas/{company_id}?comentarios=todos").get_data(as_text=True)
+        for i in range(1, 6):
+            self.assertIn(f"Company note number {i}", everything)
+        self.assertIn("Show only the latest", everything)
+        self.assertNotIn("See all", everything)
+
     def test_team_chat_on_a_job_stays_between_the_team(self):
         company_id, elm, private, ana_id, _ = self.company_setup()
         bruno = self.create_employee("Bruno", "bruno@example.com", "senha-do-bruno-1")
