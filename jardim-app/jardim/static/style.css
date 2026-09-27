@@ -373,7 +373,14 @@ label.inline select { width: auto; min-width: 12rem; }
   .brand { font-size: 1.05rem; }   /* celulares estreitos: o nome cabe em uma linha */
 }
 
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+/* Gráficos: as barras crescem quando a página abre (o base.html escalona cada barra e faz os números contarem) */
+@keyframes grow-up { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes grow-right { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.vbar-fill, .hc-fill { transform-origin: bottom; animation: grow-up .7s cubic-bezier(.2, .7, .2, 1) both; animation-delay: var(--delay, 0ms); }
+.hbar-fill, .stackbar, .dl-bar { transform-origin: left; animation: grow-right .7s cubic-bezier(.2, .7, .2, 1) both; animation-delay: var(--delay, 0ms); }
+.vbar .val, .hc-val { animation: fade-in .4s ease-out both; animation-delay: calc(var(--delay, 0ms) + .35s); }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* Tarefas: o dono escolhe da lista padrão; o funcionário marca feita / não feita (+ motivo opcional) */
 .task-pick { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: .3rem; }

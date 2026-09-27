@@ -118,6 +118,33 @@
     });
     render();
   });
+  /* Gráficos: cada barra entra um pouco depois da anterior; os números dos cartões contam do zero até o valor. */
+  (function () {
+    var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.querySelectorAll('.vbars, .hc, .hbars, .dayline').forEach(function (chart) {
+      var bars = chart.querySelectorAll('.vbar-fill, .hc-fill, .hbar-fill, .dl-bar');
+      bars.forEach(function (bar, i) { bar.style.setProperty('--delay', Math.min(i * 45, 600) + 'ms'); });
+      chart.querySelectorAll('.vbar, .hc-bar').forEach(function (col, i) { col.style.setProperty('--delay', Math.min(i * 45, 600) + 'ms'); });
+    });
+    if (still) return;
+    document.querySelectorAll('.stat b').forEach(function (el, i) {
+      var text = el.textContent, m = /\d[\d.,]*/.exec(text);
+      if (!m) return;
+      var raw = m[0], sep = raw.indexOf('.') >= 0 ? '.' : (raw.indexOf(',') >= 0 ? ',' : ''), parts = sep ? raw.split(sep) : [raw];
+      var whole = parseInt(parts[0].replace(/\D/g, ''), 10);
+      if (isNaN(whole)) return;
+      var tail = sep ? sep + parts.slice(1).join(sep) : '', before = text.slice(0, m.index), after = text.slice(m.index + raw.length);
+      var start = null, wait = Math.min(i * 80, 320), length = 800;
+      function tick(now) {
+        if (start === null) start = now;
+        var t = Math.min(1, (now - start) / length), eased = 1 - Math.pow(1 - t, 3);
+        el.textContent = before + Math.round(whole * eased) + (t < 1 ? '' : tail) + after;
+        if (t < 1) requestAnimationFrame(tick); else el.textContent = text;
+      }
+      el.style.fontVariantNumeric = 'tabular-nums';
+      setTimeout(function () { requestAnimationFrame(tick); }, wait);
+    });
+  })();
   /* Conversa de um serviço: abre já rolada no fim, na mensagem mais nova. */
   document.querySelectorAll('.thread').forEach(function (box) { box.scrollTop = box.scrollHeight; });
 </script>
