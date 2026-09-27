@@ -1,8 +1,9 @@
 {# Lista longa que começa curta: só os {{ start }} primeiros itens aparecem e um botão "Mostrar mais {{ step }}"
-   vai abrindo o resto (script no base.html). Use nos atributos do elemento que contém os itens:
+   vai abrindo o resto (script no base.html). Com auto=true, o resto entra sozinho conforme a pessoa rola
+   (o botão continua lá, pra quem preferir tocar). Use nos atributos do elemento que contém os itens:
    <div class="sheet" {{ show_more() }}>. Sem JavaScript, a lista aparece inteira. #}
-{% macro show_more(start=3, step=5) -%}
-data-more="{{ start }}" data-more-step="{{ step }}" data-more-label="{{ t('common.show_more') }}" data-more-count="{{ t('common.showing_of') }}"
+{% macro show_more(start=3, step=5, auto=false) -%}
+data-more="{{ start }}" data-more-step="{{ step }}" data-more-label="{{ t('common.show_more') }}" data-more-count="{{ t('common.showing_of') }}"{% if auto %} data-more-auto{% endif %}
 {%- endmacro %}
 
 {# Peças reutilizadas. Importe com:  {% from "_macros.html" import job_row with context %} #}

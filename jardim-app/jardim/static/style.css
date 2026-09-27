@@ -295,6 +295,11 @@ textarea { min-height: 6rem; resize: vertical; }
 input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
 .search { display: flex; gap: .6rem; margin: 0 0 1rem; }
 .search .btn { flex: none; }
+.filters .search { margin: 0; }
+.client-search input[type="search"] { flex: 1 1 auto; min-width: 0; }
+.search-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0; width: 3rem; }
+.search-btn svg { width: 1.35rem; height: 1.35rem; flex: none; }
+.search-note { margin: -.3rem 0 0; }
 .filters { display: grid; gap: .9rem; margin: 0 0 1.1rem; }
 .seg { display: flex; flex-wrap: wrap; gap: .45rem; }
 .seg a {

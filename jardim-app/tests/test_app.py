@@ -2454,6 +2454,25 @@ class AppTests(unittest.TestCase):
         # sem serviço hoje: mostra o último dia que teve, com o caminho pro anterior
         self.assertIn("No services on this day.", laura.get(f"/portal/?day={self.day(-5)}").get_data(as_text=True))
 
+    def test_schedule_search_by_client_name(self):
+        self.create_owner()
+        rosa, elm = self.create_client("Sítio das Flores"), self.create_client("12 Elm Road")
+        ana = self.create_employee()
+        self.create_job(rosa, ana, self.day(1))
+        self.create_job(elm, ana, self.day(2))
+        self.create_job(elm, None, self.day(3))
+        page = self.owner.get("/trabalhos?cliente=elm").get_data(as_text=True)
+        self.assertIn("12 Elm Road", page)
+        self.assertNotIn("Sítio das Flores", page)
+        self.assertIn("Results for “elm”: 2.", page)
+        self.assertIn('data-more="5" data-more-step="4"', page)
+        self.assertIn("data-more-auto", page)
+        # a busca respeita o filtro de funcionário e a aba; "%" e "_" não viram coringa
+        page = self.owner.get("/trabalhos?cliente=elm&func=none").get_data(as_text=True)
+        self.assertEqual(page.count("12 Elm Road"), 1)
+        self.assertIn("No jobs for “%” in this view.", self.owner.get("/trabalhos?cliente=%25").get_data(as_text=True))
+        self.assertIn("Sítio das Flores", self.owner.get("/trabalhos?cliente=s%C3%ADtio").get_data(as_text=True))
+
     def test_company_page_shows_only_the_latest_comments(self):
         company_id, elm, private, ana_id, _ = self.company_setup()
         job = self.create_job(elm, ana_id, self.day(0))

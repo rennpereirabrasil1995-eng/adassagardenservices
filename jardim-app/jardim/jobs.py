@@ -294,6 +294,7 @@ def list_jobs():
     if view not in VIEW_KEYS:
         view = "proximos"
     employee = request.args.get("func", "")
+    q = " ".join(request.args.get("cliente", "").split())[:80]  # a lupa: só pelo nome do cliente
     where, params, order = _view_filter(view, utils.today_iso())
     clauses, params = ([where] if where else []), list(params)
     if employee == "none":
@@ -301,10 +302,13 @@ def list_jobs():
     elif employee.isdigit():
         clauses.append(HAS_PERSON)
         params.append(int(employee))
+    if q:
+        clauses.append("c.name LIKE ? ESCAPE '\\'")
+        params.append("%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%")
     return render_template(
         "jobs_list.html",
         jobs=fetch_jobs(" AND ".join(clauses), params, order, limit=300),
-        view=view, views=_view_labels(), employee=employee,
+        view=view, views=_view_labels(), employee=employee, q=q,
         employees=get_db().execute(
             "SELECT id, name FROM users ORDER BY active DESC, name COLLATE NOCASE").fetchall(),
     )
