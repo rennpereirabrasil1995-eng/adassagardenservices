@@ -2535,7 +2535,10 @@ class AppTests(unittest.TestCase):
     def test_companies_have_a_tier_and_a_colour_from_the_palette(self):
         company_id, elm, private, ana_id, _ = self.company_setup()
         # criar com categoria e cor (o formulário de nova empresa tem os dois)
-        page = self.owner.get("/empresas/").get_data(as_text=True)
+        lst = self.owner.get("/empresas/").get_data(as_text=True)
+        self.assertNotIn('name="tier"', lst)  # a lista é só a lista; o formulário tem página própria
+        self.assertIn('href="/empresas/nova"', lst)
+        page = self.owner.get("/empresas/nova").get_data(as_text=True)
         self.assertIn('name="tier"', page)
         self.assertIn('name="color" value="#2f6b86"', page)
         self.owner.post("/empresas/nova", {"name": "SLQ Properties", "tier": "platina", "color": "#2f6b86"})

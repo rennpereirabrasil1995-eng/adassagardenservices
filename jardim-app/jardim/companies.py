@@ -74,13 +74,15 @@ def list_companies():
     return render_template("companies_list.html", companies=rows)
 
 
-@bp.route("/empresas/nova", methods=("POST",))
+@bp.route("/empresas/nova", methods=("GET", "POST"))
 @owner_required
 def new_company():
+    if request.method == "GET":
+        return render_template("company_form.html")
     name = request.form.get("name", "").strip()[:120]
     if not name:
         flash(i18n.t("companies.name_required"), "error")
-        return redirect(url_for("companies.list_companies"))
+        return redirect(url_for("companies.new_company"))
     tier, color = read_style(request.form)
     db = get_db()
     cur = db.execute("INSERT INTO companies (name, tier, color) VALUES (?, ?, ?)", (name, tier, color))

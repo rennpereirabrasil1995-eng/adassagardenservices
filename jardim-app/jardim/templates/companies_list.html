@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ t('companies.title') }} – {% endblock %}
-{% from "_macros.html" import company_style_fields, company_tag with context %}
+{% from "_macros.html" import company_tag with context %}
 {% block content %}
 <p class="crumb"><a href="{{ url_for('clients.list_clients') }}">‹ {{ t('nav.clients') }}</a></p>
 <div class="page-head">
@@ -8,6 +8,7 @@
     <h1>{{ t('companies.title') }}</h1>
     <p class="sub">{{ t('companies.hint') }}</p>
   </div>
+  <a class="btn primary" href="{{ url_for('companies.new_company') }}">{{ t('companies.create') }}</a>
 </div>
 
 <div class="sheet">
@@ -20,22 +21,4 @@
   <p class="empty">{{ t('companies.empty') }}</p>
   {% endfor %}
 </div>
-
-<form method="post" action="{{ url_for('companies.new_company') }}" class="sheet pad stack">
-  {{ csrf_field() }}
-  <label>{{ t('companies.new_label') }}
-    <input name="name" maxlength="120" required placeholder="{{ t('companies.new_placeholder') }}">
-  </label>
-  {{ company_style_fields('', '') }}
-  <div class="actions"><button class="btn primary" type="submit">{{ t('companies.create') }}</button></div>
-</form>
-
-<section class="block">
-  <h2>{{ t('companies.how_title') }}</h2>
-  <ol class="how">
-    <li>{{ t('companies.how_1') }}</li>
-    <li>{{ t('companies.how_2') }}</li>
-    <li>{{ t('companies.how_3') }}</li>
-  </ol>
-</section>
 {% endblock %}

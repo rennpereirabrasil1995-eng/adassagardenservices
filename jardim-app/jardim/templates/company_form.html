@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "_macros.html" import company_style_fields with context %}
+{% block title %}{{ t('companies.new_title') }} – {% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('companies.list_companies') }}">‹ {{ t('companies.title') }}</a></p>
+<div class="page-head"><h1>{{ t('companies.new_title') }}</h1></div>
+
+<form method="post" action="{{ url_for('companies.new_company') }}" class="sheet pad stack">
+  {{ csrf_field() }}
+  <label>{{ t('companies.new_label') }}
+    <input name="name" maxlength="120" required autofocus placeholder="{{ t('companies.new_placeholder') }}">
+  </label>
+  {{ company_style_fields('', '') }}
+  <div class="actions">
+    <button class="btn primary" type="submit">{{ t('companies.create') }}</button>
+    <a class="btn" href="{{ url_for('companies.list_companies') }}">{{ t('common.cancel') }}</a>
+  </div>
+</form>
+
+<section class="block">
+  <h2>{{ t('companies.how_title') }}</h2>
+  <ol class="how">
+    <li>{{ t('companies.how_1') }}</li>
+    <li>{{ t('companies.how_2') }}</li>
+    <li>{{ t('companies.how_3') }}</li>
+  </ol>
+</section>
+{% endblock %}

@@ -997,6 +997,7 @@ TRANSLATIONS = {
         # ---------- companies (owner side) ----------
         "companies.title": "Companies",
         "companies.hint": "Companies that hire you for several gardens. The person in charge logs in, sees the finished services with the photos, and can comment.",
+        "companies.new_title": "New company",
         "companies.new_label": "Company name",
         "companies.new_placeholder": "E.g. Hillside Property Services",
         "companies.create": "Add company",
@@ -2158,6 +2159,7 @@ TRANSLATIONS = {
         # ---------- empresas (lado do dono) ----------
         "companies.title": "Empresas",
         "companies.hint": "Empresas que contratam você pra vários jardins. A pessoa responsável entra com o login dela, vê os serviços concluídos com as fotos e pode comentar.",
+        "companies.new_title": "Nova empresa",
         "companies.new_label": "Nome da empresa",
         "companies.new_placeholder": "Ex.: Hillside Property Services",
         "companies.create": "Cadastrar empresa",
