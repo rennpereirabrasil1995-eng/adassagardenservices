@@ -9,9 +9,28 @@
     <p class="sub">{{ t('companies.gardens_one') if gardens|length == 1 else t('companies.gardens_many', n=gardens|length) }} ·
       {% set active_logins = logins|selectattr('active')|list|length %}{% if active_logins %}{{ t('companies.logins_one') if active_logins == 1 else t('companies.logins_many', n=active_logins) }}{% else %}{{ t('companies.logins_none') }}{% endif %}</p>
   </div>
-  <div class="actions">
+  <div class="actions head-side">
     {% if can('quotes') %}<a class="btn" href="{{ url_for('quotes.new_quote', company=company.id) }}">{{ t('quotes.new') }}</a>{% endif %}
     <a class="btn primary" href="{{ url_for('companies.preview_days', company_id=company.id) }}">{{ t('companies.preview_button') }}</a>
+    {# Gerenciar: nome, categoria, cor e excluir, num painel que abre pelo botão #}
+    <details class="popmenu" id="manage">
+      <summary class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 13.5a7.9 7.9 0 0 0 0-3l2-1.5-2-3.4-2.3.9a8 8 0 0 0-2.6-1.5L14.1 2.6H9.9L9.5 5a8 8 0 0 0-2.6 1.5l-2.3-.9-2 3.4 2 1.5a7.9 7.9 0 0 0 0 3l-2 1.5 2 3.4 2.3-.9a8 8 0 0 0 2.6 1.5l.4 2.4h4.2l.4-2.4a8 8 0 0 0 2.6-1.5l2.3.9 2-3.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>{{ t('jobdetail.manage_title') }}</span></summary>
+      <div class="popmenu-panel sheet pad stack">
+    <form method="post" action="{{ url_for('companies.rename_company', company_id=company.id) }}" class="stack">
+      {{ csrf_field() }}
+      <label>{{ t('companies.name_label') }}
+        <input name="name" value="{{ company.name }}" maxlength="120" required>
+      </label>
+      {{ company_style_fields(company.tier, company.color) }}
+      <div class="actions"><button class="btn" type="submit">{{ t('common.save_changes') }}</button></div>
+    </form>
+    <form method="post" action="{{ url_for('companies.delete_company', company_id=company.id) }}" onsubmit='return confirm({{ t('companies.delete_confirm', name=company.name)|tojson }})'>
+      {{ csrf_field() }}
+      <button class="btn danger small" type="submit">{{ t('companies.delete') }}</button>
+      <span class="hint">{{ t('companies.delete_hint') }}</span>
+    </form>
+      </div>
+    </details>
   </div>
 </div>
 
@@ -84,7 +103,11 @@
 </section>
 
 <section class="block" id="resumo">
-  <h2>{{ t('companies.daily_title') }}</h2>
+  {# Resumo do dia por e-mail: recolhido; a linha do título já diz se está ligado e pra que hora #}
+  <details class="fold fold-section">
+    <summary><span>{{ t('companies.daily_title') }}</span>
+      <span class="hint">{% if company.daily_hour is none %}{{ t('companies.daily_off') }}{% else %}{{ t('companies.daily_at', hour=company.daily_hour) }}{% endif %}</span></summary>
+    <div class="fold-body">
   <p class="hint block-hint">{{ t('companies.daily_hint') }}</p>
   {% if not daily.email_on %}
   <div class="callout internal">
@@ -128,6 +151,8 @@
     <p class="hint">{{ t('companies.daily_nothing') }}</p>
     {% endif %}
   </div>
+    </div>
+  </details>
 </section>
 
 <section class="block" id="comentarios">
@@ -145,22 +170,4 @@
   </div>
 </section>
 
-<section class="block">
-  <h2>{{ t('companies.edit_title') }}</h2>
-  <div class="sheet pad stack">
-    <form method="post" action="{{ url_for('companies.rename_company', company_id=company.id) }}" class="stack">
-      {{ csrf_field() }}
-      <label>{{ t('companies.name_label') }}
-        <input name="name" value="{{ company.name }}" maxlength="120" required>
-      </label>
-      {{ company_style_fields(company.tier, company.color) }}
-      <div class="actions"><button class="btn" type="submit">{{ t('common.save_changes') }}</button></div>
-    </form>
-    <form method="post" action="{{ url_for('companies.delete_company', company_id=company.id) }}" onsubmit='return confirm({{ t('companies.delete_confirm', name=company.name)|tojson }})'>
-      {{ csrf_field() }}
-      <button class="btn danger small" type="submit">{{ t('companies.delete') }}</button>
-      <span class="hint">{{ t('companies.delete_hint') }}</span>
-    </form>
-  </div>
-</section>
 {% endblock %}
