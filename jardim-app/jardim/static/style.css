@@ -376,6 +376,19 @@ label.inline select { width: auto; min-width: 12rem; }
 .tasks .task:first-child { padding-top: 0; }
 .tasks .task + .task { border-top: 1px solid var(--line); }
 .task-text { margin: 0; }
+/* Lista de tarefas recolhida: "Ver tarefas" abre; o mesmo botão (ou salvar) recolhe */
+.fold { border: 1px solid var(--line); border-radius: 8px; }
+.fold summary { display: flex; align-items: center; gap: .5rem; min-height: 44px; padding: .2rem .9rem; cursor: pointer;
+  font-weight: 700; color: var(--link); list-style: none; }
+.fold summary::-webkit-details-marker { display: none; }
+.fold summary::after { content: ""; width: .55rem; height: .55rem; margin-left: auto; border: solid currentColor;
+  border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .15s; }
+.fold[open] summary::after { transform: rotate(-135deg); }
+.fold[open] summary { border-bottom: 1px solid var(--line); }
+.fold .fold-close, .fold[open] .fold-open { display: none; }
+.fold[open] .fold-close { display: inline; }
+.fold > .tasks, .fold > .task-results { padding: .9rem .9rem 0; }
+.fold > .task-results { padding-bottom: .3rem; }
 .task-choice { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
 .choice { position: relative; }
 .choice input { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; margin: 0; opacity: 0; cursor: pointer; }

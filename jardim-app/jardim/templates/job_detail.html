@@ -47,6 +47,11 @@
   {% if can_work %}
   <form method="post" action="{{ url_for('jobs.update_progress', job_id=job.id) }}" class="sheet pad stack">
     {{ csrf_field() }}
+    {% if tasks %}
+    {# A lista começa recolhida: toque em "Ver tarefas" pra abrir, e de novo (ou salve) pra recolher.
+       Recolhida, as escolhas continuam no formulário e são salvas do mesmo jeito. #}
+    <details class="fold">
+      <summary><span class="fold-open">{{ t('jobdetail.tasks_show', n=tasks|length) }}</span><span class="fold-close">{{ t('jobdetail.tasks_hide') }}</span></summary>
     <div class="tasks">
       {% for t_ in tasks %}
       <div class="task">
@@ -57,10 +62,12 @@
         </div>
         <input class="task-note" name="note_{{ t_.id }}" value="{{ t_.note }}" maxlength="300" placeholder="{{ t('tasks.reason_placeholder') }}" aria-label="{{ t('tasks.reason_placeholder') }}">
       </div>
-      {% else %}
-      <p class="hint">{{ t('jobdetail.no_tasks') }}</p>
       {% endfor %}
     </div>
+    </details>
+    {% else %}
+    <p class="hint">{{ t('jobdetail.no_tasks') }}</p>
+    {% endif %}
     <label>{{ t('jobdetail.materials_label') }}
       <input name="materials" value="{{ job.materials }}" maxlength="1000" placeholder="{{ t('jobdetail.materials_placeholder') }}">
     </label>
@@ -85,6 +92,9 @@
   </form>
   {% else %}
   <div class="sheet pad stack">
+    {% if tasks %}
+    <details class="fold">
+      <summary><span class="fold-open">{{ t('jobdetail.tasks_show', n=tasks|length) }}</span><span class="fold-close">{{ t('jobdetail.tasks_hide') }}</span></summary>
     <ul class="task-results">
       {% for t_ in tasks %}
       {% set state = 'done' if t_.done else ('skip' if t_.skipped else 'pending') %}
@@ -95,10 +105,12 @@
           {% if state == 'pending' %}<span class="res-note">{{ t('tasks.status_pending') }}</span>{% endif %}
         </span>
       </li>
-      {% else %}
-      <li class="hint">{{ t('jobdetail.no_tasks_past') }}</li>
       {% endfor %}
     </ul>
+    </details>
+    {% else %}
+    <p class="hint">{{ t('jobdetail.no_tasks_past') }}</p>
+    {% endif %}
     {% if job.materials %}<div><b>{{ t('jobdetail.materials_label') }}</b><p class="pre">{{ job.materials }}</p></div>{% endif %}
     {% if job.employee_notes %}<div><b>{{ t('jobdetail.notes_label') }}</b><p class="pre">{{ job.employee_notes }}</p></div>{% endif %}
     {% if job.cash_pence %}<div><b>{{ t('cash.label') }}</b><p>{{ job.cash_pence|money }}{% if not job.cash_in_report %} <span class="hint">({{ t('cash.not_in_report') }})</span>{% endif %}{% if job.cash_received_at %} <span class="pay-status">✓ {{ t('company.received_on', when=job.cash_received_at|dt_local) }}</span>{% endif %}</p></div>{% endif %}
