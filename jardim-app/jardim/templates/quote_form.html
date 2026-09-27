@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ t('quotes.edit_title', ref=quote.ref) if quote else t('quotes.new') }} – {% endblock %}
+{% from "_macros.html" import phone_input with context %}
 {% block content %}
 {% if quote %}<p class="crumb"><a href="{{ url_for('quotes.quote_detail', quote_id=quote.id) }}">{{ t('quotes.back_to_quote', ref=quote.ref) }}</a></p>
 {% else %}<p class="crumb"><a href="{{ url_for('quotes.list_quotes') }}">{{ t('quotes.back_to_list') }}</a></p>{% endif %}
@@ -24,7 +25,7 @@
   </label>
   <div class="grid-2">
     <label>{{ t('clientform.phone_label') }} <span class="hint">{{ t('quotes.phone_hint') }}</span>
-      <input name="to_phone" value="{{ form.to_phone }}" maxlength="40" inputmode="tel" autocomplete="off">
+      {{ phone_input('to_phone', form.to_phone, autocomplete='off') }}
     </label>
     <label>{{ t('clientform.email_label') }}
       <input type="email" name="to_email" value="{{ form.to_email }}" maxlength="200" autocomplete="off">

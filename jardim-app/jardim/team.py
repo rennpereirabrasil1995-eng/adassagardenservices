@@ -7,7 +7,7 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 from . import i18n
 from .auth import PERMISSIONS, SENSITIVE_PERMISSIONS, email_in_use, hash_password, owner_required, password_error
 from .db import get_db
-from .utils import valid_email
+from .utils import read_phone, valid_email
 
 bp = Blueprint("team", __name__, url_prefix="/equipe")
 
@@ -45,7 +45,8 @@ def _read_form(member_id=None, is_self=False):
     data = {
         "name": f.get("name", "").strip()[:120],
         "email": f.get("email", "").strip().lower()[:200],
-        "phone": f.get("phone", "").strip()[:40],
+        "phone": read_phone(f, "phone"),
+        "address": " ".join(f.get("address", "").split())[:300],
         "role": f.get("role", "employee"),
         "active": 1 if f.get("active") else 0,
         "password": f.get("password", ""),
@@ -95,9 +96,10 @@ def new_member():
         if not errors:
             db = get_db()
             db.execute(
-                "INSERT INTO users (name, email, password_hash, role, phone, permissions) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO users (name, email, password_hash, role, phone, address, permissions) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (form["name"], form["email"], hash_password(form["password"]), form["role"], form["phone"],
-                 form["permissions"]),
+                 form["address"], form["permissions"]),
             )
             db.commit()
             flash(i18n.t("team.created", name=form["name"]), "ok")
@@ -123,8 +125,10 @@ def edit_member(member_id):
         if not errors:
             db = get_db()
             db.execute(
-                "UPDATE users SET name = ?, email = ?, phone = ?, role = ?, active = ?, permissions = ? WHERE id = ?",
-                (form["name"], form["email"], form["phone"], form["role"], form["active"], form["permissions"], member_id),
+                "UPDATE users SET name = ?, email = ?, phone = ?, address = ?, role = ?, active = ?, permissions = ? "
+                "WHERE id = ?",
+                (form["name"], form["email"], form["phone"], form["address"], form["role"], form["active"],
+                 form["permissions"], member_id),
             )
             if form["password"]:
                 db.execute("UPDATE users SET password_hash = ? WHERE id = ?",

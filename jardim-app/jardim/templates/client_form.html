@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ t('clientform.title_edit') if client else t('clientform.title_new') }} – {% endblock %}
+{% from "_macros.html" import phone_input with context %}
 {% block content %}
 <div class="page-head"><h1>{{ t('clientform.title_edit') if client else t('clientform.title_new') }}</h1></div>
 <form method="post" class="sheet pad stack">
@@ -17,7 +18,7 @@
   </div>
   <div class="grid-2">
     <label>{{ t('clientform.phone_label') }}
-      <input type="tel" name="phone" value="{{ form.phone }}">
+      {{ phone_input('phone', form.phone) }}
     </label>
     <label>{{ t('clientform.email_label') }}
       <input type="email" name="email" value="{{ form.email }}">

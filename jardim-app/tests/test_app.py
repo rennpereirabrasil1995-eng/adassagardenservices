@@ -2498,6 +2498,40 @@ class AppTests(unittest.TestCase):
         self.owner.post(f"/trabalhos/{job['id']}/repetir", {"every": "1", "times": "2"})
         self.assertEqual([r["planned_minutes"] for r in self.query("SELECT planned_minutes FROM jobs ORDER BY id")], [90, 90, 90])
 
+    def test_phone_fields_take_a_country_code_and_the_team_has_an_address(self):
+        self.create_owner()
+        # equipe: código do país + número (o 0 da frente sai), endereço gravado e mostrado na lista
+        self.owner.post("/equipe/novo", {"name": "Ana", "email": "ana@example.com", "password": "senha-da-ana-1",
+                                         "role": "employee", "phone_cc": "44", "phone": "07700 900111",
+                                         "address": "3 Rose Lane, N1 1AA"})
+        ana = self.query("SELECT id, phone, address FROM users WHERE email = 'ana@example.com'")[0]
+        self.assertEqual((ana["phone"], ana["address"]), ("+44 7700 900111", "3 Rose Lane, N1 1AA"))
+        team = self.owner.get("/equipe/").get_data(as_text=True)
+        self.assertIn("+44 7700 900111", team)
+        self.assertIn("3 Rose Lane, N1 1AA", team)
+        form = self.owner.get(f"/equipe/{ana['id']}/editar").get_data(as_text=True)
+        self.assertIn('<option value="44" selected>🇬🇧 +44</option>', form)
+        self.assertIn('name="phone" value="7700 900111"', form)
+        self.assertIn('name="address" value="3 Rose Lane, N1 1AA"', form)
+        # Brasil: outro código; e sem o código (formulário antigo) o número fica como veio
+        self.owner.post(f"/equipe/{ana['id']}/editar", {"name": "Ana", "email": "ana@example.com", "role": "employee",
+                                                        "active": "1", "phone_cc": "55", "phone": "11 99999 0000"})
+        self.assertEqual(self.query("SELECT phone FROM users WHERE id = ?", (ana["id"],))[0]["phone"], "+55 11 99999 0000")
+        self.assertIn('<option value="55" selected>🇧🇷 +55</option>', self.owner.get(f"/equipe/{ana['id']}/editar").get_data(as_text=True))
+        # cliente, perfil e empresa usam o mesmo campo; o WhatsApp/SMS entende o número com o código
+        client = self.create_client()
+        self.owner.post(f"/clientes/{client}/editar", {"name": "Sítio das Flores", "phone_cc": "353", "phone": "087 123 4567"})
+        self.assertEqual(self.query("SELECT phone FROM clients WHERE id = ?", (client,))[0]["phone"], "+353 87 123 4567")
+        self.assertEqual(utils.intl_phone("+353 87 123 4567"), "353871234567")
+        self.owner.post("/conta/perfil", {"name": "Dono", "phone_cc": "44", "phone": "07700 900999"})
+        self.assertEqual(self.query("SELECT phone FROM users WHERE role = 'owner'")[0]["phone"], "+44 7700 900999")
+        self.owner.post("/conta/empresa", {"company_name": "X", "company_phone_cc": "44", "company_phone": "020 7000 0000"})
+        self.assertEqual(self.query("SELECT company_phone FROM settings")[0]["company_phone"], "+44 20 7000 0000")
+        for url in ("/clientes/novo", "/conta/perfil", "/conta/empresa", "/cotacoes/nova"):
+            page = self.owner.get(url).get_data(as_text=True)
+            self.assertIn('_cc"', page, url)
+            self.assertIn("🇬🇧 +44", page, url)
+
     def test_schedule_search_by_client_name(self):
         self.create_owner()
         rosa, elm = self.create_client("Sítio das Flores"), self.create_client("12 Elm Road")

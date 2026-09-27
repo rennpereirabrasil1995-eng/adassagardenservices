@@ -300,6 +300,10 @@ input::-webkit-date-and-time-value { text-align: left; min-height: 1.4em; }
 .label-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .4rem; }
 .label-line .hint { white-space: nowrap; }
 input.short { max-width: 14rem; }
+/* telefone: bandeira e +código num seletor curto, o número ao lado */
+.phone-row { display: flex; gap: .5rem; }
+.phone-row select { width: auto; flex: none; min-width: 0; padding-right: 1.9rem; }
+.phone-row input { flex: 1 1 auto; min-width: 0; }
 .planned { color: var(--muted); font-size: .9rem; white-space: nowrap; }
 input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
 .search { display: flex; gap: .6rem; margin: 0 0 1rem; }

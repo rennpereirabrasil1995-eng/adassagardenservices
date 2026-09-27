@@ -1,7 +1,7 @@
 """Cadastro de clientes (cada cliente = um local de trabalho)."""
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
 
-from . import i18n, photos, quotes
+from . import i18n, photos, quotes, utils
 from .auth import can, permission_required
 from .db import get_db
 from .jobs import fetch_jobs, parse_tasks
@@ -38,6 +38,7 @@ def _saved_fields():
 def _read_form():
     data = {field: request.form.get(field, "").strip()[:2000] for field in FIELDS}
     data["name"] = data["name"][:120]
+    data["phone"] = utils.read_phone(request.form, "phone")  # com o código do país escolhido
     if data["tier"] not in TIER_VALUES:
         data["tier"] = ""
     data["reminders"] = 1 if request.form.get("reminders") else 0  # lembrete na véspera (Conta → Lembrete pro cliente)

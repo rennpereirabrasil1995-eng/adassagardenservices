@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ t('teamform.title_edit') if member else t('teamform.title_new') }} – {% endblock %}
+{% from "_macros.html" import phone_input with context %}
 {% block content %}
 <div class="page-head"><h1>{{ t('teamform.title_edit') if member else t('teamform.title_new') }}</h1></div>
 <form method="post" class="sheet pad stack">
@@ -12,9 +13,12 @@
       <input type="email" name="email" value="{{ form.email }}" autocomplete="off" required>
     </label>
     <label>{{ t('clientform.phone_label') }}
-      <input type="tel" name="phone" value="{{ form.phone }}">
+      {{ phone_input('phone', form.phone) }}
     </label>
   </div>
+  <label><span class="label-line">{{ t('teamform.address_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
+    <input name="address" value="{{ form.address or '' }}" maxlength="300" autocomplete="street-address">
+  </label>
   <label>{{ t('teamform.role_label') }}
     <select name="role"{% if is_self %} disabled{% endif %}>
       {% for key, label in roles.items() %}

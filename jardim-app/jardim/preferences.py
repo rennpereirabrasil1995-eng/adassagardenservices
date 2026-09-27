@@ -95,7 +95,7 @@ def legacy():
 def profile():
     form = {"name": g.user["name"], "phone": g.user["phone"]}
     if request.method == "POST":
-        form = {"name": request.form.get("name", "").strip()[:120], "phone": request.form.get("phone", "").strip()[:40]}
+        form = {"name": request.form.get("name", "").strip()[:120], "phone": utils.read_phone(request.form, "phone")}
         if not form["name"]:
             flash(i18n.t("auth.name_required"), "error")
         else:
@@ -114,6 +114,7 @@ def company():
     form = {key: row[key] for key in COMPANY_LIMITS}
     if request.method == "POST":
         form = {key: request.form.get(key, "").strip()[:limit] for key, limit in COMPANY_LIMITS.items()}
+        form["company_phone"] = utils.read_phone(request.form, "company_phone")
         if form["company_email"] and not valid_email(form["company_email"]):
             flash(i18n.t("clients.email_invalid"), "error")
         else:

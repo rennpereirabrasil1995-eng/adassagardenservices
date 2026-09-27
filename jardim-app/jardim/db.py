@@ -112,6 +112,8 @@ MIGRATIONS = [
     "ALTER TABLE jobs ADD COLUMN planned_minutes INTEGER;",
     # ...do jeito que o dono digitou ("1 to 2hrs", "15min"); planned_minutes guarda o maior valor entendido
     "ALTER TABLE jobs ADD COLUMN planned_text TEXT NOT NULL DEFAULT '';",
+    # Endereço de quem é da equipe (Equipe → Adicionar pessoa)
+    "ALTER TABLE users ADD COLUMN address TEXT NOT NULL DEFAULT '';",
 ]
 
 

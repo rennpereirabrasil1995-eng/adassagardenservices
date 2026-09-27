@@ -200,6 +200,63 @@ def tier_label(value):
     return i18n.t("common.tier_none") if not value else i18n.t(f"common.tier_{value}")
 
 
+# Códigos de país do campo de telefone (bandeira, +código e o número). O primeiro é o padrão.
+COUNTRY_CODES = [
+    ("44", "GB", "United Kingdom"), ("55", "BR", "Brasil"), ("353", "IE", "Ireland"), ("351", "PT", "Portugal"),
+    ("1", "US", "USA / Canada"), ("34", "ES", "España"), ("39", "IT", "Italia"), ("33", "FR", "France"),
+    ("49", "DE", "Deutschland"), ("31", "NL", "Nederland"), ("32", "BE", "Belgique"), ("48", "PL", "Polska"),
+    ("40", "RO", "România"), ("359", "BG", "България"), ("36", "HU", "Magyarország"), ("370", "LT", "Lietuva"),
+    ("371", "LV", "Latvija"), ("30", "GR", "Ελλάδα"), ("90", "TR", "Türkiye"), ("91", "IN", "India"),
+    ("92", "PK", "Pakistan"), ("880", "BD", "Bangladesh"), ("234", "NG", "Nigeria"), ("233", "GH", "Ghana"),
+    ("27", "ZA", "South Africa"), ("61", "AU", "Australia"), ("64", "NZ", "New Zealand"), ("244", "AO", "Angola"),
+    ("258", "MZ", "Moçambique"), ("238", "CV", "Cabo Verde"),
+]
+DEFAULT_COUNTRY = "44"
+KEEP_LEADING_ZERO = {"39"}  # Itália: o 0 do fixo faz parte do número
+
+
+def flag(iso):
+    """A bandeira em emoji a partir das duas letras do país ("GB" → 🇬🇧)."""
+    return "".join(chr(0x1F1E6 + ord(c) - 65) for c in iso.upper())
+
+
+def country_codes():
+    return [(code, flag(iso), iso, name) for code, iso, name in COUNTRY_CODES]
+
+
+def phone_parts(phone):
+    """Separa "+44 7700 900111" em ("44", "7700 900111") pro formulário. Número antigo sem código ("07700...")
+    fica no país padrão, como está."""
+    raw = (phone or "").strip()
+    if raw.startswith("+"):
+        rest = raw[1:].lstrip()
+        for code, _iso, _name in sorted(COUNTRY_CODES, key=lambda c: -len(c[0])):  # o código mais longo primeiro
+            if rest.startswith(code):
+                return code, rest[len(code):].strip()
+    return DEFAULT_COUNTRY, raw
+
+
+def join_phone(code, local):
+    """Junta o código do país e o número como a pessoa digitou: ("44", "07700 900111") → "+44 7700 900111"."""
+    local = " ".join((local or "").split())
+    if not local:
+        return ""
+    if local.startswith("+"):  # a pessoa já digitou o código: vale o que ela escreveu
+        return local
+    if local.startswith("0") and code not in KEEP_LEADING_ZERO:
+        local = local[1:].lstrip()
+    return f"+{code} {local}" if local else ""
+
+
+def read_phone(form, name):
+    """O telefone de um formulário: o código escolhido + o número. Sem o código (formulário antigo), o número como veio."""
+    local = form.get(name, "").strip()[:40]
+    code = form.get(f"{name}_cc", "").strip()
+    if code and any(code == c[0] for c in COUNTRY_CODES):
+        return join_phone(code, local)[:40]
+    return local
+
+
 def intl_phone(phone):
     """Telefone internacional só com os dígitos (Reino Unido por padrão): '07700 900111' → '447700900111'.
     '+55 11 9...' e '0055...' ficam com o código do país que já têm. Número estranho: ''."""
@@ -222,3 +279,5 @@ def init_app(app):
                  time_local, duration, format_minutes, status_label, tier_label, maps_link,
                  money, money_plain):
         app.add_template_filter(func, func.__name__)
+    app.add_template_global(phone_parts, "phone_parts")
+    app.add_template_global(country_codes, "country_codes")

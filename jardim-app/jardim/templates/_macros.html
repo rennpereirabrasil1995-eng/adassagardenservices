@@ -1,3 +1,15 @@
+{# Telefone com o código do país: a bandeira e o +código num seletor, e o número ao lado.
+   Grava "+44 7700 900111" (utils.read_phone junta os dois no servidor). #}
+{% macro phone_input(name, value, autocomplete='tel', required=false) -%}
+{% set parts = phone_parts(value) %}
+<span class="phone-row">
+  <select name="{{ name }}_cc" aria-label="{{ t('common.country_code') }}" autocomplete="tel-country-code">
+    {% for code, flag, iso, label in country_codes() %}<option value="{{ code }}"{% if code == parts[0] %} selected{% endif %}>{{ flag }} +{{ code }}</option>{% endfor %}
+  </select>
+  <input type="tel" name="{{ name }}" value="{{ parts[1] }}" maxlength="40" autocomplete="{{ autocomplete }}"{% if required %} required{% endif %} placeholder="{{ t('common.phone_placeholder') }}">
+</span>
+{%- endmacro %}
+
 {# Lista longa que começa curta: só os {{ start }} primeiros itens aparecem e um botão "Mostrar mais {{ step }}"
    vai abrindo o resto (script no base.html). Use nos atributos do elemento que contém os itens:
    <div class="sheet" {{ show_more() }}>. Sem JavaScript, a lista aparece inteira. #}

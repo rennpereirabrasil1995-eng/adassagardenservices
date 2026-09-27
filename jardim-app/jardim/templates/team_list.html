@@ -15,6 +15,7 @@
     <span class="member-name">{{ m.name }}</span>
     <span class="member-meta">{{ roles[m.role] }}{% if m.role == 'manager' %}: {% for p in (m.permissions or '').split(',') if p in perm_short %}{{ perm_short[p] }}{% if not loop.last %}, {% endif %}{% else %}{{ t('team.no_permissions') }}{% endfor %}{% endif %}{% if not m.active %}{{ t('team.deactivated_suffix') }}{% endif %}</span>
     <span class="member-meta">{{ m.email }}{% if m.phone %}, {{ m.phone }}{% endif %}</span>
+    {% if m.address %}<span class="member-meta">{{ m.address }}</span>{% endif %}
     {% if m.open_jobs %}<span class="member-jobs">{{ m.open_jobs }} {{ t('team.open_job_one') if m.open_jobs == 1 else t('team.open_job_many') }}</span>{% endif %}
   </a>
   {% endfor %}

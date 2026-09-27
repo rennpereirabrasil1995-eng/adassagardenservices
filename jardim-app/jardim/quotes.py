@@ -168,6 +168,7 @@ def _read_form():
     for key, limit in (("to_name", 120), ("to_email", 200), ("to_phone", 40), ("to_address", 300),
                        ("to_postcode", 20), ("title", 160), ("intro", 3000), ("notes", 3000)):
         data[key] = data[key][:limit]
+    data["to_phone"] = utils.read_phone(f, "to_phone")  # com o código do país escolhido
     errors = []
     db = get_db()
     client = None
