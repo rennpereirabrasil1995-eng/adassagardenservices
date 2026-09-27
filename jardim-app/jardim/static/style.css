@@ -194,6 +194,7 @@ a.notice:hover { background: var(--hover); }
 .job-side .remind svg { width: 1.15rem; height: 1.15rem; flex: none; }
 .job-side .remind-sms { font-size: .85rem; min-height: 1.6rem; }
 .job-side .remind-done { white-space: nowrap; }
+.job-side .remind-why { font-size: .82rem; text-align: center; max-width: 7.5rem; }
 .job-date { display: flex; flex-direction: column; align-items: flex-start; }
 .dnum { font: 800 2.2rem/1 var(--display); letter-spacing: -0.03em; }
 .dmeta { font-size: .88rem; color: var(--muted); margin-top: .15rem; }

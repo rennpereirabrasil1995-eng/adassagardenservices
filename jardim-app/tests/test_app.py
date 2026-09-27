@@ -2619,11 +2619,11 @@ class AppTests(unittest.TestCase):
         job = self.create_job(client, ana, tomorrow)
         self.create_job(client, ana, today)
         self.create_job(quiet, ana, tomorrow)
-        # lembrete desligado nas configurações: nada na linha
-        self.assertNotIn('data-remind="whatsapp"', self.owner.get("/trabalhos").get_data(as_text=True))
-        self.owner.post("/conta/lembretes", {"reminder_mode": "tap", "reminder_hour": "18", "reminder_language": "en"})
+        # o botão de mandar com um toque não depende do modo em Conta → Lembrete pro cliente
         page = self.owner.get("/trabalhos").get_data(as_text=True)
         self.assertEqual(page.count('data-remind="whatsapp"'), 1)  # só o de amanhã, do cliente com telefone
+        self.assertIn("No phone: add one to remind", page)  # o outro de amanhã diz o motivo, com o link pro cadastro
+        self.assertIn(f"/clientes/{quiet}/editar", page)
         self.assertIn("https://wa.me/447123456789?text=", page)
         self.assertIn(f"/lembretes/{client}/{tomorrow}/feito", page)
         self.assertIn(">Remind<", page)

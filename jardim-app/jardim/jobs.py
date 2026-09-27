@@ -78,22 +78,23 @@ def _attach_reminders(jobs):
         return jobs
     from . import reminders  # importado aqui: reminders.py usa este arquivo
     day = reminders.tomorrow()
-    keys = jobs[0].keys() if jobs else []
-    cands = [j for j in jobs if j["job_date"] == day and j["status"] == "scheduled"
-             and "client_reminders" in keys and j["client_reminders"] and utils.intl_phone(j["client_phone"])]
+    cands = [j for j in jobs if j["job_date"] == day and j["status"] == "scheduled"]
     if not cands:
         return jobs
+    # O botão de mandar com um toque não depende do modo escolhido em Conta → Lembrete pro cliente: é manual.
+    # Sem telefone, ou com o lembrete desligado no cadastro do cliente, a linha diz o motivo (com o link pra resolver).
     row = reminders.settings()
-    if row["reminder_mode"] not in ("tap", "sms"):
-        return jobs
     clients = {c["id"]: c for c in reminders.clients_for(day)}
     for j in cands:
         c = clients.get(j["client_id"])
-        if c is None or c["state"] in ("off", "no_phone"):
+        if c is None:
             continue
-        links = reminders.links(row, c, day)
-        j["reminder"] = {"state": c["state"], "whatsapp": links["whatsapp"], "sms": links["sms"],
-                         "done_url": url_for("reminders.mark_done", client_id=c["id"], day=day)}
+        item = {"state": c["state"], "client_url": url_for("clients.edit_client", client_id=c["id"])}
+        if c["state"] not in ("off", "no_phone"):
+            links = reminders.links(row, c, day)
+            item.update(whatsapp=links["whatsapp"], sms=links["sms"],
+                        done_url=url_for("reminders.mark_done", client_id=c["id"], day=day))
+        j["reminder"] = item
     return jobs
 
 
