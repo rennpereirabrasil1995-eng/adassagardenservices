@@ -9,7 +9,10 @@
     <p class="sub">{{ t('companies.gardens_one') if gardens|length == 1 else t('companies.gardens_many', n=gardens|length) }} ·
       {% set active_logins = logins|selectattr('active')|list|length %}{% if active_logins %}{{ t('companies.logins_one') if active_logins == 1 else t('companies.logins_many', n=active_logins) }}{% else %}{{ t('companies.logins_none') }}{% endif %}</p>
   </div>
-  <a class="btn primary" href="{{ url_for('companies.preview_days', company_id=company.id) }}">{{ t('companies.preview_button') }}</a>
+  <div class="actions">
+    {% if can('quotes') %}<a class="btn" href="{{ url_for('quotes.new_quote', company=company.id) }}">{{ t('quotes.new') }}</a>{% endif %}
+    <a class="btn primary" href="{{ url_for('companies.preview_days', company_id=company.id) }}">{{ t('companies.preview_button') }}</a>
+  </div>
 </div>
 
 <section class="block" id="jardins">

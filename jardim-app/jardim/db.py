@@ -121,6 +121,8 @@ MIGRATIONS = [
     ALTER TABLE companies ADD COLUMN color TEXT NOT NULL DEFAULT '';
     COMMIT;
     """,
+    # Cotação pra uma empresa (Clientes → Empresas), além de pra um cliente
+    "ALTER TABLE quotes ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL;",
 ]
 
 

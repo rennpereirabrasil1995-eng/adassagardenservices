@@ -2574,6 +2574,37 @@ class AppTests(unittest.TestCase):
         self.owner.post(f"/clientes/{private}/editar", {"name": "Sítio das Flores", "tier": "platina"})
         self.assertIn('pill-tier-platina">Platinum', self.owner.get("/clientes/").get_data(as_text=True))
 
+    def test_quote_can_be_for_a_company(self):
+        company_id, elm, private, ana_id, _ = self.company_setup()
+        form = self.owner.get("/cotacoes/nova").get_data(as_text=True)
+        self.assertIn('<optgroup label="Companies">', form)
+        self.assertIn(f'<option value="company:{company_id}">Hillside Property Services</option>', form)
+        self.assertIn('"company:%d": {"address": "", "email": "laura@hillside.co.uk"' % company_id, form)
+        # vindo da página da empresa, já vem escolhida e com nome e e-mail do acesso
+        form = self.owner.get(f"/cotacoes/nova?company={company_id}").get_data(as_text=True)
+        self.assertIn(f'<option value="company:{company_id}" selected>', form)
+        self.assertIn('value="Hillside Property Services"', form)
+        self.assertIn('value="laura@hillside.co.uk"', form)
+        self.assertIn(f"/cotacoes/nova?company={company_id}", self.owner.get(f"/empresas/{company_id}").get_data(as_text=True))
+        # salvar: nome e e-mail em branco vêm da empresa; a cotação fica ligada a ela
+        q = self.new_quote(client_id=f"company:{company_id}", to_name="", to_email="", to_address="", to_postcode="")
+        qid = q["id"]
+        self.assertEqual((q["client_id"], q["company_id"], q["to_name"], q["to_email"]),
+                         (None, company_id, "Hillside Property Services", "laura@hillside.co.uk"))
+        detail = self.owner.get(f"/cotacoes/{qid}").get_data(as_text=True)
+        self.assertIn(f'Company: <a href="/empresas/{company_id}">Hillside Property Services</a>', detail)
+        self.assertIn(f'<option value="company:{company_id}" selected>', self.owner.get(f"/cotacoes/{qid}/editar").get_data(as_text=True))
+        r = self.owner.post("/cotacoes/nova", {"client_id": "company:999", "to_name": "", "title": "X", "valid_until": self.day(30)})
+        self.assertEqual(r.status_code, 200)  # empresa que não existe: volta pro formulário com o aviso
+        self.assertIn("Pick a valid client or company.", r.get_data(as_text=True))
+        # aceita: o cliente criado pra agendar já nasce ligado à empresa
+        token = self.query("SELECT token FROM quotes WHERE id = ?", (qid,))[0]["token"]
+        self.visitor().post(f"/c/{token}/resposta", {"answer": "accept", "name": "Laura Mills"})
+        r = self.owner.post(f"/cotacoes/{qid}/agendar")
+        self.assertEqual(r.status_code, 302)
+        new_client = self.query("SELECT name, company_id FROM clients ORDER BY id DESC LIMIT 1")[0]
+        self.assertEqual((new_client["name"], new_client["company_id"]), ("Hillside Property Services", company_id))
+
     def test_schedule_search_by_client_name(self):
         self.create_owner()
         rosa, elm = self.create_client("Sítio das Flores"), self.create_client("12 Elm Road")

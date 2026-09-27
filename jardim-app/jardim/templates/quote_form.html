@@ -15,9 +15,18 @@
   <label><span class="label-line">{{ t('quotes.client_label') }} <span class="hint">{{ t('quotes.client_hint') }}</span></span>
     <select name="client_id" id="quote-client">
       <option value="">{{ t('quotes.new_person') }}</option>
+      {% if companies %}
+      <optgroup label="{{ t('quotes.group_companies') }}">
+        {% for co in companies %}
+        <option value="company:{{ co.id }}"{% if form.client_id|string == 'company:' ~ co.id %} selected{% endif %}>{{ co.name }}</option>
+        {% endfor %}
+      </optgroup>
+      <optgroup label="{{ t('quotes.group_clients') }}">
+      {% endif %}
       {% for c in clients %}
       <option value="{{ c.id }}"{% if form.client_id|string == c.id|string %} selected{% endif %}>{{ c.name }}{% if c.address %}, {{ c.address }}{% endif %}</option>
       {% endfor %}
+      {% if companies %}</optgroup>{% endif %}
     </select>
   </label>
   <label>{{ t('quotes.to_name') }}

@@ -6,7 +6,7 @@
 <div class="page-head">
   <div>
     <h1>{{ q.to_name }}</h1>
-    <p class="sub">{{ q.ref }} · {{ q.title }}</p>
+    <p class="sub">{{ q.ref }} · {{ q.title }}{% if company %} · {{ t('clientform.company_label') }}: {% if company.color %}<span class="co-dot" style="--co: {{ company.color }}"></span>{% endif %}{% if current_user.role == 'owner' %}<a href="{{ url_for('companies.company_detail', company_id=company.id) }}">{{ company.name }}</a>{% else %}{{ company.name }}{% endif %}{% endif %}</p>
   </div>
   <div>{{ quote_pill(q.state) }}</div>
 </div>

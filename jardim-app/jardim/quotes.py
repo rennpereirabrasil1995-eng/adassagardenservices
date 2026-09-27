@@ -171,8 +171,18 @@ def _read_form():
     data["to_phone"] = utils.read_phone(f, "to_phone")  # com o código do país escolhido
     errors = []
     db = get_db()
-    client = None
-    if data["client_id"]:
+    client = company = None
+    data["company_id"] = None
+    if data["client_id"].startswith("company:"):  # uma empresa (Clientes → Empresas), no mesmo seletor
+        company = _company_option(data["client_id"][8:])
+        if company is None:
+            errors.append(i18n.t("quotes.client_invalid"))
+        else:
+            data["company_id"] = company["id"]
+            data["to_name"] = data["to_name"] or company["name"]
+            data["to_email"] = data["to_email"] or company["email"]
+        data["client_id"] = ""
+    elif data["client_id"]:
         client = db.execute("SELECT * FROM clients WHERE id = ?",
                             (data["client_id"],)).fetchone() if data["client_id"].isdigit() else None
         if client is None:
@@ -226,11 +236,27 @@ def _save_items(db, quote_id, items):
         [(quote_id, it["description"], it["quantity"], it["unit_pence"], pos) for pos, it in enumerate(items)])
 
 
+_COMPANY_OPTIONS = ("SELECT co.id, co.name, co.color, COALESCE((SELECT cu.email FROM company_users cu WHERE cu.company_id = co.id "
+                    "AND cu.active = 1 ORDER BY cu.id LIMIT 1), '') AS email FROM companies co")
+
+
+def _company_option(value):
+    """Uma empresa do seletor (id, nome, cor e o e-mail do primeiro acesso ativo), ou None."""
+    if not str(value).isdigit():
+        return None
+    return get_db().execute(_COMPANY_OPTIONS + " WHERE co.id = ?", (int(value),)).fetchone()
+
+
 def _form_options():
-    clients = get_db().execute(
+    db = get_db()
+    clients = db.execute(
         "SELECT id, name, email, phone, address, postcode FROM clients WHERE active = 1 ORDER BY name COLLATE NOCASE"
     ).fetchall()
-    return {"clients": clients, "client_data": {str(c["id"]): dict(c) for c in clients},
+    companies = db.execute(_COMPANY_OPTIONS + " ORDER BY co.name COLLATE NOCASE").fetchall()
+    data = {str(c["id"]): dict(c) for c in clients}
+    data.update({f"company:{co['id']}": {"name": co["name"], "email": co["email"], "phone": "", "address": "", "postcode": ""}
+                 for co in companies})
+    return {"clients": clients, "companies": companies, "client_data": data,
             "frequencies": [(k, i18n.t(f"quotes.freq_{k}")) for k in FREQUENCIES]}
 
 
@@ -280,10 +306,10 @@ def new_quote():
                 number = db.execute("SELECT COALESCE(MAX(number), 0) + 1 FROM quotes").fetchone()[0]
                 try:
                     cur = db.execute(
-                        "INSERT INTO quotes (number, token, client_id, to_name, to_email, to_phone, to_address, "
+                        "INSERT INTO quotes (number, token, client_id, company_id, to_name, to_email, to_phone, to_address, "
                         "to_postcode, title, intro, notes, frequency, valid_until, language, created_by) "
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        (number, secrets.token_urlsafe(18), form["client_id"], form["to_name"], form["to_email"],
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (number, secrets.token_urlsafe(18), form["client_id"], form["company_id"], form["to_name"], form["to_email"],
                          form["to_phone"], form["to_address"], form["to_postcode"], form["title"], form["intro"],
                          form["notes"], form["frequency"], form["valid_until"], form["language"], g.user["id"]))
                     break
@@ -308,6 +334,9 @@ def new_quote():
         if client is not None:
             form.update(to_name=client["name"], to_email=client["email"], to_phone=client["phone"],
                         to_address=client["address"], to_postcode=client["postcode"])
+        company = _company_option(request.args.get("company", ""))
+        if company is not None:  # veio da página da empresa
+            form.update(client_id=f"company:{company['id']}", to_name=company["name"], to_email=company["email"])
         items = []
     return render_template("quote_form.html", form=form, items=_form_items(items), quote=None, **_form_options())
 
@@ -324,10 +353,10 @@ def edit_quote(quote_id):
         if not errors:
             db = get_db()
             db.execute(
-                "UPDATE quotes SET client_id = ?, to_name = ?, to_email = ?, to_phone = ?, to_address = ?, "
+                "UPDATE quotes SET client_id = ?, company_id = ?, to_name = ?, to_email = ?, to_phone = ?, to_address = ?, "
                 "to_postcode = ?, title = ?, intro = ?, notes = ?, frequency = ?, valid_until = ?, language = ? "
                 "WHERE id = ?",
-                (form["client_id"], form["to_name"], form["to_email"], form["to_phone"], form["to_address"],
+                (form["client_id"], form["company_id"], form["to_name"], form["to_email"], form["to_phone"], form["to_address"],
                  form["to_postcode"], form["title"], form["intro"], form["notes"], form["frequency"],
                  form["valid_until"], form["language"], quote_id))
             _save_items(db, quote_id, items)
@@ -338,7 +367,7 @@ def edit_quote(quote_id):
             flash(msg, "error")
     else:
         form = dict(q)
-        form["client_id"] = str(q["client_id"] or "")
+        form["client_id"] = f"company:{q['company_id']}" if q["company_id"] else str(q["client_id"] or "")
         items = q["lines"]
     return render_template("quote_form.html", form=form, items=_form_items(items), quote=q, **_form_options())
 
@@ -362,8 +391,9 @@ def quote_detail(quote_id):
     q = _get_or_404(quote_id)
     link = _public_url(q)
     job = get_db().execute("SELECT id, job_date FROM jobs WHERE id = ?", (q["job_id"],)).fetchone() if q["job_id"] else None
+    company = _company_option(q["company_id"]) if q["company_id"] else None
     return render_template(
-        "quote_detail.html", q=q, link=link, job=job, max_photos=photos.MAX_PHOTOS,
+        "quote_detail.html", q=q, link=link, job=job, company=company, max_photos=photos.MAX_PHOTOS,
         photo_set={"upload": url_for("quotes.upload_photos", quote_id=quote_id),
                    "photos": [_photo_item(q, p) for p in q["photos"]]},
         email_ready=notifications.email_enabled(), price_line=_price_line(q, g.lang),
@@ -480,8 +510,10 @@ def schedule_job(quote_id):
     db = get_db()
     client_id = q["client_id"]
     if client_id is None or db.execute("SELECT 1 FROM clients WHERE id = ?", (client_id,)).fetchone() is None:
-        cur = db.execute("INSERT INTO clients (name, address, postcode, phone, email) VALUES (?, ?, ?, ?, ?)",
-                         (q["to_name"], q["to_address"], q["to_postcode"], q["to_phone"], q["to_email"]))
+        cur = db.execute("INSERT INTO clients (name, address, postcode, phone, email, company_id) VALUES (?, ?, ?, ?, ?, ?)",
+                         (q["to_name"], q["to_address"], q["to_postcode"], q["to_phone"], q["to_email"],
+                          q["company_id"] if q["company_id"] and db.execute(
+                              "SELECT 1 FROM companies WHERE id = ?", (q["company_id"],)).fetchone() else None))
         client_id = cur.lastrowid
         db.execute("UPDATE quotes SET client_id = ? WHERE id = ?", (client_id, quote_id))
         db.commit()
