@@ -14,13 +14,13 @@
 <section class="block is-late">
   <h2>{{ t('dashboard.late') }} <span class="count">{{ late_jobs|length }}</span></h2>
   <p class="hint">{{ t('dashboard.late_hint') }}</p>
-  <div class="sheet">{% for j in late_jobs %}{{ job_row(j) }}{% endfor %}</div>
+  <div class="sheet" {{ show_more(5, 4, auto=true) }}>{% for j in late_jobs %}{{ job_row(j) }}{% endfor %}</div>
 </section>
 {% endif %}
 
 <section class="block">
   <h2>{{ t('dashboard.today') }} <span class="count">{{ today_jobs|length }}</span></h2>
-  <div class="sheet">
+  <div class="sheet" {{ show_more(5, 4, auto=true) }}>
     {% for j in today_jobs %}{{ job_row(j) }}{% else %}
     <p class="empty">{{ t('dashboard.today_empty') }} <a href="{{ url_for('jobs.new_job') }}">{{ t('dashboard.schedule_one') }}</a></p>
     {% endfor %}
@@ -44,7 +44,7 @@
 {% if upcoming_jobs %}
 <section class="block">
   <h2>{{ t('dashboard.upcoming') }} <span class="count">{{ upcoming_jobs|length }}</span></h2>
-  <div class="sheet">{% for j in upcoming_jobs %}{{ job_row(j) }}{% endfor %}</div>
+  <div class="sheet" {{ show_more(5, 4, auto=true) }}>{% for j in upcoming_jobs %}{{ job_row(j) }}{% endfor %}</div>
 </section>
 {% endif %}
 
