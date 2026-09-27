@@ -242,3 +242,27 @@ CREATE TABLE IF NOT EXISTS comment_files (
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_comment_files_comment ON comment_files(comment_id);
+
+-- Serviço extra reportado pela equipe (extras.py): um trabalho feito fora da agenda. O dono aprova (vira um
+-- trabalho concluído, com as horas) ou recusa. job_id: o trabalho criado na aprovação.
+CREATE TABLE IF NOT EXISTS job_reports (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    client_id     INTEGER REFERENCES clients(id) ON DELETE SET NULL,
+    client_name   TEXT NOT NULL,
+    place         TEXT NOT NULL DEFAULT '',
+    job_date      TEXT NOT NULL,
+    start_time    TEXT NOT NULL DEFAULT '',
+    minutes       INTEGER NOT NULL,
+    hours_text    TEXT NOT NULL DEFAULT '',
+    tasks         TEXT NOT NULL,
+    notes         TEXT NOT NULL DEFAULT '',
+    status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    decided_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    decided_at    TEXT,
+    decision_note TEXT NOT NULL DEFAULT '',
+    job_id        INTEGER REFERENCES jobs(id) ON DELETE SET NULL,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_job_reports_status ON job_reports(status, id);
+CREATE INDEX IF NOT EXISTS idx_job_reports_user ON job_reports(user_id, id);

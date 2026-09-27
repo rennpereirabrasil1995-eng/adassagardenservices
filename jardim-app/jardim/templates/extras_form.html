@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ t('extras.form_title') }} – {% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('jobs.my_jobs') }}">‹ {{ t('nav.my_jobs') }}</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ t('extras.form_title') }}</h1>
+    <p class="sub">{{ t('extras.form_hint') }}</p>
+  </div>
+</div>
+
+<form method="post" class="sheet pad stack">
+  {{ csrf_field() }}
+  <label>{{ t('extras.client_label') }}
+    <select name="client_id" id="extra-client">
+      <option value="">{{ t('extras.client_new') }}</option>
+      {% for c in clients %}<option value="{{ c.id }}"{% if form.client_id|string == c.id|string %} selected{% endif %}>{{ c.name }}{% if c.address %}, {{ c.address }}{% endif %}</option>{% endfor %}
+    </select>
+    <span class="hint">{{ t('extras.client_pick') }}</span>
+  </label>
+  <div class="grid-2" id="extra-new-client">
+    <label>{{ t('extras.client_name_label') }}
+      <input name="client_name" value="{{ form.client_name }}" maxlength="120" autocomplete="off">
+    </label>
+    <label><span class="label-line">{{ t('extras.place_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
+      <input name="place" value="{{ form.place }}" maxlength="300" autocomplete="off">
+    </label>
+  </div>
+  <div class="grid-2">
+    <label>{{ t('extras.date_label') }}
+      <input type="date" name="job_date" value="{{ form.job_date }}" max="{{ today }}" required>
+    </label>
+    <label><span class="label-line">{{ t('extras.start_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
+      <input type="time" name="start_time" value="{{ form.start_time }}">
+    </label>
+  </div>
+  <label>{{ t('extras.hours_label') }}
+    <input class="short" name="hours" value="{{ form.hours }}" maxlength="40" autocomplete="off" placeholder="{{ t('jobform.hours_placeholder') }}" required>
+  </label>
+  <label>{{ t('extras.tasks_label') }}
+    <textarea name="tasks" rows="4" maxlength="4000" required placeholder="{{ t('extras.tasks_placeholder') }}">{{ form.tasks }}</textarea>
+    <span class="hint">{{ t('extras.tasks_hint') }}</span>
+  </label>
+  <label><span class="label-line">{{ t('extras.notes_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
+    <textarea name="notes" rows="2" maxlength="1000">{{ form.notes }}</textarea>
+  </label>
+  <div class="actions">
+    <button class="btn primary" type="submit">{{ t('extras.submit') }}</button>
+    <a class="btn" href="{{ url_for('jobs.my_jobs') }}">{{ t('common.cancel') }}</a>
+  </div>
+</form>
+<script>
+  /* Cliente da lista: o nome e o lugar vêm do cadastro, então os campos de nome novo somem. */
+  (function () {
+    var pick = document.getElementById('extra-client'), box = document.getElementById('extra-new-client');
+    function sync() { box.hidden = !!pick.value; }
+    pick.addEventListener('change', sync);
+    sync();
+  })();
+</script>
+{% endblock %}

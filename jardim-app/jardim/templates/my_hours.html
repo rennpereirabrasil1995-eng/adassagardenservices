@@ -30,6 +30,16 @@
 
 <p class="hint hours-note">{{ t('hours.readonly_note') }}{% if owner_name %} {{ t('hours.fix_note', name=owner_name) }}{% endif %}</p>
 
+{% if pending_reports %}
+<div class="callout hours-callout">
+  <b>{{ t('extras.hours_pending_title') }}</b>
+  <p>{{ t('extras.hours_pending_hint') }}</p>
+  <ul class="plain-list">
+    {% for r in pending_reports %}<li>{{ r.client_name }} · {{ r.job_date|date_long }} · {{ r.minutes|format_minutes }}</li>{% endfor %}
+  </ul>
+  <p><a href="{{ url_for('extras.list_reports') }}">{{ t('extras.see_all') }}</a></p>
+</div>
+{% endif %}
 {% if running %}
 <div class="callout hours-callout">
   <b>{{ t('hours.running_title') }}</b>

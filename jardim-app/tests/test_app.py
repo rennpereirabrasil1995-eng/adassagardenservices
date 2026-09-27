@@ -2637,6 +2637,65 @@ class AppTests(unittest.TestCase):
         self.assertIn("✓ Reminded", page)
         self.assertIn("✓ Reminded", self.owner.get("/painel").get_data(as_text=True))
 
+    def test_team_reports_an_extra_service_and_the_owner_approves_or_declines(self):
+        self.create_owner()
+        client = self.create_client()
+        ana_id = self.create_employee()
+        gil = self.create_manager(perms=("schedule",))
+        owner_id = self.query("SELECT id FROM users WHERE role = 'owner'")[0]["id"]
+        ana = self.employee_browser()
+        today = self.day(0)
+        # a funcionária vê o botão; o formulário confere data, tempo e tarefas
+        self.assertIn("/servicos-extras/novo", ana.get("/meus-trabalhos").get_data(as_text=True))
+        self.assertNotIn("/servicos-extras/novo", self.owner.get("/meus-trabalhos").get_data(as_text=True))
+        bad = ana.post("/servicos-extras/novo", {"client_name": "", "job_date": self.day(1), "hours": "abc", "tasks": ""},
+                       follow_redirects=True).get_data(as_text=True)
+        for msg in ("Pick a client or type the name.", "The date can&#39;t be in the future.", "Say how long it took", "Say what was done."):
+            self.assertIn(msg, bad)
+        self.assertEqual(self.query("SELECT COUNT(*) AS n FROM job_reports")[0]["n"], 0)
+        # um pedido com cliente novo (nome + lugar) e outro com cliente da lista
+        r = ana.post("/servicos-extras/novo", {"client_name": "Mrs Patel", "place": "4 Lime Walk", "job_date": today,
+                                               "start_time": "14:00", "hours": "1:30", "tasks": "Mowed the lawn\nTrimmed the hedge"})
+        self.assertEqual(r.status_code, 302)
+        ana.post("/servicos-extras/novo", {"client_id": str(client), "job_date": self.day(-1), "hours": "2 hours", "tasks": "Weeding"})
+        reports = self.query("SELECT * FROM job_reports ORDER BY id")
+        self.assertEqual([(x["client_name"], x["minutes"], x["status"]) for x in reports],
+                         [("Mrs Patel", 90, "pending"), ("Sítio das Flores", 120, "pending")])
+        self.assertEqual(reports[1]["place"], "12 Rose Lane, N1 1AA")
+        # o dono fica sabendo no sininho e no painel; a funcionária vê pendente em Meus trabalhos e Minhas horas
+        self.assertEqual(len(self.notices(owner_id, "extra_reported")), 2)
+        self.assertIn("Ana reported a service: Mrs Patel", self.owner.get("/avisos/").get_data(as_text=True))
+        self.assertIn("2 extra services waiting for your approval", self.owner.get("/painel").get_data(as_text=True))
+        self.assertIn("Waiting for approval", ana.get("/meus-trabalhos").get_data(as_text=True))
+        hours = ana.get("/minhas-horas").get_data(as_text=True)
+        self.assertIn("These hours count once the owner approves", hours)
+        self.assertIn("Mrs Patel", hours)
+        self.assertEqual(self.employee_browser("gil@example.com", "senha-do-gil-1").post(f"/servicos-extras/{reports[0]['id']}/aprovar").status_code, 403)
+        # aprovar: vira trabalho concluído, com a Ana escalada, tarefas feitas e 1h30 nas horas dela
+        r = self.owner.post(f"/servicos-extras/{reports[0]['id']}/aprovar")
+        self.assertEqual(r.status_code, 302)
+        job = self.query("SELECT j.*, c.name AS client_name, c.address FROM jobs j JOIN clients c ON c.id = j.client_id ORDER BY j.id DESC LIMIT 1")[0]
+        self.assertEqual((job["client_name"], job["address"], job["status"], job["title"], job["job_date"], job["start_time"]),
+                         ("Mrs Patel", "4 Lime Walk", "done", "Extra service", today, "14:00"))
+        with self.app.app_context():
+            self.assertEqual(utils.duration_minutes(job["started_at"], job["finished_at"]), 90)
+        self.assertEqual([t["done"] for t in self.query("SELECT done FROM job_tasks WHERE job_id = ?", (job["id"],))], [1, 1])
+        self.assertEqual(self.query("SELECT user_id FROM job_assignees WHERE job_id = ?", (job["id"],))[0]["user_id"], ana_id)
+        self.assertEqual(self.query("SELECT status, job_id FROM job_reports WHERE id = ?", (reports[0]["id"],))[0]["job_id"], job["id"])
+        self.assertEqual(len(self.notices(ana_id, "extra_approved")), 1)
+        self.assertIn("1h30", ana.get("/minhas-horas").get_data(as_text=True))
+        self.assertEqual(self.owner.post(f"/servicos-extras/{reports[0]['id']}/aprovar").status_code, 404)  # já decidido
+        # recusar com motivo: nada é criado, a funcionária recebe o aviso e vê o motivo
+        self.owner.post(f"/servicos-extras/{reports[1]['id']}/recusar", {"note": "That was already on the schedule"})
+        self.assertEqual(self.query("SELECT COUNT(*) AS n FROM jobs")[0]["n"], 1)
+        self.assertEqual(self.query("SELECT status FROM job_reports WHERE id = ?", (reports[1]["id"],))[0]["status"], "rejected")
+        self.assertIn("Extra service not approved: Sítio das Flores", ana.get("/avisos/").get_data(as_text=True))
+        mine = ana.get("/servicos-extras/").get_data(as_text=True)
+        self.assertIn("Reason: That was already on the schedule", mine)
+        self.assertIn("Not approved", mine)
+        self.assertIn("Nothing waiting.", self.owner.get("/servicos-extras/").get_data(as_text=True))
+        self.assertNotIn("waiting for your approval", self.owner.get("/painel").get_data(as_text=True))
+
     def test_schedule_search_by_client_name(self):
         self.create_owner()
         rosa, elm = self.create_client("Sítio das Flores"), self.create_client("12 Elm Road")

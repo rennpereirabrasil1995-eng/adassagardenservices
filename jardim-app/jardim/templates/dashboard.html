@@ -27,6 +27,13 @@
   </div>
 </section>
 
+{% if extras_pending %}
+<a class="callout extras-card" href="{{ url_for('extras.list_reports') }}">
+  <b>{{ t('extras.dashboard_pending_one') if extras_pending == 1 else t('extras.dashboard_pending_many', n=extras_pending) }}</b>
+  <span>{{ t('extras.review') }} ›</span>
+</a>
+{% endif %}
+
 {% if reminders_card %}{% set rc = reminders_card %}
 <a class="callout reminder-card{% if rc.failed %} has-failed{% endif %}" href="{{ url_for('reminders.tomorrow_list') }}">
   <b>{{ t('reminders.card_title') }} · {{ t('reminders.card_count', sent=rc.sent, total=rc.total) }}</b>

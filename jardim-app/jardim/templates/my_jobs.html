@@ -7,7 +7,20 @@
     <h1>{{ t('myjobs.title') }}</h1>
     <p class="sub">{{ today|date_long }} · <a href="{{ url_for('hours.my_hours') }}">{{ t('myjobs.weekly_hours') }}: {{ weekly_minutes|format_minutes }}</a></p>
   </div>
+  {% if current_user.role != 'owner' %}<a class="btn" href="{{ url_for('extras.new_report') }}">{{ t('extras.report_button') }}</a>{% endif %}
 </div>
+
+{% if my_reports %}
+{# Serviços extras que a pessoa reportou e ainda aguardam o dono (ou foram recusados) #}
+<div class="callout">
+  <b>{{ t('extras.mine_title') }}</b>
+  <ul class="plain-list">
+    {% for r in my_reports %}<li>{{ r.client_name }} · {{ r.job_date|date_long }} · {{ r.minutes|format_minutes }} ·
+      {% if r.status == 'pending' %}<span class="pill pill-pending">{{ t('extras.pending') }}</span>{% else %}<span class="pill pill-failed">{{ t('extras.rejected') }}</span>{% endif %}</li>{% endfor %}
+  </ul>
+  <p><a href="{{ url_for('extras.list_reports') }}">{{ t('extras.see_all') }}</a></p>
+</div>
+{% endif %}
 
 {% if late_jobs %}
 <section class="block is-late">

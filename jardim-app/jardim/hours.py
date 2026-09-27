@@ -195,5 +195,7 @@ def _owner_name():
 def my_hours():
     """Sempre as horas da própria pessoa: não existe parâmetro pra ver as de outra."""
     period, ref = _read_period(request.args)
+    from . import extras
+    pending = [r for r in extras.mine(g.user["id"]) if r["status"] == "pending"]
     return render_template("my_hours.html", owner_name="" if g.user["role"] == "owner" else _owner_name(),
-                           **summary(g.user["id"], period, ref))
+                           pending_reports=pending, **summary(g.user["id"], period, ref))

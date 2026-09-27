@@ -65,7 +65,7 @@
         'companies.preview_report']) }}{% endif %}
       {% if 'quotes' in user_permissions %}{{ tab('quotes.list_quotes', t('nav.quotes'), ['quotes.list_quotes', 'quotes.new_quote', 'quotes.quote_detail', 'quotes.edit_quote']) }}{% endif %}
       {% if current_user.role == 'owner' %}{{ tab('team.list_team', t('nav.team'), ['team.list_team', 'team.new_member', 'team.edit_member']) }}{% endif %}
-      {{ tab('jobs.my_jobs', t('nav.my_jobs'), ['jobs.my_jobs']) }}
+      {{ tab('jobs.my_jobs', t('nav.my_jobs'), ['jobs.my_jobs', 'extras.new_report', 'extras.list_reports']) }}
       {{ tab('hours.my_hours', t('nav.my_hours'), ['hours.my_hours']) }}
     </nav>
     {% endif %}

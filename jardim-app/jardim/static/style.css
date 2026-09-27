@@ -336,6 +336,20 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
 .search-btn svg { width: 1.35rem; height: 1.35rem; flex: none; }
 .search-note { margin: -.3rem 0 0; }
 .list-filter { margin: 0 0 .75rem; }
+/* Serviços extras (extras.py): o cartão de cada pedido */
+.report { padding: 1rem 1.15rem; display: grid; gap: .6rem; }
+.report + .report { border-top: 1px solid var(--line); }
+.report-head { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem 1rem; flex-wrap: wrap; }
+.report-meta { margin: .15rem 0 0; color: var(--muted); font-size: .93rem; }
+.report-tasks li { padding: .25rem 0; }
+.report-tasks li + li { border-top: 0; }
+.report-notes { margin: 0; color: var(--muted); }
+.report-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.report-reject { display: flex; gap: .5rem; flex: 1 1 16rem; }
+.report-reject input { min-width: 0; flex: 1 1 auto; min-height: 2.6rem; padding: .3rem .7rem; }
+.pill-pending { background: var(--marker); border-color: var(--marker); color: var(--on-marker); }
+.pill-failed { background: var(--late); border-color: var(--late); color: #fff; }
+.extras-card { display: flex; justify-content: space-between; align-items: center; gap: 1rem; text-decoration: none; color: inherit; border-left-color: var(--marker); }
 /* A janelinha "Você tem certeza?" */
 .confirm-box { border: 0; border-radius: 14px; padding: 1.25rem 1.3rem; width: min(24rem, calc(100vw - 2rem));
   background: var(--surface); color: var(--ink); box-shadow: 0 18px 50px rgba(0, 0, 0, .3); }
