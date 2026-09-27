@@ -52,10 +52,13 @@
         {% set where = place(c.name, c.address) %}
         <span class="member-meta">{% if where %}{{ where }} · {% endif %}{{ t('portal.last_service', date=c.last_day|date_long) if c.last_day else t('portal.no_service_yet') }}</span>
       </div>
-      <form method="post" action="{{ url_for('companies.remove_garden', company_id=company.id, client_id=c.id) }}" onsubmit='return confirm({{ t('companies.remove_confirm')|tojson }})'>
-        {{ csrf_field() }}
-        <button class="btn small" type="submit">{{ t('companies.remove') }}</button>
-      </form>
+      <div class="row-act-side">
+        {% if c.active and can('schedule') %}<a class="btn small primary" href="{{ url_for('jobs.new_job', client=c.id) }}">{{ t('companies.book_garden') }}</a>{% endif %}
+        <form method="post" action="{{ url_for('companies.remove_garden', company_id=company.id, client_id=c.id) }}" onsubmit='return confirm({{ t('companies.remove_confirm')|tojson }})'>
+          {{ csrf_field() }}
+          <button class="btn small" type="submit">{{ t('companies.remove') }}</button>
+        </form>
+      </div>
     </div>
     {% else %}
     <p class="empty">{{ t('companies.gardens_empty') }}</p>

@@ -328,6 +328,8 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
 .search-btn svg { width: 1.35rem; height: 1.35rem; flex: none; }
 .search-note { margin: -.3rem 0 0; }
 .list-filter { margin: 0 0 .75rem; }
+.row-act-side { display: flex; gap: .5rem; align-items: center; flex: none; }
+.row-act-side form { margin: 0; }
 .list-filter .search-btn { pointer-events: none; }
 [id] > [hidden].row-act, .sheet > [hidden] { display: none !important; }
 .filters { display: grid; gap: .9rem; margin: 0 0 1.1rem; }
