@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import job_row with context %}
+{% block title %}{{ t('jobs.page_title') }} – {% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ t('jobs.title') }}</h1>
+  <a class="btn primary" href="{{ url_for('jobs.new_job') }}">{{ t('jobs.new') }}</a>
+</div>
+
+<div class="filters">
+  <nav class="seg" aria-label="{{ t('jobs.filter_period_label') }}">
+    {% for key, label in views %}
+    <a href="{{ url_for('jobs.list_jobs', ver=key, func=employee or None) }}"{% if key == view %} class="on" aria-current="true"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+  <form method="get" class="who-filter">
+    <input type="hidden" name="ver" value="{{ view }}">
+    <label class="inline">{{ t('jobs.employee_label') }}
+      <select name="func" onchange="this.form.submit()">
+        <option value="">{{ t('jobs.all') }}</option>
+        <option value="none"{% if employee == 'none' %} selected{% endif %}>{{ t('jobs.no_employee_option') }}</option>
+        {% for e in employees %}
+        <option value="{{ e.id }}"{% if employee == e.id|string %} selected{% endif %}>{{ e.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <noscript><button class="btn small" type="submit">{{ t('jobs.filter_submit') }}</button></noscript>
+  </form>
+</div>
+
+<div class="sheet">
+  {% for j in jobs %}{{ job_row(j) }}{% else %}
+  <p class="empty">{{ t('jobs.empty') }}</p>
+  {% endfor %}
+</div>
+{% endblock %}

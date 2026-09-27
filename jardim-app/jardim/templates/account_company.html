@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_account.html" import sub_head with context %}
+{% block title %}{{ t('account.company_title') }} – {% endblock %}
+{% block content %}
+{{ sub_head(t('account.company_title'), t('account.company_hint')) }}
+<form method="post" class="sheet pad stack">
+  {{ csrf_field() }}
+  <label>{{ t('prefs.company_name_label') }}
+    <input name="company_name" value="{{ form.company_name }}" maxlength="120" autocomplete="organization">
+  </label>
+  <div class="grid-2">
+    <label>{{ t('prefs.company_phone_label') }}
+      <input type="tel" name="company_phone" value="{{ form.company_phone }}" maxlength="40">
+    </label>
+    <label>{{ t('prefs.company_email_label') }}
+      <input type="email" name="company_email" value="{{ form.company_email }}" maxlength="200">
+    </label>
+  </div>
+  <label>{{ t('prefs.company_address_label') }}
+    <input name="company_address" value="{{ form.company_address }}" maxlength="300" autocomplete="street-address">
+  </label>
+  <div class="actions"><button class="btn primary" type="submit">{{ t('common.save_changes') }}</button></div>
+</form>
+{% endblock %}

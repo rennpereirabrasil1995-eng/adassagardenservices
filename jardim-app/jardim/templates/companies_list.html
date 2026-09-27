@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ t('companies.title') }} – {% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('clients.list_clients') }}">‹ {{ t('nav.clients') }}</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ t('companies.title') }}</h1>
+    <p class="sub">{{ t('companies.hint') }}</p>
+  </div>
+</div>
+
+<div class="sheet">
+  {% for co in companies %}
+  <a class="member" href="{{ url_for('companies.company_detail', company_id=co.id) }}">
+    <span class="member-name">{{ co.name }}{% if co.fresh %} <span class="pill pill-new">{{ t('companies.fresh_one') if co.fresh == 1 else t('companies.fresh_many', n=co.fresh) }}</span>{% endif %}</span>
+    <span class="member-meta">{{ t('companies.gardens_one') if co.gardens == 1 else t('companies.gardens_many', n=co.gardens) }} · {% if co.logins %}{{ t('companies.logins_one') if co.logins == 1 else t('companies.logins_many', n=co.logins) }}{% else %}{{ t('companies.logins_none') }}{% endif %}</span>
+  </a>
+  {% else %}
+  <p class="empty">{{ t('companies.empty') }}</p>
+  {% endfor %}
+</div>
+
+<form method="post" action="{{ url_for('companies.new_company') }}" class="sheet pad stack">
+  {{ csrf_field() }}
+  <label>{{ t('companies.new_label') }}
+    <input name="name" maxlength="120" required placeholder="{{ t('companies.new_placeholder') }}">
+  </label>
+  <div class="actions"><button class="btn primary" type="submit">{{ t('companies.create') }}</button></div>
+</form>
+
+<section class="block">
+  <h2>{{ t('companies.how_title') }}</h2>
+  <ol class="how">
+    <li>{{ t('companies.how_1') }}</li>
+    <li>{{ t('companies.how_2') }}</li>
+    <li>{{ t('companies.how_3') }}</li>
+  </ol>
+</section>
+{% endblock %}

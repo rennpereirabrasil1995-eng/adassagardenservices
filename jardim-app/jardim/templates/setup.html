@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ t('setup.page_title') }} – {% endblock %}
+{% block content %}
+<div class="auth">
+  <h1>{{ t('setup.title') }}</h1>
+  <p class="sub">{{ t('setup.subtitle') }}</p>
+  <form method="post" class="sheet pad stack">
+    {{ csrf_field() }}
+    {% if needs_key %}
+    <label>{{ t('setup.setup_key_label') }}
+      <input name="setup_key" autocomplete="off" required>
+      <span class="hint">{{ t('setup.setup_key_hint') }}</span>
+    </label>
+    {% endif %}
+    <label>{{ t('setup.name_label') }}
+      <input name="name" value="{{ form.get('name', '') }}" autocomplete="name" required autofocus>
+    </label>
+    <label>{{ t('setup.email_label') }}
+      <input type="email" name="email" value="{{ form.get('email', '') }}" autocomplete="username" required>
+    </label>
+    <label>{{ t('setup.password_label') }}
+      <input type="password" name="password" autocomplete="new-password" minlength="8" required>
+      <span class="hint">{{ t('setup.password_hint') }}</span>
+    </label>
+    <label>{{ t('setup.confirm_label') }}
+      <input type="password" name="confirm_password" autocomplete="new-password" minlength="8" required>
+    </label>
+    <button class="btn primary block" type="submit">{{ t('setup.submit') }}</button>
+  </form>
+</div>
+{% endblock %}

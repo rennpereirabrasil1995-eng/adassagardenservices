@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}{{ company.name }} – {% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('companies.list_companies') }}">‹ {{ t('companies.title') }}</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ company.name }}</h1>
+    <p class="sub">{{ t('companies.gardens_one') if gardens|length == 1 else t('companies.gardens_many', n=gardens|length) }} ·
+      {% set active_logins = logins|selectattr('active')|list|length %}{% if active_logins %}{{ t('companies.logins_one') if active_logins == 1 else t('companies.logins_many', n=active_logins) }}{% else %}{{ t('companies.logins_none') }}{% endif %}</p>
+  </div>
+  <a class="btn primary" href="{{ url_for('companies.preview_days', company_id=company.id) }}">{{ t('companies.preview_button') }}</a>
+</div>
+
+<section class="block" id="jardins">
+  <h2>{{ t('companies.gardens_title') }} <span class="count">{{ gardens|length }}</span></h2>
+  <p class="hint block-hint">{{ t('companies.gardens_hint') }}</p>
+  <div class="sheet">
+    {% for c in gardens %}
+    <div class="row-act">
+      <div class="row-act-main">
+        <a class="member-name" href="{{ url_for('clients.client_detail', client_id=c.id) }}">{{ c.name }}</a>{% if not c.active %} <span class="pill pill-inactive">{{ t('clientdetail.inactive') }}</span>{% endif %}
+        {% set where = place(c.name, c.address) %}
+        <span class="member-meta">{% if where %}{{ where }} · {% endif %}{{ t('portal.last_service', date=c.last_day|date_long) if c.last_day else t('portal.no_service_yet') }}</span>
+      </div>
+      <form method="post" action="{{ url_for('companies.remove_garden', company_id=company.id, client_id=c.id) }}" onsubmit='return confirm({{ t('companies.remove_confirm')|tojson }})'>
+        {{ csrf_field() }}
+        <button class="btn small" type="submit">{{ t('companies.remove') }}</button>
+      </form>
+    </div>
+    {% else %}
+    <p class="empty">{{ t('companies.gardens_empty') }}</p>
+    {% endfor %}
+  </div>
+  {% if others %}
+  <form method="post" action="{{ url_for('companies.add_garden', company_id=company.id) }}" class="sheet pad add-row">
+    {{ csrf_field() }}
+    <label>{{ t('companies.add_label') }}
+      <select name="client_id" required>
+        <option value="">{{ t('companies.add_pick') }}</option>
+        {% for c in others %}<option value="{{ c.id }}">{{ c.name }}{% if c.other_company %} {{ t('companies.add_other', company=c.other_company) }}{% endif %}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="btn" type="submit">{{ t('companies.add_button') }}</button>
+  </form>
+  {% endif %}
+  <p class="hint"><a href="{{ url_for('clients.new_client', empresa=company.id) }}">{{ t('companies.new_garden') }}</a></p>
+</section>
+
+<section class="block" id="acessos">
+  <h2>{{ t('companies.logins_title') }} <span class="count">{{ logins|length }}</span></h2>
+  <p class="hint block-hint">{{ t('companies.logins_hint') }}</p>
+  <div class="sheet">
+    {% for u in logins %}
+    <div class="row-act login-row{% if not u.active %} off{% endif %}">
+      <div class="row-act-main">
+        <span class="member-name">{{ u.name }}{% if not u.active %} <span class="pill pill-inactive">{{ t('companies.login_disabled') }}</span>{% endif %}</span>
+        <span class="member-meta">{{ u.email }} · {{ languages.get(u.language, u.language) }} · {{ t('companies.daily_gets') if u.daily_mail else t('companies.daily_skips') }}</span>
+        <span class="member-meta">{{ t('companies.last_login', when=u.last_login_at|dt_local) if u.last_login_at else t('companies.never_logged') }}</span>
+      </div>
+      <div class="row-act-buttons">
+        <form method="post" action="{{ url_for('companies.reset_login', company_id=company.id, login_id=u.id) }}" onsubmit='return confirm({{ t('companies.new_password_confirm', name=u.name)|tojson }})'>
+          {{ csrf_field() }}
+          <button class="btn small" type="submit">{{ t('companies.new_password') }}</button>
+        </form>
+        <form method="post" action="{{ url_for('companies.toggle_login', company_id=company.id, login_id=u.id) }}">
+          {{ csrf_field() }}
+          <button class="btn small" type="submit">{{ t('companies.disable') if u.active else t('companies.enable') }}</button>
+        </form>
+        <form method="post" action="{{ url_for('companies.delete_login', company_id=company.id, login_id=u.id) }}" onsubmit='return confirm({{ t('companies.delete_login_confirm', name=u.name)|tojson }})'>
+          {{ csrf_field() }}
+          <button class="btn small danger" type="submit">{{ t('companies.delete_login') }}</button>
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <p class="empty">{{ t('companies.logins_empty') }}</p>
+    {% endfor %}
+  </div>
+  <div class="actions"><a class="btn" href="{{ url_for('companies.new_login', company_id=company.id) }}">{{ t('companies.add_login') }}</a></div>
+</section>
+
+<section class="block" id="resumo">
+  <h2>{{ t('companies.daily_title') }}</h2>
+  <p class="hint block-hint">{{ t('companies.daily_hint') }}</p>
+  {% if not daily.email_on %}
+  <div class="callout internal">
+    <b>{{ t('companies.daily_no_email_title') }}</b>
+    <p>{{ t('companies.daily_no_email') }} <a href="{{ url_for('preferences.notices') }}">{{ t('companies.daily_no_email_link') }}</a></p>
+  </div>
+  {% endif %}
+  <div class="sheet pad stack">
+    <form method="post" action="{{ url_for('companies.daily_settings', company_id=company.id) }}" class="add-row">
+      {{ csrf_field() }}
+      <label>{{ t('companies.daily_when') }}
+        <select name="daily_hour">
+          <option value=""{% if company.daily_hour is none %} selected{% endif %}>{{ t('companies.daily_off') }}</option>
+          {% for h in daily.hours %}<option value="{{ h }}"{% if company.daily_hour == h %} selected{% endif %}>{{ t('companies.daily_at', hour=h) }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="btn" type="submit">{{ t('companies.daily_save') }}</button>
+    </form>
+    <div class="daily-status">
+      <p>{% if company.daily_hour is none %}{{ t('companies.daily_status_off') }}
+        {%- elif daily.sent_today %}{{ t('companies.daily_status_sent') }}
+        {%- else %}{{ t('companies.daily_status_next', hour=company.daily_hour) }}{% endif %}</p>
+      <p>{% if daily.people %}{{ t('companies.daily_to', names=daily.people|map(attribute='name')|join(', ')) }}
+        {%- else %}<span class="late">{{ t('companies.daily_nobody') }}</span>{% endif %}</p>
+    </div>
+    {% if daily.preview %}
+    <details class="mail-preview">
+      <summary>{{ t('companies.daily_preview_one') if daily.services|length == 1 else t('companies.daily_preview_many', n=daily.services|length) }}</summary>
+      <div class="mail">
+        <p class="mail-subject">{{ daily.preview[0] }}</p>
+        <p class="mail-body pre">{{ daily.preview[1] }}</p>
+      </div>
+    </details>
+    {% if daily.email_on and daily.people %}
+    <form method="post" action="{{ url_for('companies.daily_send_now', company_id=company.id) }}" onsubmit='return confirm({{ t('companies.daily_send_confirm')|tojson }})'>
+      {{ csrf_field() }}
+      <button class="btn small" type="submit">{{ t('companies.daily_send_now') }}</button>
+    </form>
+    {% endif %}
+    {% else %}
+    <p class="hint">{{ t('companies.daily_nothing') }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="block" id="comentarios">
+  <h2>{{ t('companies.comments_title') }}</h2>
+  <div class="sheet">
+    {% for m in comments %}
+    <a class="notice{% if m.from_company and not m.seen_at %} unread{% endif %}" href="{{ url_for('jobs.job_detail', job_id=m.job_id, _anchor='comentarios') }}">
+      <span class="notice-title">{{ m.author_name }} · {{ m.garden }}{% if m.from_company and not m.seen_at %} <span class="pill pill-new">{{ t('portal.new') }}</span>{% endif %}</span>
+      <span class="notice-body">{{ m.body|truncate(160) if m.body else '📎' }}</span>
+      <span class="notice-time">{{ t('companies.service_of', date=m.job_date|date_long) }} · {{ m.created_at|dt_local }}</span>
+    </a>
+    {% else %}
+    <p class="empty">{{ t('companies.comments_empty') }}</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="block">
+  <h2>{{ t('companies.edit_title') }}</h2>
+  <div class="sheet pad stack">
+    <form method="post" action="{{ url_for('companies.rename_company', company_id=company.id) }}" class="stack">
+      {{ csrf_field() }}
+      <label>{{ t('companies.name_label') }}
+        <input name="name" value="{{ company.name }}" maxlength="120" required>
+      </label>
+      <div class="actions"><button class="btn" type="submit">{{ t('companies.save_name') }}</button></div>
+    </form>
+    <form method="post" action="{{ url_for('companies.delete_company', company_id=company.id) }}" onsubmit='return confirm({{ t('companies.delete_confirm', name=company.name)|tojson }})'>
+      {{ csrf_field() }}
+      <button class="btn danger small" type="submit">{{ t('companies.delete') }}</button>
+      <span class="hint">{{ t('companies.delete_hint') }}</span>
+    </form>
+  </div>
+</section>
+{% endblock %}

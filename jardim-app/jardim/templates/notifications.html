@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ t('notifications.title') }} – {% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ t('notifications.title') }}</h1></div>
+<div class="sheet">
+  {% for n in items %}
+  {% set tag = 'a' if n.url else 'div' %}
+  <{{ tag }} class="notice{% if not n.read %} unread{% endif %}"{% if n.url %} href="{{ n.url }}"{% endif %}>
+    <span class="notice-title">{{ n.title }}</span>
+    {% if n.body %}<span class="notice-body">{{ n.body }}</span>{% endif %}
+    <span class="notice-time">{{ n.created_at|dt_local }}</span>
+  </{{ tag }}>
+  {% else %}
+  <p class="empty">{{ t('notifications.empty') }}</p>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,129 @@
+<!doctype html>
+{# O que o cliente vê pelo link (sem login). Não mostra nada interno: só a cotação e o contato da empresa. #}
+<html lang="{{ 'pt-BR' if lang == 'pt_BR' else 'en' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{{ t('qp.page_title', ref=q.ref, company=company.name) }}</title>
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{{ t('qp.og_title', company=company.name) }}">
+  <meta property="og:description" content="{{ q.title }}">
+  {% if og_image %}<meta property="og:image" content="{{ og_image }}">{% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% include "_brand_head.html" %}
+</head>
+<body class="qp-body">
+<header class="qp-head">
+  <div class="qp-head-inner">
+    {% if brand.logo %}<img class="brand-logo qp-logo {{ brand.chip_class }}" src="{{ brand.logo.logo }}" alt="">{% endif %}
+    <div>
+      <p class="qp-company">{{ company.name }}</p>
+      {% if company.phone or company.email %}
+      <p class="qp-contact">
+        {% if company.phone %}<a href="tel:{{ company.phone|replace(' ', '') }}">{{ company.phone }}</a>{% endif %}
+        {% if company.phone and company.email %}<span aria-hidden="true"> · </span>{% endif %}
+        {% if company.email %}<a href="mailto:{{ company.email }}">{{ company.email }}</a>{% endif %}
+      </p>
+      {% endif %}
+    </div>
+  </div>
+</header>
+<main class="container qp">
+  {% for category, message in get_flashed_messages(with_categories=true) %}
+  <div class="flash flash-{{ category }}" role="status">{{ message }}</div>
+  {% endfor %}
+
+  {% if q.status == 'cancelled' %}
+  <h1>{{ t('qp.unavailable_title') }}</h1>
+  <p class="sub">{{ t('qp.unavailable_text', company=company.name) }}</p>
+  {% else %}
+  <p class="qp-ref">{{ t('qp.quote_label') }} {{ q.ref }} · {{ created }}</p>
+  <h1>{{ q.title }}</h1>
+  <p class="sub">{{ t('qp.prepared_for', name=q.to_name) }}{% if q.to_address or q.to_postcode %}<br>{{ q.to_address }}{% if q.to_address and q.to_postcode %}, {% endif %}{{ q.to_postcode }}{% endif %}</p>
+
+  {% if q.state == 'accepted' %}
+  <div class="callout callout-ok qp-banner"><b>✓ {{ t('qp.accepted_banner', name=q.answer_name, when=answered) }}</b><p>{{ t('qp.accepted_next') }}</p></div>
+  {% elif q.state == 'declined' %}
+  <div class="callout qp-banner"><b>{{ t('qp.declined_banner', when=answered) }}</b><p>{{ t('qp.declined_next') }}</p></div>
+  {% elif q.state == 'expired' %}
+  <div class="callout qp-banner"><b>{{ t('qp.expired_banner', date=valid_until) }}</b><p>{{ t('qp.expired_next') }}</p></div>
+  {% endif %}
+
+  {% if q.intro %}<div class="sheet pad qp-intro"><p class="pre">{{ q.intro }}</p></div>{% endif %}
+
+  {% if photos %}
+  <section class="block">
+    <h2>{{ t('qp.photos_title') }}</h2>
+    {% for p in photos %}
+    <figure class="qp-photo sheet">
+      <a href="{{ p.full }}" target="_blank" rel="noopener"><img src="{{ p.full }}" alt="{{ p.text or q.title }}" loading="lazy"></a>
+      {% if p.text %}<figcaption class="pre">{{ p.text }}</figcaption>{% endif %}
+    </figure>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <section class="block">
+    <h2>{{ t('qp.price_title') }}</h2>
+    <div class="sheet">
+      {% for it in q.lines %}
+      <div class="qline">
+        <div><b>{{ it.description }}</b>{% if it.quantity != 1 and it.unit_pence %}<span class="hint">{{ it.qty_text }} × {{ it.unit_pence|money }}</span>{% endif %}</div>
+        <b>{{ it.line_pence|money or t('quotes.included') }}</b>
+      </div>
+      {% endfor %}
+      <div class="qline qline-total"><span>{{ t('qp.total_per_visit') if q.recurring else t('qp.total') }}</span><b>{{ q.total_pence|money or '£0' }}</b></div>
+    </div>
+    {% if q.recurring %}<p class="qp-freq"><b>{{ price_line }}</b></p>{% endif %}
+    <p class="hint">{{ t('qp.valid_until', date=valid_until) }}</p>
+  </section>
+
+  {% if q.notes %}
+  <section class="block">
+    <h2>{{ t('qp.notes_title') }}</h2>
+    <div class="sheet pad"><p class="pre">{{ q.notes }}</p></div>
+  </section>
+  {% endif %}
+
+  {% if q.state in ('draft', 'sent', 'viewed') %}
+  <section class="block no-print" id="resposta">
+    <h2>{{ t('qp.accept_title') }}</h2>
+    <form method="post" action="{{ url_for('quotes.public_answer', token=q.token) }}" class="sheet pad stack">
+      {{ csrf_field() }}
+      <input type="hidden" name="answer" value="accept">
+      <label>{{ t('qp.your_name') }}
+        <input name="name" maxlength="120" required autocomplete="name">
+      </label>
+      <label>{{ t('qp.message_label') }} <span class="hint">{{ t('common.optional') }}</span>
+        <textarea name="note" rows="2" maxlength="600" placeholder="{{ t('qp.message_placeholder') }}"></textarea>
+      </label>
+      <button class="btn primary block" type="submit">{{ t('qp.accept_button') }}</button>
+      <p class="hint">{{ t('qp.accept_hint', company=company.name) }}</p>
+    </form>
+    <details class="qp-decline">
+      <summary>{{ t('qp.decline_link') }}</summary>
+      <form method="post" action="{{ url_for('quotes.public_answer', token=q.token) }}" class="sheet pad stack">
+        {{ csrf_field() }}
+        <input type="hidden" name="answer" value="decline">
+        <label>{{ t('qp.decline_reason') }} <span class="hint">{{ t('common.optional') }}</span>
+          <textarea name="note" rows="2" maxlength="600"></textarea>
+        </label>
+        <button class="btn" type="submit">{{ t('qp.decline_button') }}</button>
+      </form>
+    </details>
+  </section>
+  {% endif %}
+
+  <section class="block qp-help no-print">
+    {% if wa_company %}<a class="btn block" href="https://wa.me/{{ wa_company }}?text={{ wa_text|urlencode }}" target="_blank" rel="noopener">{{ t('qp.whatsapp_button') }}</a>{% endif %}
+    <button class="btn block" type="button" onclick="window.print()">{{ t('qp.print_button') }}</button>
+  </section>
+  {% endif %}
+</main>
+<footer class="qp-foot">
+  <p>{{ company.name }}{% if company.address %} · {{ company.address }}{% endif %}</p>
+</footer>
+</body>
+</html>

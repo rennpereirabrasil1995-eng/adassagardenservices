@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "_macros.html" import job_row with context %}
+{% block title %}{{ t('dashboard.page_title') }} – {% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ t('dashboard.greeting', name=current_user.name.split(' ')[0]) }}</h1>
+    <p class="sub">{{ today|date_long }}</p>
+  </div>
+  <a class="btn primary" href="{{ url_for('jobs.new_job') }}">{{ t('dashboard.new_job') }}</a>
+</div>
+
+{% if late_jobs %}
+<section class="block is-late">
+  <h2>{{ t('dashboard.late') }} <span class="count">{{ late_jobs|length }}</span></h2>
+  <p class="hint">{{ t('dashboard.late_hint') }}</p>
+  <div class="sheet">{% for j in late_jobs %}{{ job_row(j) }}{% endfor %}</div>
+</section>
+{% endif %}
+
+<section class="block">
+  <h2>{{ t('dashboard.today') }} <span class="count">{{ today_jobs|length }}</span></h2>
+  <div class="sheet">
+    {% for j in today_jobs %}{{ job_row(j) }}{% else %}
+    <p class="empty">{{ t('dashboard.today_empty') }} <a href="{{ url_for('jobs.new_job') }}">{{ t('dashboard.schedule_one') }}</a></p>
+    {% endfor %}
+  </div>
+</section>
+
+{% if reminders_card %}{% set rc = reminders_card %}
+<a class="callout reminder-card{% if rc.failed %} has-failed{% endif %}" href="{{ url_for('reminders.tomorrow_list') }}">
+  <b>{{ t('reminders.card_title') }} · {{ t('reminders.card_count', sent=rc.sent, total=rc.total) }}</b>
+  <span>{{ t('reminders.card_sms', hour='%02d' % rc.hour) if rc.mode == 'sms' else t('reminders.card_tap') }}{% if rc.failed %} <span class="late">{{ t('reminders.card_failed', n=rc.failed) }}</span>{% endif %}</span>
+</a>
+{% endif %}
+
+{% if unassigned %}
+<div class="callout">
+  {{ t('dashboard.unassigned_one', n=unassigned) if unassigned == 1 else t('dashboard.unassigned_many', n=unassigned) }}
+  <a href="{{ url_for('jobs.list_jobs', func='none') }}">{{ t('dashboard.view_in_schedule') }}</a>
+</div>
+{% endif %}
+
+{% if upcoming_jobs %}
+<section class="block">
+  <h2>{{ t('dashboard.upcoming') }} <span class="count">{{ upcoming_jobs|length }}</span></h2>
+  <div class="sheet">{% for j in upcoming_jobs %}{{ job_row(j) }}{% endfor %}</div>
+</section>
+{% endif %}
+
+{% if can('report') %}{# dinheiro da equipe: só quem tem acesso ao relatório #}
+<section class="block">
+  <h2>{{ t('dashboard.cash_team') }}</h2>
+  <div class="sheet table-wrap">
+    {% if team_cash %}
+    <table class="report-table">
+      <thead><tr><th scope="col">{{ t('company.col_person') }}</th><th scope="col" class="num">{{ t('dashboard.col_week') }}</th><th scope="col" class="num">{{ t('dashboard.col_pending') }}</th></tr></thead>
+      <tbody>{% for p in team_cash %}<tr><th scope="row">{{ p.name }}</th><td class="num">{{ p.week|money or '—' }}</td><td class="num{% if p.pending %} due{% endif %}">{{ p.pending|money or '—' }}</td></tr>{% endfor %}</tbody>
+      {% if team_cash|length > 1 %}<tfoot><tr><th scope="row">{{ t('company.total') }}</th><td class="num">{{ team_cash|sum(attribute='week')|money or '—' }}</td><td class="num">{{ team_cash|sum(attribute='pending')|money or '—' }}</td></tr></tfoot>{% endif %}
+    </table>
+    {% else %}<p class="empty">{{ t('dashboard.no_cash') }}</p>{% endif %}
+  </div>
+  <p class="hint"><a href="{{ url_for('reports.company_report') }}">{{ t('dashboard.see_report') }}</a></p>
+</section>
+{% endif %}
+
+{% if recent_done %}
+<section class="block">
+  <h2>{{ t('dashboard.recent_done') }}</h2>
+  <div class="sheet">{% for j in recent_done %}{{ job_row(j) }}{% endfor %}</div>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,99 @@
+{# Gráficos do relatório, feitos só com HTML e CSS: leves, nítidos em qualquer tela e no tema claro/escuro.
+   Os números de cada gráfico também aparecem em texto (legenda, tabela ou lista), então a cor nunca é a única informação. #}
+
+{% macro timeline_chart(bars, caption, dense=false) -%}
+{% set total = bars|sum(attribute='total') %}{% set done = bars|sum(attribute='done') %}
+<figure class="sheet chart" role="img" aria-label="{{ t('company.chart_jobs_aria', total=total, done=done) }}">
+  <figcaption>{{ caption }}</figcaption>
+  <div class="vbars{% if dense %} dense{% endif %}">
+    {% for b in bars %}
+    <div class="vbar" style="--h: {{ b.pct }}%" title="{{ t('company.bar_title', label=b.title, total=b.total, done=b.done) }}">
+      {% if b.total %}<span class="val">{{ b.total }}</span>{% endif %}
+      <div class="vbar-fill"><span class="seg-open" style="flex-grow: {{ b.total - b.done }}"></span><span class="seg-done" style="flex-grow: {{ b.done }}"></span></div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="vlabels{% if dense %} dense{% endif %}">{% for b in bars %}<span>{{ b.label }}</span>{% endfor %}</div>
+  <p class="legend"><span><i class="c-done"></i>{{ t('company.legend_done') }}</span><span><i class="c-open"></i>{{ t('company.legend_open') }}</span></p>
+</figure>
+{%- endmacro %}
+
+{% macro hours_chart(people, peak, caption=none) -%}
+<figure class="sheet chart">
+  <figcaption>{{ caption or t('company.chart_hours') }}</figcaption>
+  <div class="hbars">
+    {% for p in people %}
+    <span class="name">{{ p.name }}</span>
+    <span class="hbar-track" aria-hidden="true"><span class="hbar-fill" style="width: {{ (p.minutes * 100 / peak)|round(1) if peak else 0 }}%"></span></span>
+    <span class="val">{{ p.minutes|format_minutes }}</span>
+    {% endfor %}
+  </div>
+</figure>
+{%- endmacro %}
+
+{% macro stack_chart(caption, parts) -%}
+{# parts: lista de (classe da cor, valor, nome, valor já formatado) #}
+{% set total = parts|sum(attribute=1) %}
+<figure class="sheet chart">
+  <figcaption>{{ caption }}</figcaption>
+  <div class="stackbar" aria-hidden="true">{% for cls, value, name, shown in parts %}{% if value %}<span class="{{ cls }}" style="flex-grow: {{ value }}" title="{{ name }}: {{ shown }}"></span>{% endif %}{% endfor %}</div>
+  <p class="legend">{% for cls, value, name, shown in parts %}<span><i class="{{ cls }}"></i>{{ name }}: <b>{{ shown }}</b>{% if total %} ({{ (value * 100 / total)|round|int }}%){% endif %}</span>{% endfor %}</p>
+</figure>
+{%- endmacro %}
+
+{% macro money_chart(bars, caption, dense=false, values=true) -%}
+{% set total = bars|sum(attribute='total') %}
+<figure class="sheet chart" role="img" aria-label="{{ t('finance.chart_aria', total=total|money or '£0') }}">
+  <figcaption>{{ caption }}</figcaption>
+  <div class="vbars{% if dense %} dense{% endif %}{% if not values %} novals{% endif %}">
+    {% for b in bars %}
+    <div class="vbar" style="--h: {{ b.pct }}%" title="{{ b.title }}: {{ b.total|money or '£0' }}">
+      {% if b.total and values %}<span class="val">{{ b.short }}</span>{% endif %}
+      <div class="vbar-fill"><span class="c-cash" style="flex-grow: {{ b.cash }}"></span><span class="c-transfer" style="flex-grow: {{ b.transfer }}"></span></div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="vlabels{% if dense %} dense{% endif %}">{% for b in bars %}<span>{{ b.label }}</span>{% endfor %}</div>
+  <p class="legend"><span><i class="c-transfer"></i>{{ t('finance.transfers') }}</span><span><i class="c-cash"></i>{{ t('finance.cash') }}</span></p>
+</figure>
+{%- endmacro %}
+
+{# Minhas horas: colunas de horas por dia (semana e mês) ou por mês (ano). Uma cor só (--series).
+   Semana: o valor vai em cima de cada coluna. Mês e ano: linhas de grade com as horas, e o valor de
+   cada coluna aparece ao passar o mouse ou focar com o teclado (script em my_hours.html). Cada
+   coluna é um link: tocar abre aquele dia (ou mês). A tabela logo abaixo repete os números. #}
+{% macro hours_bars(chart, caption, hint='') -%}
+{% set grid = 'has-grid' if chart.grid else '' %}
+<figure class="sheet chart hchart" aria-label="{{ caption }}">
+  <figcaption>{{ caption }}</figcaption>
+  <div class="hc {{ grid }}{% if chart.dense %} dense{% endif %}">
+    {% for line in chart.grid %}<span class="hc-grid" style="--y: {{ line.pct }}%" aria-hidden="true"><em>{{ line.label }}</em></span>{% endfor %}
+    {% for b in chart.bars %}
+    <a class="hc-bar" href="{{ b.link }}" style="--h: {{ b.pct }}%" aria-label="{{ b.title }}: {{ b.value }}, {{ b.tip }}" data-value="{{ b.value }}" data-label="{{ b.title }} · {{ b.tip }}">
+      {% if chart.show_values and b.minutes %}<span class="hc-val">{{ b.short }}</span>{% endif %}
+      <span class="hc-fill"></span>
+    </a>
+    {% endfor %}
+  </div>
+  <div class="hc-labels {{ grid }}{% if chart.dense %} dense{% endif %}" aria-hidden="true">{% for b in chart.bars %}<span{% if b.today %} class="today"{% endif %}>{{ b.label }}</span>{% endfor %}</div>
+  {% if hint %}<p class="hint hc-hint">{{ hint }}</p>{% endif %}
+</figure>
+{%- endmacro %}
+
+{# O dia em linha do tempo: cada trabalho é uma barra do Iniciar ao Concluir, na mesma régua de horas. #}
+{% macro day_timeline(tl, caption) -%}
+<figure class="sheet chart dayline" style="--tick: {{ tl.tick_pct }}%">
+  <figcaption>{{ caption }}</figcaption>
+  {% for r in tl.rows %}{% set j = r.job %}
+  <a class="dl-row" href="{{ url_for('jobs.job_detail', job_id=j.id) }}">
+    <span class="dl-head">
+      <span class="dl-name">{{ j.client_name }}{% if j.is_share %} <span class="pill pill-share">{{ t('common.share') }}</span>{% endif %}</span>
+      <b class="dl-dur">{{ j.minutes|format_minutes }}</b>
+    </span>
+    <span class="dl-track" aria-hidden="true"><span class="dl-bar" style="left: {{ r.left }}%; width: {{ r.width }}%"></span></span>
+    <span class="dl-time">{{ j.started_at|time_local }} – {{ j.finished_at|time_local }}</span>
+  </a>
+  {% endfor %}
+  <div class="dl-axis" aria-hidden="true">{% for tk in tl.ticks %}<span style="left: {{ tk.pct }}%">{{ tk.label }}</span>{% endfor %}</div>
+</figure>
+{%- endmacro %}

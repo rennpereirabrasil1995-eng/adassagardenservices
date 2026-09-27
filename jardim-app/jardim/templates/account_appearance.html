@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% from "_account.html" import sub_head with context %}
+{% block title %}{{ t('prefs.look_title_short') }} – {% endblock %}
+{% block content %}
+{{ sub_head(t('prefs.look_title_short'), t('prefs.look_hint')) }}
+<section class="block" id="aparencia">
+  <form method="post" action="{{ url_for('preferences.appearance') }}" enctype="multipart/form-data" class="sheet pad stack"
+        id="look-form" data-colors-url="{{ url_for('preferences.look_colors') }}">
+    {{ csrf_field() }}
+    <div class="grid-2">
+      <label>{{ t('prefs.look_name') }} <span class="hint">{{ t('prefs.look_name_hint') }}</span>
+        <input name="app_name" value="{{ look.app_name }}" maxlength="40" placeholder="{{ look.name_default }}" id="look-name" autocomplete="off">
+      </label>
+      <label>{{ t('prefs.look_short') }} <span class="hint">{{ t('prefs.look_short_hint') }}</span>
+        <input name="app_short_name" value="{{ look.app_short_name }}" maxlength="12" placeholder="{{ app_short_name }}" autocomplete="off">
+      </label>
+    </div>
+
+    <fieldset class="task-pick">
+      <legend>{{ t('prefs.look_logo') }}</legend>
+      <p class="hint">{{ t('prefs.look_logo_hint') }}</p>
+      <div class="look-logo-row">
+        <span class="look-logo-current" id="look-logo-current">{% if brand.logo %}<img src="{{ brand.logo.logo }}" alt="">{% else %}<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2C7 6 5 10 5 14a7 7 0 0 0 14 0c0-4-2-8-7-12z" fill="currentColor"/><path d="M12 9v12" style="stroke: var(--mast-bg)" stroke-width="1.6" stroke-linecap="round"/></svg>{% endif %}</span>
+        <label class="btn small photo-pick">
+          <span>{{ t('prefs.look_logo_choose') }}</span>
+          <input type="file" name="logo" accept="image/png,image/jpeg,image/webp,image/heic,image/heif" id="look-logo-input">
+        </label>
+      </div>
+      {% if brand.logo %}<label class="check plain"><input type="checkbox" name="remove_logo" value="1"><span>{{ t('prefs.look_logo_remove') }}</span></label>{% endif %}
+      <label class="check plain"><input type="checkbox" name="show_name" value="1"{% if look.show_name %} checked{% endif %}><span>{{ t('prefs.look_show_name') }}</span></label>
+    </fieldset>
+
+    <fieldset class="task-pick">
+      <legend>{{ t('prefs.look_colors') }}</legend>
+      <p class="hint">{{ t('prefs.look_colors_hint') }}</p>
+      <div class="swatches">
+        {% for p in look.presets %}
+        <label class="swatch">
+          <input type="radio" name="theme" value="{{ p.key }}"{% if look.theme == p.key %} checked{% endif %}>
+          <span class="swatch-dots" aria-hidden="true"><i style="background: {{ p.main }}"></i><i style="background: {{ p.accent }}"></i></span>
+          <span>{{ p.label }}</span>
+        </label>
+        {% endfor %}
+        <label class="swatch">
+          <input type="radio" name="theme" value="custom"{% if look.theme == 'custom' %} checked{% endif %}>
+          <span class="swatch-dots swatch-custom" aria-hidden="true"><i style="background: {{ look.main }}"></i><i style="background: {{ look.accent }}"></i></span>
+          <span>{{ t('prefs.look_custom') }}</span>
+        </label>
+      </div>
+      <div class="grid-2 look-custom">
+        <label class="color-field">{{ t('prefs.look_main') }}<input type="color" name="color_main" value="{{ look.main }}"></label>
+        <label class="color-field">{{ t('prefs.look_accent') }}<input type="color" name="color_accent" value="{{ look.accent }}"></label>
+      </div>
+      <p class="look-warn" id="look-warn" role="status"{% if not look.low %} hidden{% endif %}>{{ t('prefs.look_low_contrast') }}</p>
+    </fieldset>
+
+    <div class="look-previews" aria-hidden="true">
+      {% for mode in ('light', 'dark') %}
+      <div class="look-preview">
+        <p class="look-preview-label">{{ t('prefs.look_' ~ mode) }}</p>
+        <div class="lp">
+          <div class="lp-head"><span class="lp-logo">{% if brand.logo %}<img src="{{ brand.logo.logo }}" alt="">{% else %}<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2C7 6 5 10 5 14a7 7 0 0 0 14 0c0-4-2-8-7-12z" fill="currentColor"/><path d="M12 9v12" style="stroke: var(--mast-bg)" stroke-width="1.6" stroke-linecap="round"/></svg>{% endif %}</span><b class="lp-name"{% if brand.logo and not look.show_name %} hidden{% endif %}>{{ app_name }}</b></div>
+          <div class="lp-body">
+            <div class="lp-card">
+              <b>{{ t('prefs.look_preview_title') }}</b>
+              <span class="lp-muted">{{ t('prefs.look_preview_sub') }}</span>
+              <span class="lp-pills"><span class="lp-pill lp-busy">{{ 'in_progress'|status_label }}</span><span class="lp-pill lp-ok">{{ 'done'|status_label }}</span></span>
+              <span class="lp-link">{{ t('prefs.look_preview_link') }}</span>
+              <span class="lp-btn">{{ t('jobdetail.finish_job') }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="hint">{{ t('prefs.look_icon_note') }}</p>
+
+    <div class="actions">
+      <button class="btn primary" type="submit">{{ t('prefs.look_save') }}</button>
+      <button class="btn small" type="submit" name="reset" value="1" onclick='return confirm({{ t('prefs.look_reset_confirm')|tojson }})'>{{ t('prefs.look_reset') }}</button>
+    </div>
+  </form>
+</section>
+<script type="application/json" id="look-data">{{ {'presets': look.presets, 'current': dict(look.current, low=look.low)}|tojson }}</script>
+<script>
+  /* Aparência: a prévia (modo claro e escuro) muda na hora, antes de salvar. */
+  (function () {
+    var form = document.getElementById('look-form');
+    var data = JSON.parse(document.getElementById('look-data').textContent);
+    var presets = {};
+    data.presets.forEach(function (p) { presets[p.key] = p; });
+    var main = form.elements.color_main, accent = form.elements.color_accent;
+    var boxes = form.querySelectorAll('.lp');
+    var warn = document.getElementById('look-warn');
+    function apply(colors) {
+      [colors.light, colors.dark].forEach(function (vars, i) {
+        Object.keys(vars).forEach(function (k) { boxes[i].style.setProperty(k, vars[k]); });
+      });
+      warn.hidden = !colors.low;  /* aviso de pouco contraste no topo (as paletas prontas nunca têm) */
+    }
+    function customDots() {
+      var dots = form.querySelectorAll('.swatch-custom i');
+      dots[0].style.background = main.value;
+      dots[1].style.background = accent.value;
+    }
+    var timer;
+    function fetchColors() {
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        var url = form.getAttribute('data-colors-url') + '?main=' + encodeURIComponent(main.value) + '&accent=' + encodeURIComponent(accent.value);
+        fetch(url, { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) { if (d) apply(d); }, function () {});
+      }, 120);
+    }
+    form.addEventListener('change', function (e) {
+      if (e.target.name !== 'theme') return;
+      var p = presets[e.target.value];
+      if (p) { main.value = p.main; accent.value = p.accent; apply(p); } else { fetchColors(); }
+      customDots();
+    });
+    [main, accent].forEach(function (input) {
+      input.addEventListener('input', function () {
+        form.querySelector('input[name="theme"][value="custom"]').checked = true;
+        customDots();
+        fetchColors();
+      });
+    });
+    var name = document.getElementById('look-name');
+    name.addEventListener('input', function () {
+      form.querySelectorAll('.lp-name').forEach(function (el) { el.textContent = name.value || name.placeholder; });
+    });
+    var show = form.elements.show_name;
+    function toggleName() {
+      var hasLogo = !!form.querySelector('.lp-logo img');
+      form.querySelectorAll('.lp-name').forEach(function (el) { el.hidden = hasLogo && !show.checked; });
+    }
+    show.addEventListener('change', toggleName);
+    document.getElementById('look-logo-input').addEventListener('change', function () {
+      if (!this.files || !this.files[0]) return;
+      var src = URL.createObjectURL(this.files[0]);
+      form.querySelectorAll('.lp-logo, #look-logo-current').forEach(function (el) {
+        el.textContent = '';
+        var img = new Image();
+        img.src = src;
+        img.alt = '';
+        el.appendChild(img);
+      });
+      toggleName();
+    });
+    apply(data.current);
+  })();
+</script>
+{% endblock %}

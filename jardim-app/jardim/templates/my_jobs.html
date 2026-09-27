@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "_macros.html" import job_row with context %}
+{% block title %}{{ t('myjobs.page_title') }} – {% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ t('myjobs.title') }}</h1>
+    <p class="sub">{{ today|date_long }} · <a href="{{ url_for('hours.my_hours') }}">{{ t('myjobs.weekly_hours') }}: {{ weekly_minutes|format_minutes }}</a></p>
+  </div>
+</div>
+
+{% if late_jobs %}
+<section class="block is-late">
+  <h2>{{ t('dashboard.late') }} <span class="count">{{ late_jobs|length }}</span></h2>
+  <div class="sheet">{% for j in late_jobs %}{{ job_row(j, false) }}{% endfor %}</div>
+</section>
+{% endif %}
+
+<section class="block">
+  <h2>{{ t('dashboard.today') }} <span class="count">{{ today_jobs|length }}</span></h2>
+  <div class="sheet">
+    {% for j in today_jobs %}{{ job_row(j, false) }}{% else %}
+    <p class="empty">{{ t('myjobs.today_empty') }}</p>
+    {% endfor %}
+  </div>
+</section>
+
+{% if upcoming_jobs %}
+<section class="block">
+  <h2>{{ t('myjobs.upcoming') }} <span class="count">{{ upcoming_jobs|length }}</span></h2>
+  <div class="sheet">{% for j in upcoming_jobs %}{{ job_row(j, false) }}{% endfor %}</div>
+</section>
+{% endif %}
+
+{% if recent_done %}
+<section class="block">
+  <h2>{{ t('dashboard.recent_done') }}</h2>
+  <div class="sheet">{% for j in recent_done %}{{ job_row(j, false) }}{% endfor %}</div>
+  <p class="hint"><a href="{{ url_for('hours.my_hours') }}">{{ t('myjobs.view_history') }}</a></p>
+</section>
+{% endif %}
+{% endblock %}

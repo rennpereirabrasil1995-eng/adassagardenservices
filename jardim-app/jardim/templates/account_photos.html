@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% from "_account.html" import sub_head with context %}
+{% block title %}{{ t('prefs.photos_title') }} – {% endblock %}
+{% block content %}
+{{ sub_head(t('prefs.photos_title')) }}
+<div class="sheet pad stack">
+  <p class="space-line"><b>{{ t('prefs.photos_used', used=photo_space.used, limit=photo_space.limit) if photo_space.limit else t('prefs.photos_used_nolimit', used=photo_space.used) }}</b>{% if photo_space.limit %} <span class="hint">({{ photo_space.percent }}%)</span>{% endif %}</p>
+  {% if photo_space.limit %}<span class="stackbar space-{{ photo_space.level }}" aria-hidden="true"><span style="width: {{ photo_space.percent }}%"></span></span>{% endif %}
+  <p class="hint">{{ t('prefs.photos_hint') }}</p>
+</div>
+{% endblock %}

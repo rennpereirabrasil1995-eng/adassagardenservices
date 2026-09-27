@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_account.html" import sub_head with context %}
+{% block title %}{{ t('account.profile_title') }} – {% endblock %}
+{% block content %}
+{{ sub_head(t('account.profile_title'), t('account.profile_hint')) }}
+<form method="post" class="sheet pad stack">
+  {{ csrf_field() }}
+  <label>{{ t('prefs.personal_name_label') }}
+    <input name="name" value="{{ form.name }}" maxlength="120" required autocomplete="name">
+  </label>
+  <label>{{ t('prefs.personal_phone_label') }}
+    <input type="tel" name="phone" value="{{ form.phone }}" maxlength="40" autocomplete="tel">
+  </label>
+  <p class="hint">{{ t('account.profile_email_note', email=current_user.email) }}</p>
+  <div class="actions"><button class="btn primary" type="submit">{{ t('common.save_changes') }}</button></div>
+</form>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}{{ t('reminders.page_title') }} – {% endblock %}
+{% block content %}
+{# Lembretes pra amanhã: cada cliente com trabalho agendado amanhã, como está o lembrete dele e os botões
+   pra mandar com um toque (WhatsApp ou SMS do celular) ou pelo SMS automático. #}
+<p class="crumb"><a href="{{ url_for('jobs.dashboard') }}">‹ {{ t('nav.dashboard') }}</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ t('reminders.page_title') }}</h1>
+    <p class="sub">{{ day|date_long }} · {{ t('reminders.clients_one') if clients|length == 1 else t('reminders.clients_many', n=clients|length) }}</p>
+  </div>
+</div>
+
+<p class="hint reminders-note">
+  {% if mode == 'sms' and sms_ready %}{{ t('reminders.note_sms', hour='%02d' % hour) }}
+  {% elif mode == 'tap' %}{{ t('reminders.note_tap') }}
+  {% else %}{{ t('reminders.note_off') }}{% endif %}
+  {% if current_user.role == 'owner' %}<a href="{{ url_for('preferences.client_reminders') }}">{{ t('reminders.settings_link') }}</a>{% endif %}
+</p>
+
+<div hidden id="rem-csrf">{{ csrf_field() }}</div>
+<div class="sheet" id="reminders">
+  {% for c in clients %}
+  <article class="rem" data-client="{{ c.id }}" data-done-url="{{ url_for('reminders.mark_done', client_id=c.id, day=day) }}">
+    <div class="rem-head">
+      <div class="rem-who">
+        <a class="rem-name" href="{{ url_for('clients.client_detail', client_id=c.id) }}">{{ c.name }}</a>
+        <span class="hint">{% if c.first_time %}{{ c.first_time }} · {% endif %}{{ c.titles }}</span>
+      </div>
+      <span class="rem-state" data-state>
+        {% if c.state == 'sent' %}<span class="pill pill-done">✓ {{ t('reminders.via_' ~ c.channel) }} {{ c.when_sent }}</span>
+        {% elif c.state == 'failed' %}<span class="pill pill-failed">{{ t('reminders.state_failed') }}</span>
+        {% elif c.state == 'sending' %}<span class="pill">{{ t('reminders.state_sending') }}</span>
+        {% elif c.state == 'off' %}<span class="pill">{{ t('reminders.state_off') }}</span>
+        {% elif c.state == 'no_phone' %}<span class="pill">{{ t('reminders.state_no_phone') }}</span>
+        {% else %}<span class="pill">{{ t('reminders.state_pending') }}</span>{% endif %}
+      </span>
+    </div>
+    {% if c.state == 'failed' %}<p class="rem-error">{{ c.detail }}</p>{% endif %}
+    {% if c.digits and c.state != 'off' %}
+    <details class="rem-text"><summary>{{ t('reminders.see_message') }}</summary><p class="bubble">{{ c.text }}</p></details>
+    <div class="rem-actions">
+      {% if c.state != 'sent' %}{# já avisado: não precisa dos botões de mandar com um toque #}
+      <a class="btn small" href="{{ c.whatsapp }}" target="_blank" rel="noopener" data-channel="whatsapp">{{ t('reminders.btn_whatsapp') }}</a>
+      <a class="btn small" href="{{ c.sms }}" data-channel="sms_phone">{{ t('reminders.btn_sms') }}</a>
+      {% endif %}
+      {% if sms_ready and c.state != 'sending' %}
+      <form method="post" action="{{ url_for('reminders.send_now', client_id=c.id, day=day) }}"{% if c.state == 'sent' %} onsubmit='return confirm({{ t('reminders.resend_confirm')|tojson }})'{% endif %}>
+        {{ csrf_field() }}<button class="btn small" type="submit">{{ t('reminders.btn_resend') if c.state in ('sent', 'failed') else t('reminders.btn_send_now') }}</button>
+      </form>
+      {% endif %}
+      {% if c.state == 'sent' %}
+      <form method="post" action="{{ url_for('reminders.undo', client_id=c.id, day=day) }}">
+        {{ csrf_field() }}<button class="linkbtn" type="submit">{{ t('reminders.btn_undo') }}</button>
+      </form>
+      {% elif c.state != 'sending' %}
+      <form method="post" action="{{ url_for('reminders.mark_done', client_id=c.id, day=day) }}">
+        {{ csrf_field() }}<input type="hidden" name="channel" value="manual"><button class="linkbtn" type="submit">{{ t('reminders.btn_mark') }}</button>
+      </form>
+      {% endif %}
+    </div>
+    {% elif c.state == 'no_phone' %}
+    <p class="hint"><a href="{{ url_for('clients.edit_client', client_id=c.id) }}">{{ t('reminders.add_phone') }}</a></p>
+    {% endif %}
+  </article>
+  {% else %}
+  <p class="empty">{{ t('reminders.none') }}</p>
+  {% endfor %}
+</div>
+
+<script>
+  /* Tocou no WhatsApp ou no SMS: o celular abre a mensagem pronta e aqui já fica anotado que foi. */
+  (function () {
+    var box = document.getElementById('reminders');
+    var token = document.querySelector('#rem-csrf input[name="_csrf"]').value;
+    box.addEventListener('click', function (e) {
+      var link = e.target.closest('a[data-channel]');
+      if (!link) return;
+      var row = link.closest('.rem');
+      var body = new FormData();
+      body.append('_csrf', token);
+      body.append('channel', link.getAttribute('data-channel'));
+      fetch(row.getAttribute('data-done-url'), { method: 'POST', body: body, credentials: 'same-origin', keepalive: true,
+                                                 headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d) return;
+          var state = row.querySelector('[data-state]');
+          state.textContent = '';
+          var pill = document.createElement('span');
+          pill.className = 'pill pill-done';
+          pill.textContent = '✓ ' + d.label + ' ' + d.time;
+          state.appendChild(pill);
+        }, function () {});
+    });
+  })();
+</script>
+{% endblock %}

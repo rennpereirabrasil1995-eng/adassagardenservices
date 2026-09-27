@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% from "_macros.html" import job_row, photo_body, photo_assets, quote_pill with context %}
+{% block title %}{{ client.name }} – {% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('clients.list_clients') }}">{{ t('clientdetail.back') }}</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ client.name }}</h1>
+    <p class="badges">
+      <span class="pill {{ 'pill-active' if client.active else 'pill-inactive' }}">{{ t('clientdetail.active') if client.active else t('clientdetail.inactive') }}</span>
+      {% if client.tier %}<span class="pill pill-tier-{{ client.tier }}">{{ client.tier|tier_label }}</span>{% endif %}
+    </p>
+  </div>
+  {% if client.active and can('schedule') %}<a class="btn primary" href="{{ url_for('jobs.new_job', client=client.id) }}">{{ t('dashboard.new_job') }}</a>{% endif %}
+</div>
+
+<dl class="facts sheet pad">
+  {% if client.address or client.postcode %}
+  <div><dt>{{ t('clientform.address_label') }}</dt><dd><a href="{{ client.address|maps_link(client.postcode) }}" target="_blank" rel="noopener">{{ client.address }}{% if client.address and client.postcode %}, {% endif %}<span class="nowrap">{{ client.postcode }}</span></a></dd></div>
+  {% endif %}
+  {% if client.phone %}<div><dt>{{ t('clientform.phone_label') }}</dt><dd><a href="tel:{{ client.phone|replace(' ', '') }}">{{ client.phone }}</a></dd></div>{% endif %}
+  {% if client.email %}<div><dt>{{ t('clientform.email_label') }}</dt><dd><a href="mailto:{{ client.email }}">{{ client.email }}</a></dd></div>{% endif %}
+  {% if company %}<div><dt>{{ t('clientform.company_label') }}</dt><dd>{% if current_user.role == 'owner' %}<a href="{{ url_for('companies.company_detail', company_id=company.id) }}">{{ company.name }}</a>{% else %}{{ company.name }}{% endif %} <span class="hint">· {{ t('clientdetail.company_sees') }}</span></dd></div>{% endif %}
+</dl>
+
+{% if client.access_notes %}
+<div class="callout"><b>{{ t('jobdetail.access_notes_title') }}</b><span class="hint">{{ t('clientdetail.access_notes_visible_hint') }}</span><p class="pre">{{ client.access_notes }}</p></div>
+{% endif %}
+{% if client.notes %}
+<div class="callout internal"><b>{{ t('clientform.notes_label') }}</b><span class="hint">{{ t('clientdetail.internal_notes_hint') }}</span><p class="pre">{{ client.notes }}</p></div>
+{% endif %}
+
+<div class="actions">
+  <a class="btn" href="{{ url_for('clients.edit_client', client_id=client.id) }}">{{ t('clientdetail.edit') }}</a>
+  {% if can('quotes') %}<a class="btn" href="{{ url_for('quotes.new_quote', client=client.id) }}">{{ t('quotes.new') }}</a>{% endif %}
+  <form method="post" action="{{ url_for('clients.toggle_client', client_id=client.id) }}">
+    {{ csrf_field() }}
+    <button class="btn small" type="submit">{{ t('clientdetail.archive') if client.active else t('clientdetail.reactivate') }}</button>
+  </form>
+</div>
+
+{% if template_tasks %}
+<section class="block">
+  <h2>{{ t('clientdetail.task_template_title') }} <span class="count">{{ template_tasks|length }}</span></h2>
+  <div class="sheet pad"><ul class="template-list">{% for x in template_tasks %}<li>{{ x }}</li>{% endfor %}</ul></div>
+</section>
+{% endif %}
+
+<section class="block" id="fotos" data-photo-set data-max="{{ max_photos }}">
+  <h2>{{ t('jobdetail.photos_title') }}<span class="count" data-count>{{ t('jobdetail.photos_count', done=gallery.photos|length, total=max_photos) }}</span></h2>
+  <div class="sheet pad">{{ photo_body(gallery, max_photos, client.name) }}</div>
+</section>
+{{ photo_assets() }}
+
+{% if client_quotes %}
+<section class="block">
+  <h2>{{ t('nav.quotes') }}</h2>
+  <div class="sheet">
+    {% for q in client_quotes %}
+    <a class="qrow" href="{{ url_for('quotes.quote_detail', quote_id=q.id) }}">
+      <span class="qrow-main"><b>{{ q.title }}</b><span class="hint">{{ q.ref }}</span></span>
+      <span class="qrow-side">{{ quote_pill(q.state) }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="block">
+  <h2>{{ t('clientdetail.jobs_title') }}</h2>
+  <div class="sheet">
+    {% for j in jobs %}{{ job_row(j, show_client=false) }}{% else %}
+    <p class="empty">{{ t('clientdetail.no_jobs') }}</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

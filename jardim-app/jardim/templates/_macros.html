@@ -1,0 +1,114 @@
+{# Peças reutilizadas. Importe com:  {% from "_macros.html" import job_row with context %} #}
+
+{% macro pill(status) -%}
+<span class="pill pill-{{ status }}">{{ status|status_label }}</span>
+{%- endmacro %}
+
+{# Barra segmentada: cada segmento é uma tarefa; os preenchidos já foram feitos #}
+{% macro rows_bar(done, total, skipped=0) -%}
+{% if total %}<span class="rows" style="--n: {{ total }}; --d: {{ done }}; --s: {{ skipped or 0 }}" role="img" aria-label="{{ t('jobdetail.photos_count', done=done, total=total) }}"><i></i><b></b></span>{% endif %}
+{%- endmacro %}
+
+{% macro job_row(j, show_employee=true, show_client=true) -%}
+{% set late = j.status in ('scheduled', 'in_progress') and j.job_date < today %}
+<a class="job" href="{{ url_for('jobs.job_detail', job_id=j.id) }}">
+  <span class="job-date">
+    <b class="dnum">{{ j.job_date|day_num }}</b>
+    <span class="dmeta">{{ j.job_date|weekday }}, {{ j.job_date|month_abbr }}</span>
+    {% if j.start_time %}<span class="dtime">{{ j.start_time }}</span>{% endif %}
+  </span>
+  <span class="job-main">
+    {% if show_client %}<span class="job-client">{{ j.client_name }}</span>{% endif %}
+    <span class="{{ 'job-what' if show_client else 'job-client' }}">{{ j.title }}</span>
+    {% if show_client and j.client_address %}<span class="job-where">{{ j.client_address }}</span>{% endif %}
+    <span class="job-status">
+      {{ pill(j.status) }}
+      {% if late %}<span class="late">{{ t('common.job_late_tag') }}</span>{% endif %}
+      {% if show_employee %}<span class="who{% if not j.employee_name %} none{% endif %}">{{ j.employee_name or t('common.no_employee') }}</span>{% endif %}
+      {% if j.is_share %}<span class="pill pill-share">{{ t('common.share') }}</span>{% endif %}
+    </span>
+    {{ rows_bar(j.tasks_done, j.tasks_total, j.tasks_skipped) }}
+  </span>
+</a>
+{%- endmacro %}
+
+{# ---------- Fotos ----------
+   Grade de miniaturas + botões "Tirar foto" (abre a câmera) e "Da galeria" (várias de uma vez).
+   Quem usa põe em volta um elemento com data-photo-set e data-max, e um data-count com o "3 de 12".
+   O static/photos.js reduz as fotos no celular e envia uma por vez, sem recarregar a página;
+   sem ele, o formulário funciona do jeito normal (botão Enviar). #}
+{# captions=true: foto grande com um texto embaixo (cotações). O texto salva sozinho (photos.js). #}
+{% macro photo_tile(p, alt, captions=false) -%}
+<div class="photo{% if captions %} photo-captioned{% endif %}">
+  <a href="{{ p.full }}" target="_blank" rel="noopener"><img src="{{ p.mini }}" alt="{{ alt }}" loading="lazy"></a>
+  {%- if p.delete %}
+  <form method="post" action="{{ p.delete }}" data-delete onsubmit='return confirm({{ t('clientdetail.delete_photo_confirm')|tojson }})'>
+    {{ csrf_field() }}
+    <button class="del" type="submit" aria-label="{{ t('photos.delete') }}">×</button>
+  </form>
+  {%- endif %}
+  {%- if captions %}
+  <form method="post" action="{{ p.caption }}" class="caption-form" data-caption>
+    {{ csrf_field() }}
+    <label>{{ t('quotes.caption_label') }}
+      <textarea name="caption" rows="3" maxlength="600" placeholder="{{ t('quotes.caption_placeholder') }}">{{ p.text }}</textarea>
+    </label>
+    <div class="caption-foot"><span class="hint" data-caption-status aria-live="polite"></span><button class="btn small" type="submit" data-nojs>{{ t('quotes.caption_save') }}</button></div>
+  </form>
+  {%- endif %}
+</div>
+{%- endmacro %}
+
+{% macro photo_body(set, max_photos, alt, captions=false) -%}
+{% set full = set.photos|length >= max_photos %}
+<div class="{{ 'quote-photos' if captions else 'photos' }}" data-grid{% if not set.photos %} hidden{% endif %}>
+  {%- for p in set.photos %}{{ photo_tile(p, alt, captions) }}{% endfor -%}
+</div>
+<p class="photos-empty" data-empty{% if set.photos %} hidden{% endif %}>{{ t('jobdetail.no_photos') }}</p>
+<form method="post" action="{{ set.upload }}" enctype="multipart/form-data" class="photo-upload" data-upload{% if full %} hidden{% endif %}>
+  {{ csrf_field() }}
+  <label class="btn small photo-pick">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.6A1.6 1.6 0 0 1 5.6 7h2.2l1.5-2.2h5.4L16.2 7h2.2A1.6 1.6 0 0 1 20 8.6v8.8a1.6 1.6 0 0 1-1.6 1.6H5.6A1.6 1.6 0 0 1 4 17.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12.8" r="3.3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+    <span>{{ t('photos.take') }}</span>
+    <input type="file" name="photo" accept="image/*" capture="environment">
+  </label>
+  <label class="btn small photo-pick">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="10" r="1.7" fill="currentColor"/><path d="M4.2 17.2l4.9-4.4 3.4 3 2.9-2.4 4.4 3.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+    <span>{{ t('photos.gallery') }}</span>
+    <input type="file" name="photo" accept="image/*" multiple>
+  </label>
+  <button class="btn small" type="submit" data-nojs>{{ t('photos.send') }}</button>
+</form>
+<p class="hint photos-full" data-full{% if not full %} hidden{% endif %}>{{ t('photos.full_hint') }}</p>
+<div class="upload-status" data-status hidden>
+  <p data-status-text role="status" aria-live="polite"></p>
+  <span class="upload-bar" data-bar hidden><i></i></span>
+  <button class="btn small" type="button" data-retry hidden>{{ t('photos.retry') }}</button>
+</div>
+<template data-tile>{{ photo_tile({'full': '', 'mini': '', 'delete': '#', 'caption': '#', 'text': ''}, alt, captions) }}</template>
+{%- endmacro %}
+
+{% macro quote_pill(state) -%}
+<span class="pill pill-q-{{ state }}">{{ t('quotes.state_' ~ state) }}</span>
+{%- endmacro %}
+
+{# Textos que o photos.js usa (no idioma da pessoa) + o próprio script. Uma vez por página. #}
+{% macro photo_assets() -%}
+<script type="application/json" id="photo-text">{{ {
+  'uploading': t('photos.uploading', i='{i}', n='{n}'),
+  'added_one': t('photos.added'),
+  'added_many': t('photos.added_many', n='{n}'),
+  'left_one': t('photos.left_out_one', max='{max}'),
+  'left_many': t('photos.left_out_many', n='{n}', max='{max}'),
+  'bad_one': t('photos.bad_file'),
+  'bad_many': t('photos.bad_files', n='{n}'),
+  'network': t('photos.network_error'),
+  'expired': t('photos.session_expired'),
+  'count': t('jobdetail.photos_count', done='{done}', total='{total}'),
+  'caption_saving': t('quotes.caption_saving'),
+  'caption_saved': t('quotes.caption_saved'),
+  'errors': {'403': t('errors.403'), '404': t('errors.404'), '413': t('errors.413'),
+             '429': t('errors.429'), '500': t('errors.500')},
+}|tojson }}</script>
+<script src="{{ url_for('static', filename='photos.js') }}" defer></script>
+{%- endmacro %}

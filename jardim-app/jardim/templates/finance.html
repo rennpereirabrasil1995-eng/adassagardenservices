@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% from "_charts.html" import money_chart with context %}
+{% block title %}{{ t('finance.page_title') }} – {% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ t('finance.page_title') }}</h1>
+    <p class="sub">{{ period_label }}</p>
+  </div>
+</div>
+
+<details class="sheet add-transfer"{% if open_form %} open{% endif %}>
+  <summary>{{ t('finance.add_title') }}</summary>
+  <form method="post" class="stack">
+    {{ csrf_field() }}
+    <input type="hidden" name="periodo" value="{{ period }}">
+    <input type="hidden" name="data" value="{{ ref }}">
+    <p class="hint">{{ t('finance.intro') }}</p>
+    <div class="grid-2">
+      <label>{{ t('finance.date_label') }}
+        <input type="date" name="received_on" value="{{ form.received_on }}" required>
+      </label>
+      <label>{{ t('finance.amount_label') }}
+        <span class="money-input"><span aria-hidden="true">£</span><input name="amount" value="{{ form.amount }}" inputmode="decimal" autocomplete="off" pattern="[0-9]{1,6}([.,][0-9]{1,2})?" title="{{ t('cash.example') }}" placeholder="0.00" required></span>
+      </label>
+    </div>
+    <label>{{ t('finance.client_label') }} <span class="hint">{{ t('common.optional') }}</span>
+      <select name="client_id">
+        <option value="">{{ t('finance.no_client') }}</option>
+        {% for c in clients %}<option value="{{ c.id }}"{% if form.client_id == c.id|string %} selected{% endif %}>{{ c.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>{{ t('finance.note_label') }} <span class="hint">{{ t('common.optional') }}</span>
+      <input name="note" value="{{ form.note }}" maxlength="200" placeholder="{{ t('finance.note_placeholder') }}">
+    </label>
+    <div class="actions"><button class="btn primary" type="submit">{{ t('finance.add_submit') }}</button></div>
+  </form>
+</details>
+
+<div class="report-nav">
+  <nav class="seg" aria-label="{{ t('jobs.filter_period_label') }}">
+    {% for key, label in periods %}<a href="{{ url_for('finance.overview', periodo=key, data=ref) }}"{% if key == period %} class="on" aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}
+  </nav>
+  <div class="stepper">
+    <a class="btn small arrow" href="{{ url_for('finance.overview', periodo=period, data=prev_ref) }}" aria-label="{{ t('company.prev') }}">‹</a>
+    {% if not is_current %}<a class="btn small" href="{{ url_for('finance.overview', periodo=period) }}">{{ t('company.back_to_now') }}</a>{% endif %}
+    <a class="btn small arrow" href="{{ url_for('finance.overview', periodo=period, data=next_ref) }}" aria-label="{{ t('company.next') }}">›</a>
+  </div>
+</div>
+
+<section class="block">
+  <h2 class="sr-only">{{ t('company.summary') }}</h2>
+  <div class="stats">
+    <div class="stat"><b>{{ total|money or '£0' }}</b><span>{{ t('finance.total_in') }}</span></div>
+    <div class="stat"><b>{{ transfer_total|money or '£0' }}</b><span>{{ t('finance.transfers') }}</span><small>{{ t('finance.transfer_count', n=transfer_count) }}</small></div>
+    <div class="stat"><b>{{ cash_total|money or '£0' }}</b><span>{{ t('finance.cash') }}</span><small>{{ t('finance.cash_hint_stat') }}</small></div>
+    <div class="stat"><b>{{ payers }}</b><span>{{ t('finance.payers') }}</span></div>
+  </div>
+</section>
+
+{% if chart %}
+<section class="block">
+  {{ money_chart(chart, t('finance.chart_month') if period == 'ano' else t('finance.chart_day'), dense=(period == 'mes'), values=(period == 'semana')) }}
+</section>
+{% endif %}
+
+<section class="block">
+  <h2>{{ t('finance.by_client') }}</h2>
+  <div class="sheet">
+    {% for c in by_client %}
+    <div class="cash-row">
+      <span class="client-total"><b>{{ c.name }}</b>
+        <span class="hint">{% if c.transfer and c.cash %}{{ t('finance.split_both', transfer=c.transfer|money, cash=c.cash|money) }}{% elif c.transfer %}{{ t('finance.split_transfer') }}{% else %}{{ t('finance.split_cash') }}{% endif %}</span></span>
+      <b>{{ (c.transfer + c.cash)|money }}</b>
+    </div>
+    {% else %}
+    <p class="empty">{{ t('finance.nothing_in') }}</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="block">
+  <h2>{{ t('finance.entries') }}</h2>
+  <div class="sheet">
+    {% for e in entries %}
+    <div class="pay-row">
+      <div class="pay-info">
+        {% if e.kind == 'cash' %}<a class="entry-client" href="{{ url_for('jobs.job_detail', job_id=e.job_id) }}">{{ e.client_name }}</a>
+        {% else %}<span class="entry-client">{{ e.client_name or t('finance.no_client') }}</span>{% endif %}
+        <span class="hint">{{ e.day|day_num }} {{ e.day|month_abbr }} {{ e.day[:4] }}</span>
+        <span class="entry-kind">
+          <span class="pill {{ 'pill-transfer' if e.kind == 'transfer' else 'pill-cash' }}">{{ t('finance.kind_transfer') if e.kind == 'transfer' else t('finance.kind_cash') }}</span>
+          {% if e.kind == 'cash' %}<span class="hint">{{ t('finance.cash_by', name=e.cash_name or '—') }}</span>{% elif e.note %}<span class="hint">{{ e.note }}</span>{% endif %}
+        </span>
+      </div>
+      <div class="pay-side">
+        <b>{{ e.pence|money }}</b>
+        {% if e.kind == 'transfer' %}
+        <form method="post" action="{{ url_for('finance.delete_transfer', transfer_id=e.id) }}" onsubmit='return confirm({{ t("finance.delete_confirm")|tojson }})'>
+          {{ csrf_field() }}
+          <input type="hidden" name="next" value="{{ next_url }}">
+          <button class="linkbtn" type="submit">{{ t('finance.delete') }}</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <p class="empty">{{ t('finance.nothing_in') }}</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pill, photo_body, photo_assets with context %}
+{% from "_portal.html" import thread, composer, composer_assets with context %}
+{% block title %}{{ job.client_name }} – {% endblock %}
+{% block content %}
+{% set can_schedule = can('schedule') %}{% set can_clients = can('clients') %}
+<p class="crumb"><a href="{{ url_for('jobs.list_jobs') if can_schedule else url_for('jobs.my_jobs') }}">{{ t('jobdetail.back_to_schedule') if can_schedule else t('jobdetail.back_to_my_jobs') }}</a></p>
+<div class="page-head">
+  <div>
+    <h1>{% if can_clients %}<a href="{{ url_for('clients.client_detail', client_id=job.client_id) }}">{{ job.client_name }}</a>{% else %}{{ job.client_name }}{% endif %}</h1>
+    <p class="sub">{{ job.title }}</p>
+  </div>
+  <div>{{ pill(job.status) }}</div>
+</div>
+
+<dl class="facts sheet pad">
+  <div><dt>{{ t('jobdetail.date_label') }}</dt><dd>{{ job.job_date|date_long }}{% if job.start_time %}, {{ job.start_time }}{% endif %}</dd></div>
+  <div><dt>{{ t('jobdetail.team_label') if job.is_share else t('jobdetail.employee_label') }}</dt><dd>{{ job.employee_name or t('jobdetail.nobody_assigned') }}{% if job.is_share %} <span class="pill pill-share">{{ t('common.share') }}</span>{% endif %}</dd></div>
+  {% if job.client_address or job.client_postcode %}
+  <div><dt>{{ t('jobdetail.address_label') }}</dt><dd><a href="{{ job.client_address|maps_link(job.client_postcode) }}" target="_blank" rel="noopener">{{ job.client_address }}{% if job.client_address and job.client_postcode %}, {% endif %}<span class="nowrap">{{ job.client_postcode }}</span></a></dd></div>
+  {% endif %}
+  {% if job.client_phone %}
+  <div><dt>{{ t('jobdetail.client_phone_label') }}</dt><dd><a href="tel:{{ job.client_phone|replace(' ', '') }}">{{ job.client_phone }}</a></dd></div>
+  {% endif %}
+  {% if job.started_at %}<div><dt>{{ t('jobdetail.start_label') }}</dt><dd>{{ job.started_at|dt_local }}</dd></div>{% endif %}
+  {% if job.finished_at %}
+  <div><dt>{{ t('jobdetail.finish_label') }}</dt><dd>{{ job.finished_at|dt_local }}{% if job.started_at %}, {{ t('common.duration_prefix') }} {{ job.started_at|duration(job.finished_at) }}{% endif %}</dd></div>
+  {% endif %}
+</dl>
+
+{% if job.client_access_notes %}
+<div class="callout"><b>{{ t('jobdetail.access_notes_title') }}</b><p class="pre">{{ job.client_access_notes }}</p></div>
+{% endif %}
+
+{% if job.description %}
+<section class="block">
+  <h2>{{ t('jobdetail.instructions_title') }}</h2>
+  <div class="sheet pad"><p class="pre">{{ job.description }}</p></div>
+</section>
+{% endif %}
+
+<section class="block">
+  <h2>{{ t('jobdetail.tasks_title') }}
+    {% if job.tasks_total %}<span class="count">{{ t('common.count_of', done=job.tasks_done, total=job.tasks_total) }}</span>{% endif %}
+  </h2>
+
+  {% if can_work %}
+  <form method="post" action="{{ url_for('jobs.update_progress', job_id=job.id) }}" class="sheet pad stack">
+    {{ csrf_field() }}
+    <div class="tasks">
+      {% for t_ in tasks %}
+      <div class="task">
+        <p class="task-text" id="task-{{ t_.id }}">{{ t_.description }}</p>
+        <div class="task-choice" role="radiogroup" aria-labelledby="task-{{ t_.id }}">
+          <label class="choice choice-done"><input type="radio" name="task_{{ t_.id }}" value="done"{% if t_.done %} checked{% endif %}><span><span aria-hidden="true">✓</span> {{ t('tasks.done') }}</span></label>
+          <label class="choice choice-skip"><input type="radio" name="task_{{ t_.id }}" value="not_done"{% if t_.skipped %} checked{% endif %}><span><span aria-hidden="true">✗</span> {{ t('tasks.not_done') }}</span></label>
+        </div>
+        <input class="task-note" name="note_{{ t_.id }}" value="{{ t_.note }}" maxlength="300" placeholder="{{ t('tasks.reason_placeholder') }}" aria-label="{{ t('tasks.reason_placeholder') }}">
+      </div>
+      {% else %}
+      <p class="hint">{{ t('jobdetail.no_tasks') }}</p>
+      {% endfor %}
+    </div>
+    <label>{{ t('jobdetail.materials_label') }}
+      <input name="materials" value="{{ job.materials }}" maxlength="1000" placeholder="{{ t('jobdetail.materials_placeholder') }}">
+    </label>
+    <label>{{ t('jobdetail.notes_label') }}
+      <textarea name="employee_notes" rows="3" maxlength="2000" placeholder="{{ t('jobdetail.notes_placeholder') }}">{{ job.employee_notes }}</textarea>
+    </label>
+    <label>{{ t('cash.label') }}
+      <span class="money-input"><span aria-hidden="true">£</span><input name="cash" value="{{ job.cash_pence|money_plain }}" inputmode="decimal" autocomplete="off" pattern="[0-9]{1,6}([.,][0-9]{1,2})?" title="{{ t('cash.example') }}" placeholder="0.00"></span>
+      <span class="hint">{{ t('cash.hint') }}</span>
+    </label>
+    <label class="check plain">
+      <input type="checkbox" name="cash_in_report" value="1"{% if job.cash_in_report %} checked{% endif %}>
+      <span>{{ t('cash.in_report') }}</span>
+    </label>
+    <div class="actions">
+      {% if job.status == 'scheduled' %}
+      <button class="btn primary" type="submit" name="action" value="start">{{ t('jobdetail.start_job') }}</button>
+      {% endif %}
+      <button class="btn{% if job.status == 'in_progress' %} primary{% endif %}" type="submit" name="action" value="finish">{{ t('jobdetail.finish_job') }}</button>
+      <button class="btn" type="submit" name="action" value="save">{{ t('jobdetail.save_progress') }}</button>
+    </div>
+  </form>
+  {% else %}
+  <div class="sheet pad stack">
+    <ul class="task-results">
+      {% for t_ in tasks %}
+      {% set state = 'done' if t_.done else ('skip' if t_.skipped else 'pending') %}
+      <li class="res-{{ state }}">
+        <span class="res-mark" aria-hidden="true">{{ '✓' if state == 'done' else ('✗' if state == 'skip' else '–') }}</span>
+        <span><span class="sr-only">{{ t('tasks.status_done') if state == 'done' else (t('tasks.status_not_done') if state == 'skip' else t('tasks.status_pending')) }}: </span>{{ t_.description }}
+          {% if state == 'skip' and t_.note %}<span class="res-note">{{ t('tasks.reason_prefix') }} {{ t_.note }}</span>{% endif %}
+          {% if state == 'pending' %}<span class="res-note">{{ t('tasks.status_pending') }}</span>{% endif %}
+        </span>
+      </li>
+      {% else %}
+      <li class="hint">{{ t('jobdetail.no_tasks_past') }}</li>
+      {% endfor %}
+    </ul>
+    {% if job.materials %}<div><b>{{ t('jobdetail.materials_label') }}</b><p class="pre">{{ job.materials }}</p></div>{% endif %}
+    {% if job.employee_notes %}<div><b>{{ t('jobdetail.notes_label') }}</b><p class="pre">{{ job.employee_notes }}</p></div>{% endif %}
+    {% if job.cash_pence %}<div><b>{{ t('cash.label') }}</b><p>{{ job.cash_pence|money }}{% if not job.cash_in_report %} <span class="hint">({{ t('cash.not_in_report') }})</span>{% endif %}{% if job.cash_received_at %} <span class="pay-status">✓ {{ t('company.received_on', when=job.cash_received_at|dt_local) }}</span>{% endif %}</p></div>{% endif %}
+  </div>
+  {% endif %}
+</section>
+
+{% if report %}
+<section class="block">
+  <h2>{{ t('report.title') }}</h2>
+  <div class="sheet pad stack">
+    <p class="hint">{{ t('report.hint') }}</p>
+    <textarea id="report-text" rows="{{ report_rows }}" aria-label="{{ t('report.title') }}">{{ report }}</textarea>
+    <div class="actions">
+      <button class="btn primary" type="button" id="report-copy" data-done="{{ t('report.copied') }}">{{ t('report.copy') }}</button>
+      <a class="btn" id="report-wa" href="https://wa.me/?text={{ report|urlencode }}" target="_blank" rel="noopener">{{ t('report.whatsapp') }}</a>
+    </div>
+  </div>
+</section>
+<script>
+  /* Copiar o relatório (com o que você tiver editado) e manter o link do WhatsApp com o texto atual. */
+  (function () {
+    var text = document.getElementById('report-text'), copy = document.getElementById('report-copy');
+    var wa = document.getElementById('report-wa'), label = copy.textContent;
+    function fit() {  /* a caixa cresce até caber o relatório inteiro (linhas longas quebram no celular) */
+      text.style.height = 'auto';
+      text.style.height = (text.scrollHeight + text.offsetHeight - text.clientHeight) + 'px';
+    }
+    fit();
+    window.addEventListener('resize', fit);
+    text.addEventListener('input', function () { fit(); wa.href = 'https://wa.me/?text=' + encodeURIComponent(text.value); });
+    function copied() { copy.textContent = copy.getAttribute('data-done'); setTimeout(function () { copy.textContent = label; }, 2000); }
+    function fallback() { text.select(); try { if (document.execCommand('copy')) copied(); } catch (e) {} }
+    copy.addEventListener('click', function () {
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text.value).then(copied, fallback);
+      else fallback();
+    });
+  })();
+</script>
+{% endif %}
+
+<section class="block" id="fotos">
+  <h2>{{ t('photos.job_title') }}</h2>
+  <div class="sheet pad photo-sets">
+    {% for set in photo_sets %}
+    <div class="photo-set" id="fotos-{{ set.key }}" data-photo-set data-max="{{ max_photos }}">
+      <h3>{{ set.title }}<span class="count" data-count>{{ t('jobdetail.photos_count', done=set.photos|length, total=max_photos) }}</span></h3>
+      {{ photo_body(set, max_photos, set.title ~ ' – ' ~ job.client_name) }}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{{ photo_assets() }}
+
+{% if company_thread %}
+{# Jardim de uma empresa (área da empresa): a conversa sobre este serviço #}
+{% set co = company_thread.company %}
+<section class="block" id="comentarios">
+  <h2>{{ t('companies.thread_title', company=co.name) }}{% if company_thread.comments %} <span class="count">{{ company_thread.comments|length }}</span>{% endif %}</h2>
+  <p class="hint block-hint">{{ t('companies.thread_hint_done', company=co.name) if job.status == 'done' else t('companies.thread_hint_open', company=co.name) }}</p>
+  <div class="sheet pad stack">
+    {% if company_thread.comments %}
+    {{ thread(company_thread.comments, 'staff', company_thread.fresh, co.name, delete_job=job.id if current_user.role == 'owner' else none) }}
+    {% else %}
+    <p class="hint">{{ t('companies.thread_empty') }}</p>
+    {% endif %}
+    {{ composer(url_for('companies.reply', job_id=job.id), url_for('jobs.job_detail', job_id=job.id) ~ '#comentarios',
+                t('companies.reply_label', company=co.name), t('companies.reply_send'), company_thread.max_files, company_thread.max_doc_mb) }}
+  </div>
+</section>
+{{ composer_assets() }}
+{% endif %}
+
+{% if can_schedule %}
+<section class="block">
+  <h2>{{ t('jobdetail.manage_title') }}</h2>
+  <div class="sheet pad stack">
+    <div class="actions"><a class="btn" href="{{ url_for('jobs.edit_job', job_id=job.id) }}">{{ t('jobdetail.edit_job') }}</a></div>
+    <form method="post" action="{{ url_for('jobs.repeat_job', job_id=job.id) }}" class="repeat">
+      {{ csrf_field() }}
+      <div class="pair">
+        <label>{{ t('jobdetail.repeat_every') }}
+          <select name="every">
+            <option value="1">{{ t('jobdetail.weeks_1') }}</option>
+            <option value="2">{{ t('jobdetail.weeks_2') }}</option>
+            <option value="3">{{ t('jobdetail.weeks_3') }}</option>
+            <option value="4">{{ t('jobdetail.weeks_4') }}</option>
+          </select>
+        </label>
+        <label>{{ t('jobdetail.how_many_times') }}
+          <input type="number" name="times" value="4" min="1" max="26">
+        </label>
+      </div>
+      <button class="btn small" type="submit">{{ t('jobdetail.create_repeats') }}</button>
+    </form>
+    <form method="post" action="{{ url_for('jobs.delete_job', job_id=job.id) }}" onsubmit='return confirm({{ t('jobdetail.delete_confirm')|tojson }})'>
+      {{ csrf_field() }}
+      <button class="btn danger small" type="submit">{{ t('jobdetail.delete_job') }}</button>
+    </form>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

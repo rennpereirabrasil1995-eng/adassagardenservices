@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="{{ 'pt-BR' if lang == 'pt_BR' else 'en' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{% block title %}{% endblock %}{{ app_name }}</title>
+  <link rel="preload" href="{{ url_for('static', filename='fonts/atkinson-hyperlegible-latin-400-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% include "_brand_head.html" %}
+  {# Instalação na tela inicial do celular (Android e iPhone) #}
+  <link rel="manifest" href="{{ url_for('manifest') }}">
+  <link rel="apple-touch-icon" href="{{ brand.logo.apple if brand.logo else url_for('static', filename='icons/apple-touch-icon.png') }}">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="{{ app_short_name }}">
+</head>
+<body>
+{% macro tab(endpoint, label, endpoints) -%}
+<a href="{{ url_for(endpoint) }}"{% if request.endpoint in endpoints %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
+{%- endmacro %}
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="bar">
+      <a class="brand{% if app_name|length > 20 and (brand.show_name or not brand.logo) %} brand-long{% endif %}" href="{{ url_for('index') }}">
+        {% if brand.logo %}<img class="brand-logo {{ brand.chip_class }}" src="{{ brand.logo.logo }}" alt="{{ '' if brand.show_name else app_name }}">
+        {% else %}<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 2C7 6 5 10 5 14a7 7 0 0 0 14 0c0-4-2-8-7-12z" fill="currentColor"/><path d="M12 9v12" style="stroke: var(--mast-bg)" stroke-width="1.6" stroke-linecap="round"/></svg>{% endif %}
+        {% if brand.show_name or not brand.logo %}<span>{{ app_name }}</span>{% endif %}
+      </a>
+      {% if current_user %}
+      <div class="bar-actions">
+        <a class="bell" href="{{ url_for('notifications.list_notifications') }}" aria-label="{{ t('nav.notifications') }}{% if unread_notifications %} ({{ unread_notifications }}){% endif %}"{% if request.endpoint == 'notifications.list_notifications' %} aria-current="page"{% endif %}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 20.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          {% if unread_notifications %}<span class="badge">{{ unread_notifications if unread_notifications < 100 else '99+' }}</span>{% endif %}
+        </a>
+        {# Minha conta: senha, idioma e (dono) as configurações da empresa, cada assunto na sua página #}
+        <a class="linkish" href="{{ url_for('auth.account') }}"{% if request.path.startswith('/conta') %} aria-current="page"{% endif %}>{{ t('nav.account') }}</a>
+        <form method="post" action="{{ url_for('auth.logout') }}">
+          {{ csrf_field() }}
+          <button class="linkish" type="submit">{{ t('nav.logout') }}</button>
+        </form>
+      </div>
+      {% elif portal_user %}
+      {# Área da empresa: só a conta dela e sair (as abas Serviços/Jardins ficam no começo de cada tela) #}
+      <div class="bar-actions">
+        <a class="linkish" href="{{ url_for('portal.account') }}"{% if request.endpoint == 'portal.account' %} aria-current="page"{% endif %}>{{ t('nav.account') }}</a>
+        <form method="post" action="{{ url_for('auth.logout') }}">
+          {{ csrf_field() }}
+          <button class="linkish" type="submit">{{ t('nav.logout') }}</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+    {# Abas conforme os acessos: o dono vê todas; o gerente, só as que o dono liberou; o funcionário, só
+       "Meus trabalhos" e "Minhas horas" (que todo mundo tem). #}
+    {% if current_user %}
+    <nav class="tabs" aria-label="{{ t('nav.main_menu') }}">
+      {% if 'schedule' in user_permissions %}{{ tab('jobs.dashboard', t('nav.dashboard'), ['jobs.dashboard']) }}{% endif %}
+      {% if 'report' in user_permissions %}{{ tab('reports.company_report', t('nav.report'), ['reports.company_report']) }}{% endif %}
+      {% if 'finance' in user_permissions %}{{ tab('finance.overview', t('nav.finance'), ['finance.overview']) }}{% endif %}
+      {% if 'schedule' in user_permissions %}{{ tab('jobs.list_jobs', t('nav.agenda'), ['jobs.list_jobs', 'jobs.new_job', 'jobs.edit_job']) }}{% endif %}
+      {% if 'clients' in user_permissions %}{{ tab('clients.list_clients', t('nav.clients'), ['clients.list_clients', 'clients.new_client', 'clients.client_detail', 'clients.edit_client',
+        'companies.list_companies', 'companies.company_detail', 'companies.new_login', 'companies.reset_login',
+        'companies.preview_days', 'companies.preview_gardens', 'companies.preview_garden', 'companies.preview_service']) }}{% endif %}
+      {% if 'quotes' in user_permissions %}{{ tab('quotes.list_quotes', t('nav.quotes'), ['quotes.list_quotes', 'quotes.new_quote', 'quotes.quote_detail', 'quotes.edit_quote']) }}{% endif %}
+      {% if current_user.role == 'owner' %}{{ tab('team.list_team', t('nav.team'), ['team.list_team', 'team.new_member', 'team.edit_member']) }}{% endif %}
+      {{ tab('jobs.my_jobs', t('nav.my_jobs'), ['jobs.my_jobs']) }}
+      {{ tab('hours.my_hours', t('nav.my_hours'), ['hours.my_hours']) }}
+    </nav>
+    {% endif %}
+  </div>
+</header>
+<main class="container">
+  {% for category, message in get_flashed_messages(with_categories=true) %}
+    <div class="flash flash-{{ category }}" role="status">{{ message }}</div>
+  {% endfor %}
+  {% block content %}{% endblock %}
+</main>
+<script>
+  /* Abas do celular: esmaece a borda onde há mais abas para rolar e centraliza a aba ativa. */
+  document.querySelectorAll('.tabs').forEach(function (nav) {
+    function update() {
+      nav.classList.toggle('less', nav.scrollLeft > 4);
+      nav.classList.toggle('more', nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 4);
+    }
+    var active = nav.querySelector('.active');
+    if (active) nav.scrollLeft = active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2;
+    nav.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{ t('login.page_title') }} – {% endblock %}
+{% block content %}
+<div class="auth">
+  <h1>{{ t('login.title') }}</h1>
+  <form method="post" class="sheet pad stack">
+    {{ csrf_field() }}
+    <label>{{ t('login.email') }}
+      <input type="email" name="email" value="{{ email or '' }}" autocomplete="username" required autofocus>
+    </label>
+    <label>{{ t('login.password') }}
+      <input type="password" name="password" autocomplete="current-password" required>
+    </label>
+    <button class="btn primary block" type="submit">{{ t('login.submit') }}</button>
+  </form>
+  <p class="hint">{{ t('login.no_access') }}</p>
+</div>
+{% endblock %}

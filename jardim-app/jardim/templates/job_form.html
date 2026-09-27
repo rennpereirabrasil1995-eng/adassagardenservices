@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}{{ t('jobform.title_edit') if job else t('jobform.title_new') }} – {% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ t('jobform.title_edit') if job else t('jobform.title_new') }}</h1>
+</div>
+
+{% if not clients %}
+<div class="callout">{{ t('jobform.no_clients_prefix') }}<a href="{{ url_for('clients.new_client') }}">{{ t('jobform.no_clients_link') }}</a>{{ t('jobform.no_clients_suffix') }}</div>
+{% endif %}
+
+<form method="post" class="sheet pad stack">
+  {{ csrf_field() }}
+  {% if form.quote_id %}<input type="hidden" name="quote_id" value="{{ form.quote_id }}">{% endif %}
+  <label>{{ t('jobform.client_label') }}
+    <select name="client_id" required>
+      <option value="">{{ t('jobform.choose_client') }}</option>
+      {% for c in clients %}
+      <option value="{{ c.id }}"{% if form.client_id|string == c.id|string %} selected{% endif %}>{{ c.name }}{% if c.address %}, {{ c.address }}{% endif %}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label>{{ t('jobform.what_label') }}
+    <input name="title" value="{{ form.title }}" maxlength="120" required>
+  </label>
+
+  <div class="grid-2">
+    <label>{{ t('jobform.date_label') }}
+      <input type="date" name="job_date" value="{{ form.job_date }}" required>
+    </label>
+    <label>{{ t('jobform.time_label') }} <span class="hint">{{ t('common.optional') }}</span>
+      <input type="time" name="start_time" value="{{ form.start_time }}">
+    </label>
+  </div>
+
+  {# Uma pessoa ou várias (trabalho "Share"). Ninguém marcado = decidir depois. #}
+  <fieldset class="task-pick people-pick" id="people-pick">
+    <legend>{{ t('jobform.people_label') }} <span class="pill pill-share" id="share-tag" hidden>{{ t('common.share') }}</span></legend>
+    <p class="hint">{{ t('jobform.people_hint') }}</p>
+    <div class="people-list">
+      {% for e in employees %}
+      <label class="check plain">
+        <input type="checkbox" name="assigned_to" value="{{ e.id }}"{% if e.id in (form.people or []) %} checked{% endif %}>
+        <span>{{ e.name }}{% if e.role == 'owner' %}{{ t('jobform.owner_suffix') }}{% elif e.role == 'manager' %}{{ t('jobform.manager_suffix') }}{% endif %}{% if not e.active %}{{ t('jobform.inactive_suffix') }}{% endif %}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  {# As tarefas padrão do cliente escolhido aparecem aqui já marcadas (o script no fim da página monta a lista). #}
+  <fieldset class="task-pick" id="task-pick" hidden>
+    <legend>{{ t('jobform.pick_label') }}</legend>
+    <p class="hint" id="task-pick-hint">{{ t('jobform.pick_hint') }}</p>
+    <p class="hint" id="task-pick-empty" hidden>{{ t('jobform.pick_empty') }}</p>
+    <div id="task-pick-list"></div>
+    <p class="pick-tools" id="task-pick-tools">
+      <button type="button" class="linkbtn" data-pick="all">{{ t('jobform.pick_all') }}</button>
+      <button type="button" class="linkbtn" data-pick="none">{{ t('jobform.pick_none') }}</button>
+    </p>
+  </fieldset>
+
+  <label>{{ t('jobform.extra_tasks_label') }} <span class="hint">{{ t('jobform.extra_tasks_hint') }}</span>
+    <textarea name="tasks" rows="4" placeholder="{{ t('jobform.tasks_placeholder') }}">{{ form.tasks }}</textarea>
+  </label>
+  <label class="check plain">
+    <input type="checkbox" name="save_template" value="1"{% if form.save_template %} checked{% endif %}>
+    <span>{{ t('jobform.save_template') }}</span>
+  </label>
+
+  <label>{{ t('jobform.extra_instructions_label') }} <span class="hint">{{ t('common.optional') }}</span>
+    <textarea name="description" rows="3" maxlength="2000">{{ form.description }}</textarea>
+  </label>
+
+  {% if job %}
+  <label>{{ t('jobform.status_label') }}
+    <select name="status">
+      {% for key in ('scheduled', 'in_progress', 'done', 'cancelled') %}
+      <option value="{{ key }}"{% if form.status == key %} selected{% endif %}>{{ key|status_label }}</option>
+      {% endfor %}
+    </select>
+    <span class="hint">{{ t('jobform.status_reset_hint') }}</span>
+  </label>
+  {% endif %}
+
+  <div class="actions">
+    <button class="btn primary" type="submit">{{ t('common.save_changes') if job else t('jobform.schedule') }}</button>
+    <a class="btn" href="{{ url_for('jobs.job_detail', job_id=job.id) if job else url_for('jobs.list_jobs') }}">{{ t('common.cancel') }}</a>
+  </div>
+</form>
+<script type="application/json" id="client-tasks">{{ client_tasks|tojson }}</script>
+<script type="application/json" id="picked-tasks">{{ (form.picked if form.picked is defined else none)|tojson }}</script>
+<script>
+  /* Com duas pessoas ou mais marcadas, aparece a etiqueta "Share" ao lado de "Quem vai fazer". */
+  (function () {
+    var box = document.getElementById('people-pick'), tag = document.getElementById('share-tag');
+    function update() { tag.hidden = box.querySelectorAll('input:checked').length < 2; }
+    box.addEventListener('change', update);
+    update();
+  })();
+  /* Mostra as tarefas padrão do cliente escolhido como caixinhas.
+     Trabalho novo: todas já vêm marcadas. Editando: vêm marcadas as que já estão no trabalho. */
+  (function () {
+    var byClient = JSON.parse(document.getElementById('client-tasks').textContent);
+    var picked = JSON.parse(document.getElementById('picked-tasks').textContent);
+    var select = document.querySelector('select[name="client_id"]');
+    var box = document.getElementById('task-pick'), list = document.getElementById('task-pick-list');
+    var hint = document.getElementById('task-pick-hint'), empty = document.getElementById('task-pick-empty');
+    var tools = document.getElementById('task-pick-tools');
+    function render(keepPicked) {
+      var tasks = byClient[select.value] || [];
+      var chosen = keepPicked && picked ? picked.map(function (s) { return s.toLowerCase(); }) : null;
+      list.textContent = '';
+      box.hidden = !select.value;
+      hint.hidden = tasks.length === 0;
+      empty.hidden = tasks.length > 0;
+      tools.hidden = tasks.length < 2;
+      tasks.forEach(function (text) {
+        var label = document.createElement('label'), input = document.createElement('input'), span = document.createElement('span');
+        label.className = 'check plain';
+        input.type = 'checkbox'; input.name = 'task_pick'; input.value = text;
+        input.checked = chosen ? chosen.indexOf(text.toLowerCase()) !== -1 : true;
+        span.textContent = text;
+        label.appendChild(input); label.appendChild(span); list.appendChild(label);
+      });
+    }
+    select.addEventListener('change', function () { render(false); });
+    tools.addEventListener('click', function (e) {
+      var mode = e.target.getAttribute('data-pick');
+      if (mode) list.querySelectorAll('input').forEach(function (i) { i.checked = mode === 'all'; });
+    });
+    render(true);
+  })();
+</script>
+{% endblock %}

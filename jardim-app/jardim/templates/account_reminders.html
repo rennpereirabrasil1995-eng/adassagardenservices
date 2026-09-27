@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% from "_account.html" import sub_head with context %}
+{% block title %}{{ t('account.reminders_title') }} – {% endblock %}
+{% block content %}
+{{ sub_head(t('account.reminders_title'), t('reminders.settings_hint')) }}
+<section class="block">
+  <form method="post" class="sheet pad stack" id="reminder-form">
+    {{ csrf_field() }}
+    <fieldset class="task-pick">
+      <legend>{{ t('reminders.how') }}</legend>
+      <div class="options">
+        {% for mode in ('off', 'tap', 'sms') %}
+        <label class="option">
+          <input type="radio" name="reminder_mode" value="{{ mode }}"{% if form.reminder_mode == mode %} checked{% endif %}>
+          <b>{{ t('reminders.mode_' ~ mode) }}</b>
+          <small>{{ t('reminders.mode_' ~ mode ~ '_hint') }}</small>
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <fieldset class="task-pick" id="twilio-box">
+      <legend>{{ t('reminders.twilio_title') }}</legend>
+      <p class="hint">{{ t('reminders.twilio_hint') }} <a href="https://www.twilio.com/try-twilio" target="_blank" rel="noopener">twilio.com</a></p>
+      <div class="grid-2">
+        <label>Account SID
+          <input name="twilio_sid" value="{{ form.twilio_sid }}" autocomplete="off" spellcheck="false" placeholder="AC…">
+        </label>
+        <label>Auth Token
+          <input type="password" name="twilio_token" value="" autocomplete="new-password" placeholder="{{ t('reminders.token_saved') if has_token else '' }}">
+        </label>
+      </div>
+      <div class="grid-2">
+        <label>{{ t('reminders.sender') }}
+          <input name="twilio_from" value="{{ form.twilio_from }}" autocomplete="off" placeholder="+447…">
+          <span class="hint">{{ t('reminders.sender_hint') }}</span>
+        </label>
+        <label>{{ t('reminders.hour') }}
+          <select name="reminder_hour">
+            {% for h in hours %}<option value="{{ h }}"{% if form.reminder_hour == h %} selected{% endif %}>{{ '%02d' % h }}:00</option>{% endfor %}
+          </select>
+          <span class="hint">{{ t('reminders.hour_hint') }}</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset class="task-pick">
+      <legend>{{ t('reminders.message') }}</legend>
+      <label>{{ t('reminders.message_language') }}
+        <select name="reminder_language" id="rem-lang">
+          <option value="en"{% if form.reminder_language == 'en' %} selected{% endif %}>English</option>
+          <option value="pt_BR"{% if form.reminder_language == 'pt_BR' %} selected{% endif %}>Português</option>
+        </select>
+      </label>
+      <label>{{ t('reminders.message_text') }}
+        <textarea name="reminder_text" id="rem-text" rows="4" maxlength="600" placeholder="{{ defaults[form.reminder_language] }}">{{ form.reminder_text }}</textarea>
+        <span class="hint">{{ t('reminders.placeholders_hint') }}</span>
+      </label>
+      <div class="rem-preview">
+        <p class="look-preview-label">{{ t('reminders.preview') }}</p>
+        <p class="bubble" id="rem-preview" aria-live="polite"></p>
+        <p class="hint" id="rem-count"></p>
+      </div>
+    </fieldset>
+
+    <div class="actions"><button class="btn primary" type="submit">{{ t('common.save_changes') }}</button></div>
+  </form>
+</section>
+
+{% if sms_ready %}
+<section class="block">
+  <h2>{{ t('reminders.test_title') }}</h2>
+  <form method="post" action="{{ url_for('preferences.reminder_test') }}" class="sheet pad stack">
+    {{ csrf_field() }}
+    <label>{{ t('reminders.test_to') }}
+      <input type="tel" name="to" value="{{ test_to }}" autocomplete="tel">
+      <span class="hint">{{ t('reminders.test_hint') }}</span>
+    </label>
+    <div class="actions"><button class="btn small" type="submit">{{ t('reminders.test_send') }}</button></div>
+  </form>
+</section>
+{% endif %}
+
+<section class="block">
+  <h2>{{ t('reminders.clients_title') }}</h2>
+  <div class="sheet pad stack">
+    <p><b>{{ t('reminders.clients_count', on=clients_on, total=clients_total) }}</b></p>
+    <p class="hint">{{ t('reminders.clients_hint') }}</p>
+    <p><a href="{{ url_for('reminders.tomorrow_list') }}">{{ t('reminders.see_tomorrow') }}</a></p>
+  </div>
+</section>
+
+<script type="application/json" id="rem-data">{{ {'sample': sample, 'defaults': defaults, 'placeholders': placeholders,
+  'one': t('reminders.count_one', n='{n}'), 'many': t('reminders.count_many', parts='{parts}', n='{n}'),
+  'accents': t('reminders.count_accents')}|tojson }}</script>
+<script>
+  /* Prévia da mensagem (com um cliente de exemplo) e quantos SMS ela vai ocupar; o bloco do Twilio
+     só aparece com "SMS automático". */
+  (function () {
+    var form = document.getElementById('reminder-form');
+    var data = JSON.parse(document.getElementById('rem-data').textContent);
+    var text = document.getElementById('rem-text'), lang = document.getElementById('rem-lang');
+    var out = document.getElementById('rem-preview'), count = document.getElementById('rem-count');
+    var twilio = document.getElementById('twilio-box');
+    var GSM = '@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&\'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà';
+    var EXT = '^{}\\[~]|€\f';
+    function parts(s) {
+      var size = 0, plain = true;
+      for (var i = 0; i < s.length; i++) {
+        if (GSM.indexOf(s[i]) >= 0) size += 1;
+        else if (EXT.indexOf(s[i]) >= 0) size += 2;
+        else { plain = false; break; }
+      }
+      if (plain) return [size <= 160 ? 1 : Math.ceil(size / 153), size, false];
+      size = s.length;
+      return [size <= 70 ? 1 : Math.ceil(size / 67), size, true];
+    }
+    function render() {
+      var l = lang.value, vals = data.sample[l] || data.sample.en;
+      text.placeholder = data.defaults[l];
+      var s = text.value.trim() || data.defaults[l];
+      Object.keys(data.placeholders).forEach(function (k) {
+        s = s.split('{' + k + '}').join(vals[k]).split('{' + data.placeholders[k] + '}').join(vals[k]);
+      });
+      s = s.replace(/[ \t]{2,}/g, ' ').trim();
+      out.textContent = s;
+      var p = parts(s);
+      var msg = p[0] === 1 ? data.one.replace('{n}', p[1]) : data.many.replace('{parts}', p[0]).replace('{n}', p[1]);
+      count.textContent = msg + (p[2] ? ' ' + data.accents : '');
+      twilio.hidden = !form.querySelector('input[name="reminder_mode"][value="sms"]').checked;
+    }
+    form.addEventListener('input', render);
+    form.addEventListener('change', render);
+    render();
+  })();
+</script>
+{% endblock %}

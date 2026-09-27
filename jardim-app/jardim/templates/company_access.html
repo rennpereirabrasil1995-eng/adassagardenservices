@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ t('companies.access_created') if new else t('companies.access_reset') }} – {% endblock %}
+{% block content %}
+{# A senha aparece só aqui (ela é guardada embaralhada): o dono manda agora ou gera outra depois. #}
+<p class="crumb"><a href="{{ url_for('companies.company_detail', company_id=company.id, _anchor='acessos') }}">‹ {{ company.name }}</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ t('companies.access_created') if new else t('companies.access_reset') }}</h1>
+    <p class="sub">{{ login.name }} · {{ company.name }}</p>
+  </div>
+</div>
+
+<div class="callout">
+  <b>{{ t('companies.access_once_title') }}</b>
+  <p>{{ t('companies.access_once') }}</p>
+</div>
+
+<dl class="facts sheet pad">
+  <div><dt>{{ t('companies.access_url') }}</dt><dd>{{ url }}</dd></div>
+  <div><dt>{{ t('companies.login_email') }}</dt><dd>{{ login.email }}</dd></div>
+  <div><dt>{{ t('companies.login_password') }}</dt><dd><code class="secret">{{ password }}</code></dd></div>
+</dl>
+
+<section class="block">
+  <h2>{{ t('companies.access_message_title') }}</h2>
+  <div class="sheet pad stack">
+    <textarea id="access-text" rows="7" readonly aria-label="{{ t('companies.access_message_title') }}">{{ message }}</textarea>
+    <div class="actions">
+      <a class="btn primary" href="https://wa.me/?text={{ message|urlencode }}" target="_blank" rel="noopener">{{ t('companies.access_whatsapp') }}</a>
+      <button class="btn" type="button" id="access-copy" data-done="{{ t('companies.access_copied') }}">{{ t('companies.access_copy') }}</button>
+    </div>
+  </div>
+</section>
+
+<p><a href="{{ url_for('companies.company_detail', company_id=company.id, _anchor='acessos') }}">{{ t('companies.access_back', company=company.name) }}</a></p>
+<script>
+  /* Copiar a mensagem (com o endereço, o e-mail e a senha) pra colar no WhatsApp ou num e-mail. */
+  (function () {
+    var text = document.getElementById('access-text'), copy = document.getElementById('access-copy'), label = copy.textContent;
+    function fit() { text.style.height = 'auto'; text.style.height = (text.scrollHeight + text.offsetHeight - text.clientHeight) + 'px'; }
+    fit();
+    window.addEventListener('resize', fit);
+    function copied() { copy.textContent = copy.getAttribute('data-done'); setTimeout(function () { copy.textContent = label; }, 2000); }
+    function fallback() { text.select(); try { if (document.execCommand('copy')) copied(); } catch (e) {} }
+    copy.addEventListener('click', function () {
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text.value).then(copied, fallback);
+      else fallback();
+    });
+  })();
+</script>
+{% endblock %}

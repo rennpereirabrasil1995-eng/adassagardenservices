@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_account.html" import sub_head with context %}
+{% block title %}{{ t('account.language_section') }} – {% endblock %}
+{% block content %}
+{{ sub_head(t('account.language_section')) }}
+<form method="post" class="sheet pad stack">
+  {{ csrf_field() }}
+  <label>{{ t('account.language_label') }}
+    <select name="language">
+      <option value=""{% if not my_language %} selected{% endif %}>{{ t('account.language_default', name=default_language_name) }}</option>
+      {% for code, label in languages.items() %}<option value="{{ code }}"{% if my_language == code %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <span class="hint">{{ t('account.language_hint') }}</span>
+  </label>
+  {% if owner %}
+  <label>{{ t('prefs.language_label') }}
+    <select name="app_language">
+      {% for code, label in languages.items() %}<option value="{{ code }}"{% if app_language == code %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <span class="hint">{{ t('prefs.language_hint') }}</span>
+  </label>
+  {% endif %}
+  <div class="actions"><button class="btn primary" type="submit">{{ t('account.language_save') }}</button></div>
+</form>
+{% endblock %}

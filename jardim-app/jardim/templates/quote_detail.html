@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% from "_macros.html" import photo_body, photo_assets, quote_pill with context %}
+{% block title %}{{ q.ref }} – {% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('quotes.list_quotes') }}">{{ t('quotes.back_to_list') }}</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ q.to_name }}</h1>
+    <p class="sub">{{ q.ref }} · {{ q.title }}</p>
+  </div>
+  <div>{{ quote_pill(q.state) }}</div>
+</div>
+
+{% if q.state == 'accepted' %}
+<div class="callout callout-ok">
+  <b>{{ t('quotes.accepted_by', name=q.answer_name, when=q.answered_at|dt_local) }}</b>
+  {% if q.answer_note %}<p class="pre">“{{ q.answer_note }}”</p>{% endif %}
+  {% if job %}<p><a href="{{ url_for('jobs.job_detail', job_id=job.id) }}">{{ t('quotes.job_link', date=job.job_date|date_long) }}</a></p>
+  {% elif can('schedule') %}
+  <form method="post" action="{{ url_for('quotes.schedule_job', quote_id=q.id) }}" class="callout-action">
+    {{ csrf_field() }}
+    <button class="btn primary small" type="submit">{{ t('quotes.schedule_job') }}</button>
+  </form>
+  {% endif %}
+</div>
+{% elif q.state == 'declined' %}
+<div class="callout callout-late">
+  <b>{{ t('quotes.declined_on', when=q.answered_at|dt_local) }}</b>
+  {% if q.answer_note %}<p class="pre">“{{ q.answer_note }}”</p>{% endif %}
+</div>
+{% elif q.state == 'expired' %}
+<div class="callout"><b>{{ t('quotes.expired_on', date=valid_until) }}</b><p>{{ t('quotes.expired_hint') }}</p></div>
+{% elif q.state == 'cancelled' %}
+<div class="callout internal"><b>{{ t('quotes.cancelled_note') }}</b></div>
+{% endif %}
+
+<section class="block">
+  <h2>{{ t('quotes.send_section') }}</h2>
+  <div class="sheet pad stack">
+    <label>{{ t('quotes.link_label') }}
+      <span class="link-copy">
+        <input readonly value="{{ link }}" id="quote-link" onclick="this.select()">
+        <button class="btn small" type="button" id="copy-link" data-done="{{ t('report.copied') }}">{{ t('quotes.copy_link') }}</button>
+      </span>
+    </label>
+    {% if q.status == 'open' %}
+    <div class="actions">
+      <form method="post" action="{{ url_for('quotes.send_whatsapp', quote_id=q.id) }}">
+        {{ csrf_field() }}<button class="btn primary" type="submit">{{ t('quotes.send_whatsapp') }}</button>
+      </form>
+      <form method="post" action="{{ url_for('quotes.send_email', quote_id=q.id) }}">
+        {{ csrf_field() }}<button class="btn" type="submit"{% if not (q.to_email and email_ready) %} disabled{% endif %}>{{ t('quotes.send_email') }}</button>
+      </form>
+      <a class="btn" href="{{ link }}" target="_blank" rel="noopener">{{ t('quotes.preview') }}</a>
+    </div>
+    {% if not q.to_email %}<p class="hint">{{ t('quotes.no_email_hint') }}</p>
+    {% elif not email_ready %}<p class="hint">{{ t('quotes.email_not_set_up') }}{% if current_user.role == 'owner' %} <a href="{{ url_for('preferences.notices') }}">{{ t('quotes.email_set_up_link') }}</a>{% endif %}</p>{% endif %}
+    {% endif %}
+    <ul class="qtimeline">
+      <li class="done">{{ t('quotes.tl_created', when=q.created_at|dt_local) }}</li>
+      <li class="{{ 'done' if q.sent_at else 'todo' }}">{{ t('quotes.tl_sent', when=q.sent_at|dt_local) if q.sent_at else t('quotes.tl_not_sent') }}</li>
+      <li class="{{ 'done' if q.viewed_at else 'todo' }}">{{ t('quotes.tl_viewed', when=q.viewed_at|dt_local) if q.viewed_at else t('quotes.tl_not_viewed') }}</li>
+      {% if q.answered_at %}<li class="done">{{ t('quotes.tl_accepted' if q.status == 'accepted' else 'quotes.tl_declined', when=q.answered_at|dt_local) }}</li>{% endif %}
+    </ul>
+  </div>
+</section>
+
+<section class="block" id="fotos" data-photo-set data-max="{{ max_photos }}">
+  <h2>{{ t('quotes.photos_title') }}<span class="count" data-count>{{ t('jobdetail.photos_count', done=photo_set.photos|length, total=max_photos) }}</span></h2>
+  <p class="hint block-hint">{{ t('quotes.photos_hint') }}</p>
+  <div class="sheet pad">{{ photo_body(photo_set, max_photos, q.title, captions=true) }}</div>
+</section>
+
+<section class="block">
+  <h2>{{ t('quotes.items_label') }}</h2>
+  <div class="sheet">
+    {% for it in q.lines %}
+    <div class="qline">
+      <div><b>{{ it.description }}</b>{% if it.quantity != 1 and it.unit_pence %}<span class="hint">{{ it.qty_text }} × {{ it.unit_pence|money }}</span>{% endif %}</div>
+      <b>{{ it.line_pence|money or t('quotes.included') }}</b>
+    </div>
+    {% endfor %}
+    <div class="qline qline-total"><span>{{ t('quotes.total_label') }}</span><b>{{ price_line }}</b></div>
+  </div>
+  <dl class="facts sheet pad">
+    <div><dt>{{ t('quotes.valid_until') }}</dt><dd>{{ valid_until }}</dd></div>
+    {% if q.to_phone %}<div><dt>{{ t('clientform.phone_label') }}</dt><dd><a href="tel:{{ q.to_phone|replace(' ', '') }}">{{ q.to_phone }}</a></dd></div>{% endif %}
+    {% if q.to_email %}<div><dt>{{ t('clientform.email_label') }}</dt><dd>{{ q.to_email }}</dd></div>{% endif %}
+    {% if q.to_address or q.to_postcode %}<div><dt>{{ t('clientform.address_label') }}</dt><dd>{{ q.to_address }}{% if q.to_address and q.to_postcode %}, {% endif %}<span class="nowrap">{{ q.to_postcode }}</span></dd></div>{% endif %}
+    <div><dt>{{ t('quotes.language_label') }}</dt><dd>{{ 'Português' if q.language == 'pt_BR' else 'English' }}</dd></div>
+  </dl>
+  {% if q.status == 'open' %}<div class="actions"><a class="btn" href="{{ url_for('quotes.edit_quote', quote_id=q.id) }}">{{ t('quotes.edit') }}</a></div>{% endif %}
+</section>
+
+<section class="block">
+  <h2>{{ t('quotes.manage') }}</h2>
+  <div class="sheet pad stack">
+    <div class="actions">
+      {% if q.status == 'open' %}
+      <form method="post" action="{{ url_for('quotes.cancel_quote', quote_id=q.id) }}" onsubmit='return confirm({{ t('quotes.cancel_confirm')|tojson }})'>
+        {{ csrf_field() }}<button class="btn small" type="submit">{{ t('quotes.cancel') }}</button>
+      </form>
+      {% elif q.status in ('cancelled', 'declined') %}
+      <form method="post" action="{{ url_for('quotes.reopen_quote', quote_id=q.id) }}">
+        {{ csrf_field() }}<button class="btn small" type="submit">{{ t('quotes.reopen') }}</button>
+      </form>
+      {% endif %}
+      <form method="post" action="{{ url_for('quotes.delete_quote', quote_id=q.id) }}" onsubmit='return confirm({{ t('quotes.delete_confirm')|tojson }})'>
+        {{ csrf_field() }}<button class="btn danger small" type="submit">{{ t('quotes.delete') }}</button>
+      </form>
+    </div>
+    <p class="hint">{{ t('quotes.manage_hint') }}</p>
+  </div>
+</section>
+{{ photo_assets() }}
+<script>
+  /* Copiar o link da cotação (pra colar onde quiser). */
+  (function () {
+    var input = document.getElementById('quote-link'), button = document.getElementById('copy-link'), label = button.textContent;
+    function copied() { button.textContent = button.getAttribute('data-done'); setTimeout(function () { button.textContent = label; }, 2000); }
+    function fallback() { input.select(); try { if (document.execCommand('copy')) copied(); } catch (e) {} }
+    button.addEventListener('click', function () {
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(input.value).then(copied, fallback);
+      else fallback();
+    });
+  })();
+</script>
+{% endblock %}

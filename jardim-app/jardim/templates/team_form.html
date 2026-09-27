@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ t('teamform.title_edit') if member else t('teamform.title_new') }} – {% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ t('teamform.title_edit') if member else t('teamform.title_new') }}</h1></div>
+<form method="post" class="sheet pad stack">
+  {{ csrf_field() }}
+  <label>{{ t('clientform.name_label') }}
+    <input name="name" value="{{ form.name }}" maxlength="120" required autofocus>
+  </label>
+  <div class="grid-2">
+    <label>{{ t('teamform.email_login_label') }}
+      <input type="email" name="email" value="{{ form.email }}" autocomplete="off" required>
+    </label>
+    <label>{{ t('clientform.phone_label') }}
+      <input type="tel" name="phone" value="{{ form.phone }}">
+    </label>
+  </div>
+  <label>{{ t('teamform.role_label') }}
+    <select name="role"{% if is_self %} disabled{% endif %}>
+      {% for key, label in roles.items() %}
+      <option value="{{ key }}"{% if form.role == key %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <span class="hint">{{ t('teamform.role_hint') }}</span>
+  </label>
+  {% set form_perms = (form.permissions or '').split(',') %}
+  <fieldset class="task-pick perms" id="perms"{% if form.role != 'manager' %} hidden{% endif %}>
+    <legend>{{ t('teamform.perms_title') }}</legend>
+    {% for key, label, sensitive in permissions %}
+    <label class="check plain">
+      <input type="checkbox" name="perm_{{ key }}" value="1"{% if key in form_perms %} checked{% endif %}>
+      <span>{{ label }}{% if sensitive %} <span class="pill pill-sensitive">{{ t('teamform.perm_sensitive') }}</span>{% endif %}</span>
+    </label>
+    {% endfor %}
+    <p class="hint">{{ t('teamform.perms_hint') }}</p>
+  </fieldset>
+  <label>{{ t('teamform.new_password_label') if member else t('teamform.initial_password_label') }}
+    <input name="password" value="{{ form.password }}" autocomplete="off" minlength="8"{% if not member %} required{% endif %}>
+    <span class="hint">{% if member %}{{ t('teamform.password_hint_edit') }}{% else %}{{ t('teamform.password_hint_new') }}{% endif %}</span>
+  </label>
+  {% if member %}
+  <label class="check plain">
+    <input type="checkbox" name="active" value="1"{% if form.active %} checked{% endif %}{% if is_self %} disabled{% endif %}>
+    <span>{{ t('teamform.active_checkbox') }}</span>
+  </label>
+  {% endif %}
+  <div class="actions">
+    <button class="btn primary" type="submit">{{ t('common.save_changes') if member else t('teamform.add_to_team') }}</button>
+    <a class="btn" href="{{ url_for('team.list_team') }}">{{ t('common.cancel') }}</a>
+  </div>
+</form>
+
+{% if member and not is_self %}
+<section class="block">
+  {% if has_jobs %}
+  <p class="hint">{{ t('team.delete_blocked_hint') }}</p>
+  {% else %}
+  <form method="post" action="{{ url_for('team.delete_member', member_id=member.id) }}" onsubmit='return confirm({{ t('team.delete_confirm')|tojson }})'>
+    {{ csrf_field() }}
+    <button class="btn danger small" type="submit">{{ t('team.delete_person') }}</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+<script>
+  /* As caixinhas de acesso só aparecem quando o cargo escolhido é Gerente. */
+  (function () {
+    var role = document.querySelector('select[name="role"]'), box = document.getElementById('perms');
+    if (!role || !box) return;
+    function sync() { box.hidden = role.value !== 'manager'; }
+    role.addEventListener('change', sync);
+    sync();
+  })();
+</script>
+{% endblock %}
