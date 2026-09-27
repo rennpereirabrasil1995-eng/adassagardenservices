@@ -321,3 +321,18 @@ CREATE TABLE IF NOT EXISTS quote_request_files (
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_quote_request_files_request ON quote_request_files(request_id);
+
+-- Histórico da grade da semana (jobs.py): cada arrasto de um trabalho pra outro dia ou horário, com o "Desfazer".
+CREATE TABLE IF NOT EXISTS job_moves (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id     INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+    user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    old_date   TEXT NOT NULL,
+    old_time   TEXT NOT NULL DEFAULT '',
+    new_date   TEXT NOT NULL,
+    new_time   TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    undone_at  TEXT,
+    undone_by  INTEGER REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_job_moves_created ON job_moves(created_at);

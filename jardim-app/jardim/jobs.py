@@ -1,7 +1,7 @@
 """Trabalhos (visitas): agenda do dono, checklist do funcionário, iniciar e concluir."""
 import json
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from flask import Blueprint, abort, flash, g, jsonify, redirect, render_template, request, url_for
 
@@ -456,10 +456,66 @@ def move_job(job_id):
                                                 time=other["start_time"], date=utils.date_long(day))), 409
     db = get_db()
     db.execute("UPDATE jobs SET job_date = ?, start_time = ? WHERE id = ?", (day, time, job_id))
+    cur = db.execute("INSERT INTO job_moves (job_id, user_id, old_date, old_time, new_date, new_time, created_at) "
+                     "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                     (job_id, g.user["id"], job["job_date"], job["start_time"], day, time, utils.now_utc_iso()))
     notifications.job_updated(job, job_id)  # quem está escalado fica sabendo da mudança
     db.commit()
     flash(i18n.t("week.moved", client=job["client_name"], when=f"{utils.date_long(day)}, {time}"), "ok")
-    return jsonify(ok=True, moved=True, date=day, time=time)
+    return jsonify(ok=True, moved=True, date=day, time=time, move_id=cur.lastrowid)
+
+
+MOVES_SHOWN = 12  # movimentos recentes listados na grade
+
+
+def _recent_moves():
+    """Os últimos arrastos, mais novos primeiro, e se cada um ainda pode ser desfeito: o trabalho existe, segue
+    agendado e ainda está onde o arrasto deixou (se alguém mexeu depois, não dá mais)."""
+    rows = get_db().execute(
+        "SELECT m.*, u.name AS user_name, j.job_date, j.start_time, j.status, c.name AS client_name "
+        "FROM job_moves m LEFT JOIN users u ON u.id = m.user_id LEFT JOIN jobs j ON j.id = m.job_id "
+        "LEFT JOIN clients c ON c.id = j.client_id ORDER BY m.id DESC LIMIT ?", (MOVES_SHOWN,)).fetchall()
+    moves, recent = [], (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat(timespec="seconds")
+    for r in rows:
+        m = dict(r)
+        m["can_undo"] = (not m["undone_at"] and m["status"] == "scheduled"
+                         and (m["job_date"], m["start_time"]) == (m["new_date"], m["new_time"]))
+        m["changed_since"] = (not m["undone_at"] and m["client_name"] and not m["can_undo"])
+        m["fresh"] = m["created_at"] >= recent  # o histórico abre sozinho logo depois de um arrasto
+        moves.append(m)
+    return moves
+
+
+@bp.route("/trabalhos/mover/<int:move_id>/desfazer", methods=("POST",))
+@permission_required("schedule")
+def undo_move(move_id):
+    """Volta o trabalho pro dia e horário de antes do arrasto (com a mesma conferência de escala)."""
+    db = get_db()
+    row = db.execute("SELECT * FROM job_moves WHERE id = ?", (move_id,)).fetchone()
+    if row is None:
+        abort(404)
+    back = redirect(url_for("jobs.week_view", data=row["old_date"]))
+    jobs = fetch_jobs("j.id = ?", (row["job_id"],))
+    job = jobs[0] if jobs else None
+    if row["undone_at"] or job is None or job["status"] != "scheduled" \
+            or (job["job_date"], job["start_time"]) != (row["new_date"], row["new_time"]):
+        flash(i18n.t("week.undo_stale"), "error")
+        return back
+    if utils.valid_time(row["old_time"]):
+        h, m = map(int, row["old_time"].split(":"))
+        busy = _busy_people(job, row["old_date"], h * 60 + m)
+        if busy:
+            name, other = busy[0]
+            flash(i18n.t("week.move_conflict", person=name, client=other["client_name"], time=other["start_time"],
+                         date=utils.date_long(row["old_date"])), "error")
+            return back
+    db.execute("UPDATE jobs SET job_date = ?, start_time = ? WHERE id = ?", (row["old_date"], row["old_time"], job["id"]))
+    db.execute("UPDATE job_moves SET undone_at = ?, undone_by = ? WHERE id = ?", (utils.now_utc_iso(), g.user["id"], move_id))
+    notifications.job_updated(job, job["id"])
+    db.commit()
+    when = f"{utils.date_long(row['old_date'])}, {row['old_time']}" if row["old_time"] else utils.date_long(row["old_date"])
+    flash(i18n.t("week.undone", client=job["client_name"], when=when), "ok")
+    return back
 
 
 @bp.route("/agenda/semana")
@@ -475,7 +531,7 @@ def week_view():
         params.append(int(employee))
     jobs = fetch_jobs(" AND ".join(clauses), params)
     return render_template(
-        "week.html", start=start, end=end, today=today, employee=employee,
+        "week.html", moves=_recent_moves(), start=start, end=end, today=today, employee=employee,
         prev_ref=(date.fromisoformat(start) - timedelta(days=7)).isoformat(),
         next_ref=(date.fromisoformat(start) + timedelta(days=7)).isoformat(),
         is_current=start <= today <= end, jobs_count=len(jobs),

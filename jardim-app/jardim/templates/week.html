@@ -37,6 +37,30 @@
 <p class="hint no-print week-drag-hint">{{ t('week.drag_hint') }}</p>
 <p class="callout callout-late week-status" id="week-status" role="status" aria-live="polite" hidden></p>
 {{ csrf_field() }}
+{% if moves %}
+{# Histórico dos arrastos, com o Desfazer. Abre sozinho quando o último foi há pouco. #}
+<details class="fold week-moves no-print"{% if moves[0].fresh %} open{% endif %}>
+  <summary><span class="fold-open">{{ t('week.moves_show', n=moves|length) }}</span><span class="fold-close">{{ t('week.moves_hide') }}</span></summary>
+  <ul class="plain-list week-moves-list">
+    {% for m in moves %}
+    <li class="week-move{% if m.undone_at %} undone{% endif %}">
+      <span class="week-move-text">
+        {% if m.client_name %}<a href="{{ url_for('jobs.job_detail', job_id=m.job_id) }}">{{ m.client_name }}</a>{% else %}<s>{{ t('week.move_job_gone') }}</s>{% endif %}
+        · {{ m.old_date|weekday }} {{ m.old_date|day_num }} {{ m.old_date|month_abbr }}{% if m.old_time %}, {{ m.old_time }}{% endif %}
+        → <b>{{ m.new_date|weekday }} {{ m.new_date|day_num }} {{ m.new_date|month_abbr }}, {{ m.new_time }}</b>
+        <span class="hint">· {{ m.created_at|dt_local }}{% if m.user_name %} · {{ t('extras.by', name=m.user_name) }}{% endif %}</span>
+        {% if m.undone_at %}<span class="pill">{{ t('week.undone_pill') }}</span>{% elif m.changed_since %}<span class="pill">{{ t('week.changed_since') }}</span>{% endif %}
+      </span>
+      {% if m.can_undo %}
+      <form method="post" action="{{ url_for('jobs.undo_move', move_id=m.id) }}" data-confirm="{{ t('week.undo_confirm', client=m.client_name) }}">
+        {{ csrf_field() }}<button class="btn small" type="submit">{{ t('week.undo') }}</button>
+      </form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</details>
+{% endif %}
 <div class="week-wrap">
 <div class="week" id="week-grid" style="--rows: {{ rows }}" data-rows="{{ rows }}" data-first="{{ times[0] if times else '08:00' }}">
   <div class="week-corner"></div>

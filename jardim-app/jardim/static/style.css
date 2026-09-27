@@ -976,6 +976,12 @@ a.vbar:hover .vbar-fill, a.vbar:focus-visible .vbar-fill { filter: brightness(1.
 body.week-dragging { user-select: none; -webkit-user-select: none; cursor: grabbing; }
 .week-drag-hint { margin: -.5rem 0 .75rem; }
 .week-status { margin: 0 0 .75rem; }
+.week-moves { margin: 0 0 1rem; background: var(--surface); }
+.week-moves-list { margin: 0; padding: .3rem .9rem; }
+.week-move { display: flex; align-items: center; justify-content: space-between; gap: .5rem 1rem; flex-wrap: wrap; padding: .45rem 0; }
+.week-move + .week-move { border-top: 1px solid var(--line); }
+.week-move.undone .week-move-text { color: var(--muted); }
+.week-move-text { flex: 1 1 18rem; min-width: 0; }
 .week-legend i { border-radius: 50%; }
 .week-legend-none { background: var(--line-strong); }
 .week-print-head { display: none; }

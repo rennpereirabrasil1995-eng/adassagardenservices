@@ -2951,6 +2951,30 @@ class AppTests(unittest.TestCase):
         self.set_times(roe, "08:00", "10:00")
         self.assertEqual(self.owner.post(f"/trabalhos/{roe}/mover", {"date": sat, "time": "09:00"}).status_code, 409)
         self.assertNotIn(f'data-move="/trabalhos/{roe}/mover"', self.owner.get("/agenda/semana").get_data(as_text=True))
+        # histórico na própria grade: os dois arrastos, mais novo primeiro, cada um com Desfazer
+        moves = self.query("SELECT * FROM job_moves ORDER BY id")
+        self.assertEqual([(m["job_id"], m["old_date"], m["old_time"], m["new_date"], m["new_time"]) for m in moves],
+                         [(share, tue, "09:00", monday, "10:00"), (solo, tue, "14:00", tue, "09:00")])
+        page = self.owner.get("/agenda/semana").get_data(as_text=True)
+        self.assertIn("Recent moves (2)", page)
+        self.assertIn('<details class="fold week-moves no-print" open>', page)  # acabou de acontecer: já aberto
+        self.assertEqual(page.count("/desfazer"), 2)
+        # desfazer o do Bruno: volta pra terça 14:00, avisa o Bruno e fica marcado como desfeito
+        r = self.owner.post(f"/trabalhos/mover/{moves[1]['id']}/desfazer", follow_redirects=True)
+        page = r.get_data(as_text=True)
+        self.assertIn("Undone: Sítio das Flores is back at", page)
+        self.assertEqual(self.query("SELECT job_date, start_time FROM jobs WHERE id = ?", (solo,))[0], {"job_date": tue, "start_time": "14:00"})
+        self.assertEqual(len(self.notices(bruno, "job_rescheduled")), 3)  # Share movido, o dele movido, o dele desfeito
+        self.assertIn("Undone</span>", page)
+        self.assertEqual(page.count("/desfazer"), 1)
+        again = self.owner.post(f"/trabalhos/mover/{moves[1]['id']}/desfazer", follow_redirects=True).get_data(as_text=True)
+        self.assertIn("can&#39;t be undone any more", again)  # de novo: nada muda
+        # o Share foi editado depois (mudou de hora): o arrasto dele não pode mais ser desfeito
+        self.set_job(share, start_time="11:00")
+        page = self.owner.get("/agenda/semana").get_data(as_text=True)
+        self.assertIn("Changed since", page)
+        self.assertEqual(page.count("/desfazer"), 0)
+        self.assertEqual(self.employee_browser().post(f"/trabalhos/mover/{moves[0]['id']}/desfazer").status_code, 403)
 
     def test_schedule_search_by_client_name(self):
         self.create_owner()
