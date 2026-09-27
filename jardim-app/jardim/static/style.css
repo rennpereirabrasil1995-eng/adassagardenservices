@@ -327,6 +327,9 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
 .search-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0; width: 3rem; }
 .search-btn svg { width: 1.35rem; height: 1.35rem; flex: none; }
 .search-note { margin: -.3rem 0 0; }
+.list-filter { margin: 0 0 .75rem; }
+.list-filter .search-btn { pointer-events: none; }
+[id] > [hidden].row-act, .sheet > [hidden] { display: none !important; }
 .filters { display: grid; gap: .9rem; margin: 0 0 1.1rem; }
 .seg { display: flex; flex-wrap: wrap; gap: .45rem; }
 .seg a {

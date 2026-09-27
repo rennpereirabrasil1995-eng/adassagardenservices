@@ -37,9 +37,16 @@
 <section class="block" id="jardins">
   <h2>{{ t('companies.gardens_title') }} <span class="count">{{ gardens|length }}</span></h2>
   <p class="hint block-hint">{{ t('companies.gardens_hint') }}</p>
-  <div class="sheet">
+  {% if gardens|length > 5 %}
+  {# A lupa filtra a lista pelo nome enquanto a pessoa digita (script do base.html); só aparece com JavaScript #}
+  <div class="search client-search list-filter" hidden>
+    <input type="search" data-filter-for="#gardens-list" placeholder="{{ t('companies.gardens_search') }}" aria-label="{{ t('companies.gardens_search') }}" autocomplete="off">
+    <span class="btn search-btn" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+  </div>
+  {% endif %}
+  <div class="sheet" id="gardens-list" {{ show_more(5, 5) }}>
     {% for c in gardens %}
-    <div class="row-act">
+    <div class="row-act" data-filter-text="{{ c.name }} {{ c.address }} {{ c.postcode }}">
       <div class="row-act-main">
         <a class="member-name" href="{{ url_for('clients.client_detail', client_id=c.id) }}">{{ c.name }}</a>{% if not c.active %} <span class="pill pill-inactive">{{ t('clientdetail.inactive') }}</span>{% endif %}
         {% set where = place(c.name, c.address) %}

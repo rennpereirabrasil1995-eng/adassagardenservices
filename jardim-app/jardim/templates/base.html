@@ -117,6 +117,41 @@
       if (first && first.focus) first.focus({ preventScroll: true });
     });
     render();
+    /* enquanto a lupa filtra a lista, o "mostrar mais" sai do caminho; ao limpar, volta como estava */
+    box.addEventListener('more:filter', function (e) {
+      if (e.detail.active) { bar.hidden = true; } else { render(); }
+    });
+  });
+  /* Lupa de uma lista (data-filter-for): esconde o que não bate com o texto, sem recarregar */
+  document.querySelectorAll('[data-filter-for]').forEach(function (input) {
+    var box = document.querySelector(input.getAttribute('data-filter-for'));
+    if (!box) return;
+    var wrap = input.closest('.list-filter');
+    if (wrap) wrap.hidden = false;
+    var items = Array.prototype.filter.call(box.children, function (el) { return !el.hasAttribute('data-more-skip'); });
+    var empty = document.createElement('p');
+    empty.className = 'empty';
+    empty.hidden = true;
+    empty.setAttribute('data-more-skip', '');
+    empty.textContent = input.getAttribute('data-filter-empty') || '';
+    box.appendChild(empty);
+    function norm(s) { return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+    input.addEventListener('input', function () {
+      var q = norm(input.value.trim()), found = 0;
+      if (!q) {
+        empty.hidden = true;
+        box.dispatchEvent(new CustomEvent('more:filter', { detail: { active: false } }));
+        if (!box.hasAttribute('data-more')) items.forEach(function (el) { el.hidden = false; });
+        return;
+      }
+      items.forEach(function (el) {
+        var hit = norm(el.getAttribute('data-filter-text') || el.textContent).indexOf(q) >= 0;
+        el.hidden = !hit;
+        if (hit) found++;
+      });
+      empty.hidden = found > 0;
+      box.dispatchEvent(new CustomEvent('more:filter', { detail: { active: true } }));
+    });
   });
   /* Gráficos: cada barra entra um pouco depois da anterior; os números dos cartões contam do zero até o valor. */
   (function () {
