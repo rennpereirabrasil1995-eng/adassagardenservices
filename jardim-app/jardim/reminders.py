@@ -350,7 +350,7 @@ def _after_response(response):
 
 # ---------- A tela "Lembretes pra amanhã" ----------
 
-def _links(row, client, day):
+def links(row, client, day):
     text = render(template_of(row), values(row, client["name"], day, client["first_time"]))
     quoted = urllib.parse.quote(text)
     return {"text": text, "whatsapp": f"https://wa.me/{client['digits']}?text={quoted}",
@@ -365,7 +365,7 @@ def tomorrow_list():
     clients = clients_for(day)
     for c in clients:
         if c["digits"]:
-            c.update(_links(row, c, day))
+            c.update(links(row, c, day))
         c["when_sent"] = utils.time_local(c["updated_at"]) if c["updated_at"] else ""
     return render_template("reminders.html", day=day, clients=clients, mode=row["reminder_mode"],
                            hour=row["reminder_hour"], sms_ready=sms_ready(row))

@@ -221,6 +221,28 @@
       box.addEventListener('click', function (e) { if (e.target === box) box.close('cancel'); });  /* tocar fora fecha */
     }
   })();
+  /* Lembrete pro cliente na linha do trabalho: tocou no WhatsApp ou no SMS, o celular abre a mensagem e aqui fica anotado */
+  document.addEventListener('click', function (e) {
+    var link = e.target.closest('a[data-remind]');
+    if (!link) return;
+    var csrf = document.querySelector('input[name="_csrf"]');
+    if (!csrf || !window.fetch) return;
+    var body = new FormData();
+    body.append('_csrf', csrf.value);
+    body.append('channel', link.getAttribute('data-remind'));
+    var side = link.closest('.job-side');
+    fetch(link.getAttribute('data-done-url'), { method: 'POST', body: body, credentials: 'same-origin', keepalive: true,
+                                                headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !side) return;
+        side.innerHTML = '';
+        var pill = document.createElement('span');
+        pill.className = 'pill pill-done remind-done';
+        pill.textContent = '✓ ' + d.label + ' ' + d.time;
+        side.appendChild(pill);
+      }, function () {});
+  });
   /* Conversa de um serviço: abre já rolada no fim, na mensagem mais nova. */
   document.querySelectorAll('.thread').forEach(function (box) { box.scrollTop = box.scrollHeight; });
 </script>

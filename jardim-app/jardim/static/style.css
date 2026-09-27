@@ -184,8 +184,16 @@ a.notice:hover { background: var(--hover); }
   display: grid; grid-template-columns: 4.4rem 1fr; gap: 0 1rem; padding: 1rem 1.15rem;
   color: inherit; text-decoration: none;
 }
-.job + .job, .member + .member { border-top: 1px solid var(--line); }
-.job:hover, .member:hover { background: var(--hover); }
+.job-row { display: flex; align-items: stretch; }
+.job-row > .job { flex: 1 1 auto; min-width: 0; }
+.job-row + .job-row, .member + .member { border-top: 1px solid var(--line); }
+.job-row:hover, .member:hover { background: var(--hover); }
+/* Véspera: o botão do lembrete pro cliente, à direita da linha */
+.job-side { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3rem; padding: .6rem 1rem .6rem 0; }
+.job-side .remind { display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap; }
+.job-side .remind svg { width: 1.15rem; height: 1.15rem; flex: none; }
+.job-side .remind-sms { font-size: .85rem; min-height: 1.6rem; }
+.job-side .remind-done { white-space: nowrap; }
 .job-date { display: flex; flex-direction: column; align-items: flex-start; }
 .dnum { font: 800 2.2rem/1 var(--display); letter-spacing: -0.03em; }
 .dmeta { font-size: .88rem; color: var(--muted); margin-top: .15rem; }

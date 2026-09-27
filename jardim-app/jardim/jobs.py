@@ -18,7 +18,7 @@ OPEN_STATUSES = ("scheduled", "in_progress")
 JOB_SELECT = """
 SELECT j.*,
        c.name AS client_name, c.address AS client_address, c.postcode AS client_postcode,
-       c.phone AS client_phone, c.access_notes AS client_access_notes,
+       c.phone AS client_phone, c.reminders AS client_reminders, c.access_notes AS client_access_notes,
        c.company_id AS client_company_id, (SELECT co.name FROM companies co WHERE co.id = c.company_id) AS company_name,
        (SELECT COUNT(*) FROM job_tasks t WHERE t.job_id = j.id) AS tasks_total,
        (SELECT COUNT(*) FROM job_tasks t WHERE t.job_id = j.id AND t.done = 1) AS tasks_done,
@@ -65,6 +65,35 @@ def _attach_people(jobs):
                 if low:
                     job["each_label"] = utils.format_minutes(low) if low == high else \
                         f"{utils.format_minutes(low)}–{utils.format_minutes(high)}"
+    return _attach_reminders(jobs)
+
+
+def _attach_reminders(jobs):
+    """O botão "Lembrete" na linha do trabalho: só nos trabalhos de amanhã, agendados, de cliente com telefone e
+    com o lembrete ligado, quando o lembrete pro cliente está ativo (Conta → Lembrete pro cliente) e quem olha
+    cuida da agenda. job["reminder"] = {state, whatsapp, sms, done_url} ou None."""
+    for job in jobs:
+        job["reminder"] = None
+    if g.get("user") is None or not can("schedule"):
+        return jobs
+    from . import reminders  # importado aqui: reminders.py usa este arquivo
+    day = reminders.tomorrow()
+    keys = jobs[0].keys() if jobs else []
+    cands = [j for j in jobs if j["job_date"] == day and j["status"] == "scheduled"
+             and "client_reminders" in keys and j["client_reminders"] and utils.intl_phone(j["client_phone"])]
+    if not cands:
+        return jobs
+    row = reminders.settings()
+    if row["reminder_mode"] not in ("tap", "sms"):
+        return jobs
+    clients = {c["id"]: c for c in reminders.clients_for(day)}
+    for j in cands:
+        c = clients.get(j["client_id"])
+        if c is None or c["state"] in ("off", "no_phone"):
+            continue
+        links = reminders.links(row, c, day)
+        j["reminder"] = {"state": c["state"], "whatsapp": links["whatsapp"], "sms": links["sms"],
+                         "done_url": url_for("reminders.mark_done", client_id=c["id"], day=day)}
     return jobs
 
 

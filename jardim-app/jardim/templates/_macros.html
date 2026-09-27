@@ -54,6 +54,7 @@ data-more="{{ start }}" data-more-step="{{ step }}" data-more-label="{{ t('commo
 
 {% macro job_row(j, show_employee=true, show_client=true) -%}
 {% set late = j.status in ('scheduled', 'in_progress') and j.job_date < today %}
+<div class="job-row">
 <a class="job" href="{{ url_for('jobs.job_detail', job_id=j.id) }}">
   <span class="job-date">
     <b class="dnum">{{ j.job_date|day_num }}</b>
@@ -74,6 +75,21 @@ data-more="{{ start }}" data-more-step="{{ step }}" data-more-label="{{ t('commo
     {{ rows_bar(j.tasks_done, j.tasks_total, j.tasks_skipped) }}
   </span>
 </a>
+{% if j.reminder %}
+{# Véspera: o lembrete pro cliente sai daqui mesmo. Tocar abre o WhatsApp com a mensagem pronta e anota que foi. #}
+<div class="job-side">
+  {% if j.reminder.state == 'sent' %}
+  <span class="pill pill-done remind-done">✓ {{ t('reminders.reminded') }}</span>
+  {% else %}
+  <a class="btn small remind" href="{{ j.reminder.whatsapp }}" target="_blank" rel="noopener" data-remind="whatsapp" data-done-url="{{ j.reminder.done_url }}" title="{{ t('reminders.btn_whatsapp') }}">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.5-1.2A9 9 0 1 0 12 3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 8.5c.2-.5.5-.5.8-.5h.5l.8 1.9-.6.8c.6 1.2 1.6 2.1 2.8 2.7l.8-.7 1.9.8v.6c0 .3-.1.6-.5.8-.6.4-1.5.6-2.7-.1a9 9 0 0 1-3.9-3.9c-.6-1.2-.4-2 .1-2.4z" fill="currentColor"/></svg>
+    <span>{{ t('reminders.btn_remind') }}</span>
+  </a>
+  <a class="linkbtn remind-sms" href="{{ j.reminder.sms }}" data-remind="sms_phone" data-done-url="{{ j.reminder.done_url }}">{{ t('reminders.btn_sms') }}</a>
+  {% endif %}
+</div>
+{% endif %}
+</div>
 {%- endmacro %}
 
 {# ---------- Fotos ----------

@@ -2608,6 +2608,35 @@ class AppTests(unittest.TestCase):
         new_client = self.query("SELECT name, company_id FROM clients ORDER BY id DESC LIMIT 1")[0]
         self.assertEqual((new_client["name"], new_client["company_id"]), ("Hillside Property Services", company_id))
 
+    def test_job_rows_offer_the_client_reminder_on_the_eve(self):
+        self.create_owner()
+        client = self.create_client()
+        self.owner.post(f"/clientes/{client}/editar", {"name": "Sítio das Flores", "phone": "07123 456789", "reminders": "1"})
+        quiet = self.create_client("No Phone Ltd")
+        self.owner.post(f"/clientes/{quiet}/editar", {"name": "No Phone Ltd", "phone": "", "reminders": "1"})
+        ana = self.create_employee()
+        tomorrow, today = self.day(1), self.day(0)
+        job = self.create_job(client, ana, tomorrow)
+        self.create_job(client, ana, today)
+        self.create_job(quiet, ana, tomorrow)
+        # lembrete desligado nas configurações: nada na linha
+        self.assertNotIn('data-remind="whatsapp"', self.owner.get("/trabalhos").get_data(as_text=True))
+        self.owner.post("/conta/lembretes", {"reminder_mode": "tap", "reminder_hour": "18", "reminder_language": "en"})
+        page = self.owner.get("/trabalhos").get_data(as_text=True)
+        self.assertEqual(page.count('data-remind="whatsapp"'), 1)  # só o de amanhã, do cliente com telefone
+        self.assertIn("https://wa.me/447123456789?text=", page)
+        self.assertIn(f"/lembretes/{client}/{tomorrow}/feito", page)
+        self.assertIn(">Remind<", page)
+        # a funcionária não cuida da agenda: sem o botão
+        self.assertNotIn('data-remind=', self.employee_browser().get("/meus-trabalhos").get_data(as_text=True))
+        # tocou: fica anotado como avisado, e a linha passa a mostrar isso
+        r = self.owner.post(f"/lembretes/{client}/{tomorrow}/feito", {"channel": "whatsapp"})
+        self.assertEqual(r.status_code, 302)
+        page = self.owner.get("/trabalhos").get_data(as_text=True)
+        self.assertNotIn('data-remind="whatsapp"', page)
+        self.assertIn("✓ Reminded", page)
+        self.assertIn("✓ Reminded", self.owner.get("/painel").get_data(as_text=True))
+
     def test_schedule_search_by_client_name(self):
         self.create_owner()
         rosa, elm = self.create_client("Sítio das Flores"), self.create_client("12 Elm Road")
