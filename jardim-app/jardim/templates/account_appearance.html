@@ -8,10 +8,10 @@
         id="look-form" data-colors-url="{{ url_for('preferences.look_colors') }}">
     {{ csrf_field() }}
     <div class="grid-2">
-      <label>{{ t('prefs.look_name') }} <span class="hint">{{ t('prefs.look_name_hint') }}</span>
+      <label><span class="label-line">{{ t('prefs.look_name') }} <span class="hint">{{ t('prefs.look_name_hint') }}</span></span>
         <input name="app_name" value="{{ look.app_name }}" maxlength="40" placeholder="{{ look.name_default }}" id="look-name" autocomplete="off">
       </label>
-      <label>{{ t('prefs.look_short') }} <span class="hint">{{ t('prefs.look_short_hint') }}</span>
+      <label><span class="label-line">{{ t('prefs.look_short') }} <span class="hint">{{ t('prefs.look_short_hint') }}</span></span>
         <input name="app_short_name" value="{{ look.app_short_name }}" maxlength="12" placeholder="{{ app_short_name }}" autocomplete="off">
       </label>
     </div>

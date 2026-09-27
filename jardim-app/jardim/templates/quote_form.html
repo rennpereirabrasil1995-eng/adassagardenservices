@@ -12,7 +12,7 @@
   {{ csrf_field() }}
 
   <h2 class="form-section">{{ t('quotes.to_section') }}</h2>
-  <label>{{ t('quotes.client_label') }} <span class="hint">{{ t('quotes.client_hint') }}</span>
+  <label><span class="label-line">{{ t('quotes.client_label') }} <span class="hint">{{ t('quotes.client_hint') }}</span></span>
     <select name="client_id" id="quote-client">
       <option value="">{{ t('quotes.new_person') }}</option>
       {% for c in clients %}
@@ -24,7 +24,7 @@
     <input name="to_name" value="{{ form.to_name }}" maxlength="120" required autocomplete="off">
   </label>
   <div class="grid-2">
-    <label>{{ t('clientform.phone_label') }} <span class="hint">{{ t('quotes.phone_hint') }}</span>
+    <label><span class="label-line">{{ t('clientform.phone_label') }} <span class="hint">{{ t('quotes.phone_hint') }}</span></span>
       {{ phone_input('to_phone', form.to_phone, autocomplete='off') }}
     </label>
     <label>{{ t('clientform.email_label') }}
@@ -79,13 +79,13 @@
       <input type="date" name="valid_until" value="{{ form.valid_until }}" required>
     </label>
   </div>
-  <label>{{ t('quotes.language_label') }} <span class="hint">{{ t('quotes.language_hint') }}</span>
+  <label><span class="label-line">{{ t('quotes.language_label') }} <span class="hint">{{ t('quotes.language_hint') }}</span></span>
     <select name="language">
       <option value="en"{% if form.language == 'en' %} selected{% endif %}>English</option>
       <option value="pt_BR"{% if form.language == 'pt_BR' %} selected{% endif %}>Português</option>
     </select>
   </label>
-  <label>{{ t('quotes.notes_label') }} <span class="hint">{{ t('quotes.notes_hint') }}</span>
+  <label><span class="label-line">{{ t('quotes.notes_label') }} <span class="hint">{{ t('quotes.notes_hint') }}</span></span>
     <textarea name="notes" rows="3" maxlength="3000" placeholder="{{ t('quotes.notes_placeholder') }}">{{ form.notes }}</textarea>
   </label>
 
