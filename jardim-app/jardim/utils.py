@@ -281,3 +281,5 @@ def init_app(app):
         app.add_template_filter(func, func.__name__)
     app.add_template_global(phone_parts, "phone_parts")
     app.add_template_global(country_codes, "country_codes")
+    from .companies import COMPANY_COLORS
+    app.add_template_global(lambda: COMPANY_COLORS, "company_colors")

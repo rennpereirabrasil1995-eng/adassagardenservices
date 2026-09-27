@@ -43,6 +43,7 @@
       <option value="" {% if not form.tier %}selected{% endif %}>{{ t('common.tier_none') }}</option>
       <option value="prata" {% if form.tier == 'prata' %}selected{% endif %}>{{ t('common.tier_prata') }}</option>
       <option value="ouro" {% if form.tier == 'ouro' %}selected{% endif %}>{{ t('common.tier_ouro') }}</option>
+      <option value="platina" {% if form.tier == 'platina' %}selected{% endif %}>{{ t('common.tier_platina') }}</option>
       <option value="diamante" {% if form.tier == 'diamante' %}selected{% endif %}>{{ t('common.tier_diamante') }}</option>
     </select>
     <span class="hint">{{ t('clientform.tier_hint') }}</span>

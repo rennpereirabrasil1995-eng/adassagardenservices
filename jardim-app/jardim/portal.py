@@ -324,7 +324,8 @@ def report_pdf_file(company, links):
 
 
 def _company():
-    return {"id": g.portal["company_id"], "name": g.portal["company_name"]}
+    return {"id": g.portal["company_id"], "name": g.portal["company_name"],
+            "color": g.portal["company_color"], "tier": g.portal["company_tier"]}
 
 
 @bp.route("/")

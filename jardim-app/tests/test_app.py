@@ -2532,6 +2532,48 @@ class AppTests(unittest.TestCase):
             self.assertIn('_cc"', page, url)
             self.assertIn("🇬🇧 +44", page, url)
 
+    def test_companies_have_a_tier_and_a_colour_from_the_palette(self):
+        company_id, elm, private, ana_id, _ = self.company_setup()
+        # criar com categoria e cor (o formulário de nova empresa tem os dois)
+        page = self.owner.get("/empresas/").get_data(as_text=True)
+        self.assertIn('name="tier"', page)
+        self.assertIn('name="color" value="#2f6b86"', page)
+        self.owner.post("/empresas/nova", {"name": "SLQ Properties", "tier": "platina", "color": "#2f6b86"})
+        slq = self.query("SELECT id, tier, color FROM companies WHERE name = 'SLQ Properties'")[0]
+        self.assertEqual((slq["tier"], slq["color"]), ("platina", "#2f6b86"))
+        lst = self.owner.get("/empresas/").get_data(as_text=True)
+        self.assertIn('pill-tier-platina">Platinum', lst)
+        self.assertIn('class="co-dot" style="--co: #2f6b86"', lst)
+        # editar: nome, categoria e cor juntos; cor fora da paleta e categoria inventada viram "nenhuma"
+        self.owner.post(f"/empresas/{company_id}/nome", {"name": "Hillside Property Services", "tier": "ouro", "color": "#a8324a"})
+        row = self.query("SELECT tier, color FROM companies WHERE id = ?", (company_id,))[0]
+        self.assertEqual((row["tier"], row["color"]), ("ouro", "#a8324a"))
+        self.owner.post(f"/empresas/{slq['id']}/nome", {"name": "SLQ Properties", "tier": "vip", "color": "red"})
+        row = self.query("SELECT tier, color FROM companies WHERE id = ?", (slq["id"],))[0]
+        self.assertEqual((row["tier"], row["color"]), ("", ""))
+        # a etiqueta da empresa ao lado do jardim usa a cor; a página do jardim mostra a categoria
+        clients = self.owner.get("/clientes/").get_data(as_text=True)
+        self.assertIn('pill-company" style="--co: #a8324a">Hillside Property Services', clients)
+        detail = self.owner.get(f"/clientes/{elm}").get_data(as_text=True)
+        self.assertIn('pill-tier-ouro">Gold', detail)
+        # na área da empresa, as abas usam a cor dela e o nome vem com a bolinha; a prévia do dono também
+        laura = self.portal_browser()
+        for url in ("/portal/", "/portal/gardens", "/portal/report", "/portal/account"):
+            page = laura.get(url).get_data(as_text=True)
+            self.assertIn('portal-nav" aria-label="Company area" style="--co: #a8324a"', page, url)
+        self.assertIn('class="co-dot" style="--co: #a8324a"></span>Hillside Property Services <span class="pill pill-tier-ouro">Gold', laura.get("/portal/").get_data(as_text=True))
+        self.assertIn('style="--co: #a8324a"', self.owner.get(f"/empresas/{company_id}/previa/").get_data(as_text=True))
+        # criar um login também deixa escolher a cor da empresa
+        form = self.owner.get(f"/empresas/{company_id}/acessos/novo").get_data(as_text=True)
+        self.assertIn('name="color" value="#a8324a" checked', form)
+        self.assertNotIn('name="tier"', form)
+        self.owner.post(f"/empresas/{company_id}/acessos/novo", {"name": "Tom", "email": "tom@hillside.co.uk", "language": "en",
+                                                                 "password": "senha-do-tom-1", "color": "#6b4fa0"})
+        self.assertEqual(self.query("SELECT color FROM companies WHERE id = ?", (company_id,))[0]["color"], "#6b4fa0")
+        # a categoria platina existe pro cliente comum também
+        self.owner.post(f"/clientes/{private}/editar", {"name": "Sítio das Flores", "tier": "platina"})
+        self.assertIn('pill-tier-platina">Platinum', self.owner.get("/clientes/").get_data(as_text=True))
+
     def test_schedule_search_by_client_name(self):
         self.create_owner()
         rosa, elm = self.create_client("Sítio das Flores"), self.create_client("12 Elm Road")

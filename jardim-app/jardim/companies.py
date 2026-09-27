@@ -15,6 +15,7 @@ Criar login pra alguém de fora e escolher o que ele vê é decisão do dono: es
   /empresas/<id>/previa/...      ver como a empresa vê (as mesmas telas da área dela)
 """
 import json
+import re
 import smtplib
 import sqlite3
 
@@ -28,6 +29,19 @@ from .team import suggest_password
 from .utils import valid_email
 
 bp = Blueprint("companies", __name__)
+
+
+TIERS = ("", "prata", "ouro", "platina", "diamante")
+# A paleta de cores de uma empresa: a etiqueta dela nas listas e a área dela usam essa cor
+COMPANY_COLORS = ("#2f7d46", "#1f8a7a", "#2f6b86", "#23406e", "#6b4fa0", "#b23a7a",
+                  "#a8324a", "#c2681b", "#7a5230", "#4d5d53")
+
+
+def read_style(form):
+    """Categoria e cor escolhidas num formulário (qualquer coisa fora da lista vira "nenhuma")."""
+    tier = form.get("tier", "").strip()
+    color = form.get("color", "").strip().lower()
+    return (tier if tier in TIERS else ""), (color if re.fullmatch(r"#[0-9a-f]{6}", color) else "")
 
 
 def _company_or_404(company_id):
@@ -67,8 +81,9 @@ def new_company():
     if not name:
         flash(i18n.t("companies.name_required"), "error")
         return redirect(url_for("companies.list_companies"))
+    tier, color = read_style(request.form)
     db = get_db()
-    cur = db.execute("INSERT INTO companies (name) VALUES (?)", (name,))
+    cur = db.execute("INSERT INTO companies (name, tier, color) VALUES (?, ?, ?)", (name, tier, color))
     db.commit()
     flash(i18n.t("companies.created", name=name), "ok")
     return _back(cur.lastrowid)
@@ -157,8 +172,9 @@ def rename_company(company_id):
     if not name:
         flash(i18n.t("companies.name_required"), "error")
     else:
+        tier, color = read_style(request.form)
         db = get_db()
-        db.execute("UPDATE companies SET name = ? WHERE id = ?", (name, company_id))
+        db.execute("UPDATE companies SET name = ?, tier = ?, color = ? WHERE id = ?", (name, tier, color, company_id))
         db.commit()
         flash(i18n.t("common.changes_saved"), "ok")
     return _back(company_id)
@@ -222,11 +238,11 @@ def _access_page(company, login, password, new):
 @owner_required
 def new_login(company_id):
     company = _company_or_404(company_id)
-    form = {"name": "", "email": "", "language": "en", "password": suggest_password()}
+    form = {"name": "", "email": "", "language": "en", "password": suggest_password(), "color": company["color"]}
     if request.method == "POST":
         f = request.form
         form = {"name": f.get("name", "").strip()[:120], "email": f.get("email", "").strip().lower()[:200],
-                "language": f.get("language", "en"), "password": f.get("password", "")}
+                "language": f.get("language", "en"), "password": f.get("password", ""), "color": read_style(f)[1]}
         if form["language"] not in i18n.LANGUAGES:
             form["language"] = "en"
         errors = []
@@ -244,6 +260,8 @@ def new_login(company_id):
                 db.execute("INSERT INTO company_users (company_id, name, email, password_hash, language, session_key) "
                            "VALUES (?, ?, ?, ?, ?, ?)", (company_id, form["name"], form["email"],
                                                          hash_password(form["password"]), form["language"], new_session_key()))
+                if "color" in f:  # a cor da empresa, escolhida na mesma tela
+                    db.execute("UPDATE companies SET color = ? WHERE id = ?", (read_style(f)[1], company_id))
                 db.commit()
             except sqlite3.IntegrityError:  # alguém cadastrou o mesmo e-mail no mesmo instante
                 db.rollback()
@@ -296,7 +314,7 @@ def delete_login(company_id, login_id):
 
 def _preview(company_id):
     row = _company_or_404(company_id)
-    company = {"id": row["id"], "name": row["name"]}
+    company = {"id": row["id"], "name": row["name"], "color": row["color"], "tier": row["tier"]}
     return company, portal.Links(company, preview=True)
 
 

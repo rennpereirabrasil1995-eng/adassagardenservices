@@ -1,3 +1,27 @@
+{# Categoria e cor de uma empresa (Clientes → Empresas): um seletor e a paleta de bolinhas. #}
+{% macro company_style_fields(tier, color, with_tier=true) -%}
+{% if with_tier %}
+<label>{{ t('companies.tier_label') }}
+  <select name="tier">
+    {% for key in ('', 'prata', 'ouro', 'platina', 'diamante') %}<option value="{{ key }}"{% if (tier or '') == key %} selected{% endif %}>{{ key|tier_label }}</option>{% endfor %}
+  </select>
+</label>
+{% endif %}
+<fieldset class="task-pick palette">
+  <legend>{{ t('companies.color_label') }}</legend>
+  <div class="swatches">
+    <label class="swatch none" title="{{ t('companies.color_none') }}"><input type="radio" name="color" value=""{% if not color %} checked{% endif %}><span></span><small>{{ t('companies.color_none') }}</small></label>
+    {% for c in company_colors() %}<label class="swatch" title="{{ c }}"><input type="radio" name="color" value="{{ c }}"{% if c == color %} checked{% endif %}><span style="--sw: {{ c }}"></span></label>{% endfor %}
+  </div>
+  <p class="hint">{{ t('companies.color_hint') }}</p>
+</fieldset>
+{%- endmacro %}
+
+{# O nome da empresa com a bolinha da cor e a categoria #}
+{% macro company_tag(company) -%}
+{% if company.color %}<span class="co-dot" style="--co: {{ company.color }}"></span>{% endif %}{{ company.name }}{% if company.tier %} <span class="pill pill-tier-{{ company.tier }}">{{ company.tier|tier_label }}</span>{% endif %}
+{%- endmacro %}
+
 {# Telefone com o código do país: a bandeira e o +código num seletor, e o número ao lado.
    Grava "+44 7700 900111" (utils.read_phone junta os dois no servidor). #}
 {% macro phone_input(name, value, autocomplete='tel', required=false) -%}

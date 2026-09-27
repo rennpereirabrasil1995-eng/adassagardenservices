@@ -122,7 +122,7 @@
   <h2>{{ t('company.clients_section') }}</h2>
   <dl class="facts sheet pad">
     <div><dt>{{ t('company.clients_active') }}</dt><dd>{{ clients_active }}
-      <span class="tier-counts">{% for tier in ('diamante', 'ouro', 'prata', '') %}{% if tiers[tier] %}<span class="pill {{ 'pill-tier-' ~ tier if tier else '' }}">{{ tier|tier_label }}: {{ tiers[tier] }}</span>{% endif %}{% endfor %}</span></dd></div>
+      <span class="tier-counts">{% for tier in ('diamante', 'platina', 'ouro', 'prata', '') %}{% if tiers[tier] %}<span class="pill {{ 'pill-tier-' ~ tier if tier else '' }}">{{ tier|tier_label }}: {{ tiers[tier] }}</span>{% endif %}{% endfor %}</span></dd></div>
     <div><dt>{{ t('company.clients_inactive') }}</dt><dd>{{ clients_inactive }}</dd></div>
     <div><dt>{{ t('company.clients_new') }}</dt><dd>{{ clients_new }}</dd></div>
   </dl>

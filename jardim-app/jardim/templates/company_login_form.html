@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ t('companies.login_form_title') }} – {% endblock %}
+{% from "_macros.html" import company_style_fields with context %}
 {% block content %}
 <p class="crumb"><a href="{{ url_for('companies.company_detail', company_id=company.id, _anchor='acessos') }}">‹ {{ company.name }}</a></p>
 <div class="page-head">
@@ -26,6 +27,7 @@
     <input name="password" value="{{ form.password }}" minlength="8" maxlength="200" autocomplete="off" spellcheck="false" required>
     <span class="hint">{{ t('companies.login_password_hint') }}</span>
   </label>
+  {{ company_style_fields(none, form.color, with_tier=false) }}
   <div class="actions">
     <button class="btn primary" type="submit">{{ t('companies.add_login') }}</button>
     <a class="btn" href="{{ url_for('companies.company_detail', company_id=company.id, _anchor='acessos') }}">{{ t('common.cancel') }}</a>

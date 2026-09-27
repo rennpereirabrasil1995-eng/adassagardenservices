@@ -9,7 +9,7 @@
   <p>{{ t('companies.preview_text') }} <a href="{{ url_for('companies.company_detail', company_id=company.id) }}">{{ t('companies.preview_back') }}</a></p>
 </div>
 {% endif %}
-<nav class="seg portal-nav" aria-label="{{ t('portal.nav_label') }}">
+<nav class="seg portal-nav" aria-label="{{ t('portal.nav_label') }}"{% if company.color %} style="--co: {{ company.color }}"{% endif %}>
   <a href="{{ links('days') }}"{% if active == 'days' %} class="on" aria-current="page"{% endif %}>{{ t('portal.nav_services') }}</a>
   <a href="{{ links('gardens') }}"{% if active == 'gardens' %} class="on" aria-current="page"{% endif %}>{{ t('portal.nav_gardens') }}</a>
   <a href="{{ links('report') }}"{% if active == 'report' %} class="on" aria-current="page"{% endif %}>{{ t('portal.nav_report') }}</a>

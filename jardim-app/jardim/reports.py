@@ -177,7 +177,7 @@ def report_data(period, ref):
         late_now=db.execute("SELECT COUNT(*) FROM jobs WHERE status IN ('scheduled', 'in_progress') AND job_date < ?",
                             (today,)).fetchone()[0],
         clients_active=len(active), clients_inactive=len(clients) - len(active),
-        tiers={tier: sum(1 for c in active if c["tier"] == tier) for tier in ("diamante", "ouro", "prata", "")},
+        tiers={tier: sum(1 for c in active if c["tier"] == tier) for tier in ("diamante", "platina", "ouro", "prata", "")},
         clients_new=sum(1 for c in clients if start <= (c["created"] or "") <= end),
         pending=pending_cash(),
     )

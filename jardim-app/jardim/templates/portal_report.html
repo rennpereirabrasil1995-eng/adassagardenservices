@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import company_tag with context %}
 {% from "_portal.html" import portal_top with context %}
 {% from "_charts.html" import services_chart, hours_chart, stack_chart with context %}
 {% block title %}{{ t('portal.nav_report') }} · {{ period_label }} – {% endblock %}
@@ -8,7 +9,7 @@
 <div class="page-head">
   <div>
     <h1>{{ t('portal.report_title') }}</h1>
-    <p class="sub">{{ company.name }} · {{ period_label }}</p>
+    <p class="sub">{{ company_tag(company) }} · {{ period_label }}</p>
   </div>
   <a class="btn" href="{{ links('report_pdf', periodo=period, data=ref) }}">{{ t('company.download_pdf') }}</a>
 </div>

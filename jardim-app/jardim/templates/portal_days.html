@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import company_tag with context %}
 {% from "_portal.html" import portal_top, service_card with context %}
 {% block title %}{{ t('portal.nav_services') }} · {{ day|date_long }} – {% endblock %}
 {% block content %}
@@ -7,7 +8,7 @@
 <div class="page-head">
   <div>
     <h1>{{ day|date_long }}</h1>
-    <p class="sub">{{ company.name }}{% if day == today %} · {{ t('portal.today') }}{% elif day == yesterday %} · {{ t('portal.yesterday') }}{% endif %}</p>
+    <p class="sub">{{ company_tag(company) }}{% if day == today %} · {{ t('portal.today') }}{% elif day == yesterday %} · {{ t('portal.yesterday') }}{% endif %}</p>
   </div>
 </div>
 

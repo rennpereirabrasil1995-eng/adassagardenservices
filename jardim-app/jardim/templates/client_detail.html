@@ -20,7 +20,7 @@
   {% endif %}
   {% if client.phone %}<div><dt>{{ t('clientform.phone_label') }}</dt><dd><a href="tel:{{ client.phone|replace(' ', '') }}">{{ client.phone }}</a></dd></div>{% endif %}
   {% if client.email %}<div><dt>{{ t('clientform.email_label') }}</dt><dd><a href="mailto:{{ client.email }}">{{ client.email }}</a></dd></div>{% endif %}
-  {% if company %}<div><dt>{{ t('clientform.company_label') }}</dt><dd>{% if current_user.role == 'owner' %}<a href="{{ url_for('companies.company_detail', company_id=company.id) }}">{{ company.name }}</a>{% else %}{{ company.name }}{% endif %} <span class="hint">· {{ t('clientdetail.company_sees') }}</span></dd></div>{% endif %}
+  {% if company %}<div><dt>{{ t('clientform.company_label') }}</dt><dd>{% if current_user.role == 'owner' %}<a href="{{ url_for('companies.company_detail', company_id=company.id) }}">{{ company.name }}</a>{% else %}{{ company.name }}{% endif %}{% if company.color %} <span class="co-dot" style="--co: {{ company.color }}"></span>{% endif %}{% if company.tier %} <span class="pill pill-tier-{{ company.tier }}">{{ company.tier|tier_label }}</span>{% endif %} <span class="hint">· {{ t('clientdetail.company_sees') }}</span></dd></div>{% endif %}
 </dl>
 
 {% if client.access_notes %}

@@ -167,7 +167,8 @@ def load_user():
         # Alguém de uma empresa, na área dela (portal.py). Não é da equipe: g.user continua vazio,
         # então todas as outras telas mandam pro login.
         g.portal = get_db().execute(
-            "SELECT cu.*, co.name AS company_name FROM company_users cu JOIN companies co ON co.id = cu.company_id "
+            "SELECT cu.*, co.name AS company_name, co.color AS company_color, co.tier AS company_tier "
+            "FROM company_users cu JOIN companies co ON co.id = cu.company_id "
             "WHERE cu.id = ? AND cu.active = 1 AND cu.session_key != '' AND cu.session_key = ?",
             (session["portal_user_id"], session.get("portal_key", ""))).fetchone()
         if g.portal is None:  # desativado, apagado, senha trocada (a chave mudou) ou a empresa foi excluída

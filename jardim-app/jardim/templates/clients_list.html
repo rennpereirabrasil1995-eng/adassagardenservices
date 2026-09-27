@@ -18,7 +18,7 @@
 <div class="sheet">
   {% for c in clients %}
   <a class="member" href="{{ url_for('clients.client_detail', client_id=c.id) }}">
-    <span class="member-name">{{ c.name }}{% if c.tier %} <span class="pill pill-tier-{{ c.tier }}">{{ c.tier|tier_label }}</span>{% endif %}{% if c.company_name %} <span class="pill pill-company">{{ c.company_name }}</span>{% endif %}</span>
+    <span class="member-name">{{ c.name }}{% if c.tier %} <span class="pill pill-tier-{{ c.tier }}">{{ c.tier|tier_label }}</span>{% endif %}{% if c.company_name %} <span class="pill pill-company"{% if c.company_color %} style="--co: {{ c.company_color }}"{% endif %}>{{ c.company_name }}</span>{% endif %}</span>
     <span class="member-meta">{{ c.address }}{% if c.address and c.postcode %}, {% endif %}{{ c.postcode }}</span>
     <span class="member-jobs">{{ c.jobs_count }} {{ t('clients.jobs_count_one') if c.jobs_count == 1 else t('clients.jobs_count_many') }}</span>
   </a>

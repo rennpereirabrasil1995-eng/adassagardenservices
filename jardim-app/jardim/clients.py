@@ -12,7 +12,7 @@ bp = Blueprint("clients", __name__, url_prefix="/clientes")
 
 FIELDS = ("name", "address", "postcode", "phone", "email", "access_notes", "notes", "tier", "task_template")
 SAVED = FIELDS + ("reminders",)
-TIER_VALUES = {"", "prata", "ouro", "diamante"}
+TIER_VALUES = {"", "prata", "ouro", "platina", "diamante"}
 
 
 def _get_client_or_404(client_id):
@@ -61,7 +61,8 @@ def _read_form():
 def list_clients():
     q = request.args.get("q", "").strip()
     archived = request.args.get("arquivados") == "1"
-    sql = ("SELECT c.*, co.name AS company_name, (SELECT COUNT(*) FROM jobs j WHERE j.client_id = c.id) AS jobs_count "
+    sql = ("SELECT c.*, co.name AS company_name, co.color AS company_color, "
+           "(SELECT COUNT(*) FROM jobs j WHERE j.client_id = c.id) AS jobs_count "
            "FROM clients c LEFT JOIN companies co ON co.id = c.company_id WHERE c.active = ?")
     params = [0 if archived else 1]
     if q:
@@ -109,7 +110,7 @@ def client_detail(client_id):
         today = utils.today_iso()
         client_quotes = [dict(r, ref=quotes.ref(r["number"]), state=quotes.status_of(r, today)) for r in get_db().execute(
             "SELECT * FROM quotes WHERE client_id = ? ORDER BY id DESC LIMIT 20", (client_id,))]
-    company = get_db().execute("SELECT id, name FROM companies WHERE id = ?", (client["company_id"],)).fetchone() \
+    company = get_db().execute("SELECT id, name, color, tier FROM companies WHERE id = ?", (client["company_id"],)).fetchone() \
         if client["company_id"] else None
     return render_template("client_detail.html", client=client, jobs=jobs,
                            template_tasks=parse_tasks(client["task_template"]),

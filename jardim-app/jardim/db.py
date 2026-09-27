@@ -114,6 +114,13 @@ MIGRATIONS = [
     "ALTER TABLE jobs ADD COLUMN planned_text TEXT NOT NULL DEFAULT '';",
     # Endereço de quem é da equipe (Equipe → Adicionar pessoa)
     "ALTER TABLE users ADD COLUMN address TEXT NOT NULL DEFAULT '';",
+    # Empresa com categoria (prata, ouro, platina, diamante) e uma cor da paleta (etiqueta e área da empresa)
+    """
+    BEGIN;
+    ALTER TABLE companies ADD COLUMN tier TEXT NOT NULL DEFAULT '';
+    ALTER TABLE companies ADD COLUMN color TEXT NOT NULL DEFAULT '';
+    COMMIT;
+    """,
 ]
 
 

@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block title %}{{ company.name }} – {% endblock %}
-{% from "_macros.html" import show_more with context %}
+{% from "_macros.html" import show_more, company_style_fields, company_tag with context %}
 {% block content %}
 <p class="crumb"><a href="{{ url_for('companies.list_companies') }}">‹ {{ t('companies.title') }}</a></p>
 <div class="page-head">
   <div>
-    <h1>{{ company.name }}</h1>
+    <h1>{{ company_tag(company) }}</h1>
     <p class="sub">{{ t('companies.gardens_one') if gardens|length == 1 else t('companies.gardens_many', n=gardens|length) }} ·
       {% set active_logins = logins|selectattr('active')|list|length %}{% if active_logins %}{{ t('companies.logins_one') if active_logins == 1 else t('companies.logins_many', n=active_logins) }}{% else %}{{ t('companies.logins_none') }}{% endif %}</p>
   </div>
@@ -150,7 +150,8 @@
       <label>{{ t('companies.name_label') }}
         <input name="name" value="{{ company.name }}" maxlength="120" required>
       </label>
-      <div class="actions"><button class="btn" type="submit">{{ t('companies.save_name') }}</button></div>
+      {{ company_style_fields(company.tier, company.color) }}
+      <div class="actions"><button class="btn" type="submit">{{ t('common.save_changes') }}</button></div>
     </form>
     <form method="post" action="{{ url_for('companies.delete_company', company_id=company.id) }}" onsubmit='return confirm({{ t('companies.delete_confirm', name=company.name)|tojson }})'>
       {{ csrf_field() }}
