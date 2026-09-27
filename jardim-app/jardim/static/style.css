@@ -967,6 +967,15 @@ a.vbar:hover .vbar-fill, a.vbar:focus-visible .vbar-fill { filter: brightness(1.
 .week-dots i { display: block; width: .55rem; height: .55rem; border-radius: 50%; background: var(--co); border: 1px solid rgba(255,255,255,.7); }
 .week-unscheduled { margin: .75rem 0 0; padding: .8rem 1rem; border: 1px dashed var(--line-strong); border-radius: 10px; }
 .week-unscheduled ul { margin: .35rem 0 0; }
+.week-block.movable { cursor: grab; touch-action: pan-y; }
+.week-block.dragging { opacity: .35; }
+.week-ghost { position: fixed; z-index: 60; pointer-events: none; opacity: .92; box-shadow: 0 8px 24px rgba(0,0,0,.3); cursor: grabbing; }
+.week-drop { grid-row: var(--row) / span var(--span); grid-column: 1 / -1; margin: 1px 2px; border: 2px dashed var(--link);
+  border-radius: 6px; background: color-mix(in srgb, var(--link) 12%, transparent); pointer-events: none; z-index: 1;
+  display: flex; align-items: flex-start; padding: .25rem .4rem; font-size: .8rem; font-weight: 700; color: var(--link); }
+body.week-dragging { user-select: none; -webkit-user-select: none; cursor: grabbing; }
+.week-drag-hint { margin: -.5rem 0 .75rem; }
+.week-status { margin: 0 0 .75rem; }
 .week-legend i { border-radius: 50%; }
 .week-legend-none { background: var(--line-strong); }
 .week-print-head { display: none; }

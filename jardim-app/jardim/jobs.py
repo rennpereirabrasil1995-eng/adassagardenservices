@@ -3,7 +3,7 @@ import json
 import re
 from datetime import date, timedelta
 
-from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, g, jsonify, redirect, render_template, request, url_for
 
 from . import i18n, notifications, photos, quotes, reminders, reports, utils
 from .auth import can, login_required, permission_required, permissions_of
@@ -405,6 +405,61 @@ def _week_grid(jobs, start, end, today):
     times = [f"{(first_min + i * SLOT) // 60:02d}:{(first_min + i * SLOT) % 60:02d}" for i in range(rows)]
     return {"days": [columns[d] for d in days], "times": times, "rows": rows,
             "legend": [{"name": people[uid], "color": color_of[uid]} for uid in sorted(people, key=lambda u: people[u].lower())]}
+
+
+def _block_length(job):
+    """Quanto o trabalho ocupa na grade: o tempo previsto (ou 1h), entre meia hora e 12h."""
+    return max(SLOT, min(job["planned_minutes"] or DEFAULT_LENGTH, 12 * 60))
+
+
+def _busy_people(job, day, begin):
+    """Quem do trabalho já estaria ocupado nesse dia e horário: outro trabalho aberto da mesma pessoa que
+    se sobrepõe. Devolve [(nome, trabalho)], na ordem em que a pessoa aparece no trabalho."""
+    if not job["people_ids"]:
+        return []
+    end = begin + _block_length(job)
+    marks = ",".join("?" * len(job["people_ids"]))
+    others = fetch_jobs(f"j.job_date = ? AND j.id != ? AND j.status IN ('scheduled', 'in_progress') "
+                        f"AND j.id IN (SELECT job_id FROM job_assignees WHERE user_id IN ({marks}))",
+                        (day, job["id"], *job["people_ids"]))
+    busy = []
+    for other in others:
+        if not utils.valid_time(other["start_time"] or ""):
+            continue
+        h, m = map(int, other["start_time"].split(":"))
+        o_begin = h * 60 + m
+        if begin < o_begin + _block_length(other) and o_begin < end:
+            for p in job["people"]:
+                if p["id"] in other["people_ids"]:
+                    busy.append((p["name"], other))
+    return busy
+
+
+@bp.route("/trabalhos/<int:job_id>/mover", methods=("POST",))
+@permission_required("schedule")
+def move_job(job_id):
+    """Arrastou o bloco na grade da semana: novo dia e horário. Só trabalho agendado; a política de escala vale:
+    a mesma pessoa não fica em dois trabalhos ao mesmo tempo. Responde em JSON pro week.js."""
+    job = get_job_or_404(job_id)
+    day, time = request.form.get("date", "").strip(), request.form.get("time", "").strip()
+    if utils.parse_date(day) is None or not utils.valid_time(time):
+        return jsonify(ok=False, message=i18n.t("jobs.date_invalid") if utils.parse_date(day) is None else i18n.t("jobs.time_invalid")), 400
+    if job["status"] != "scheduled":
+        return jsonify(ok=False, message=i18n.t("week.move_only_scheduled")), 409
+    if (day, time) == (job["job_date"], job["start_time"]):
+        return jsonify(ok=True, moved=False)
+    h, m = map(int, time.split(":"))
+    busy = _busy_people(job, day, h * 60 + m)
+    if busy:
+        name, other = busy[0]
+        return jsonify(ok=False, message=i18n.t("week.move_conflict", person=name, client=other["client_name"],
+                                                time=other["start_time"], date=utils.date_long(day))), 409
+    db = get_db()
+    db.execute("UPDATE jobs SET job_date = ?, start_time = ? WHERE id = ?", (day, time, job_id))
+    notifications.job_updated(job, job_id)  # quem está escalado fica sabendo da mudança
+    db.commit()
+    flash(i18n.t("week.moved", client=job["client_name"], when=f"{utils.date_long(day)}, {time}"), "ok")
+    return jsonify(ok=True, moved=True, date=day, time=time)
 
 
 @bp.route("/agenda/semana")

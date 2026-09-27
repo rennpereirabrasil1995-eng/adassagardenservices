@@ -2907,6 +2907,51 @@ class AppTests(unittest.TestCase):
         self.assertEqual(self.employee_browser().get("/agenda/semana").status_code, 403)
         self.assertIn("/agenda/semana", self.owner.get("/painel").get_data(as_text=True))
 
+    def test_dragging_a_job_in_the_week_grid_moves_it_unless_the_person_is_busy(self):
+        self.create_owner()
+        client = self.create_client()
+        ana_id = self.create_employee()
+        bruno = self.create_employee("Bruno", "bruno@example.com", "senha-do-bruno-1")
+        monday, _sunday = utils.week_bounds(self.day(0))
+        tue = (date.fromisoformat(monday) + timedelta(days=1)).isoformat()
+        sat = (date.fromisoformat(monday) + timedelta(days=5)).isoformat()
+        self.owner.post("/trabalhos/novo", {"client_id": client, "assigned_to": str(ana_id), "title": "Roehampton", "job_date": monday,
+                                            "start_time": "08:00", "planned_hours": "2"})
+        self.owner.post("/trabalhos/novo", {"client_id": client, "assigned_to": [str(ana_id), str(bruno)], "title": "Share",
+                                            "job_date": tue, "start_time": "09:00", "planned_hours": "1"})
+        self.owner.post("/trabalhos/novo", {"client_id": client, "assigned_to": str(bruno), "title": "Bruno only", "job_date": tue,
+                                            "start_time": "14:00"})
+        roe, share, solo = [r["id"] for r in self.query("SELECT id FROM jobs ORDER BY id")]
+        page = self.owner.get("/agenda/semana").get_data(as_text=True)
+        self.assertIn(f'data-move="/trabalhos/{roe}/mover"', page)  # agendado: dá pra arrastar
+        self.assertIn("week.js", page)
+        # entrada inválida e permissão
+        self.assertEqual(self.owner.post(f"/trabalhos/{roe}/mover", {"date": "2026-13-01", "time": "09:00"}).status_code, 400)
+        self.assertEqual(self.owner.post(f"/trabalhos/{roe}/mover", {"date": sat, "time": "9h"}).status_code, 400)
+        self.assertEqual(self.employee_browser().post(f"/trabalhos/{roe}/mover", {"date": sat, "time": "09:00"}).status_code, 403)
+        # a Ana já está em Roehampton na segunda das 8h às 10h: o Share não pode cair às 09:30 de segunda
+        r = self.owner.post(f"/trabalhos/{share}/mover", {"date": monday, "time": "09:30"})
+        self.assertEqual(r.status_code, 409)
+        with self.app.app_context():
+            when = utils.date_long(monday)
+        self.assertEqual(r.get_json()["message"], f"Ana already has Sítio das Flores at 08:00 on {when}.")
+        self.assertEqual(self.query("SELECT job_date, start_time FROM jobs WHERE id = ?", (share,))[0], {"job_date": tue, "start_time": "09:00"})
+        # às 10:00 de segunda a Ana já acabou: pode; quem está escalado recebe o aviso de remarcação
+        r = self.owner.post(f"/trabalhos/{share}/mover", {"date": monday, "time": "10:00"})
+        self.assertEqual((r.status_code, r.get_json()["ok"]), (200, True))
+        self.assertEqual(self.query("SELECT job_date, start_time FROM jobs WHERE id = ?", (share,))[0], {"job_date": monday, "start_time": "10:00"})
+        self.assertEqual(len(self.notices(ana_id, "job_rescheduled")), 1)
+        self.assertEqual(len(self.notices(bruno, "job_rescheduled")), 1)
+        self.assertIn("Moved: Sítio das Flores", self.owner.get("/agenda/semana").get_data(as_text=True))
+        # o trabalho só do Bruno pode ir pra terça 09:00 (a Ana não está nele) mas não pra segunda 10:30 (o Bruno está no Share)
+        self.assertEqual(self.owner.post(f"/trabalhos/{solo}/mover", {"date": tue, "time": "09:00"}).status_code, 200)
+        self.assertEqual(self.owner.post(f"/trabalhos/{solo}/mover", {"date": monday, "time": "10:30"}).status_code, 409)
+        # mesmo lugar: nada muda; concluído não se move
+        self.assertEqual(self.owner.post(f"/trabalhos/{solo}/mover", {"date": tue, "time": "09:00"}).get_json(), {"ok": True, "moved": False})
+        self.set_times(roe, "08:00", "10:00")
+        self.assertEqual(self.owner.post(f"/trabalhos/{roe}/mover", {"date": sat, "time": "09:00"}).status_code, 409)
+        self.assertNotIn(f'data-move="/trabalhos/{roe}/mover"', self.owner.get("/agenda/semana").get_data(as_text=True))
+
     def test_schedule_search_by_client_name(self):
         self.create_owner()
         rosa, elm = self.create_client("Sítio das Flores"), self.create_client("12 Elm Road")

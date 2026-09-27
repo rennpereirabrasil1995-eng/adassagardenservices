@@ -34,18 +34,22 @@
 
 <div class="week-print-head"><b>{{ t('week.title') }}</b> · {{ t('week.wc', date=start|date_long) }}</div>
 
+<p class="hint no-print week-drag-hint">{{ t('week.drag_hint') }}</p>
+<p class="callout callout-late week-status" id="week-status" role="status" aria-live="polite" hidden></p>
+{{ csrf_field() }}
 <div class="week-wrap">
-<div class="week" style="--rows: {{ rows }}">
+<div class="week" id="week-grid" style="--rows: {{ rows }}" data-rows="{{ rows }}" data-first="{{ times[0] if times else '08:00' }}">
   <div class="week-corner"></div>
   {% for d in days %}
   <div class="week-day{% if d.today %} today{% endif %}"><b>{{ d.date|weekday }}</b><span>{{ d.date|day_num }} {{ d.date|month_abbr }}</span></div>
   {% endfor %}
   <div class="week-times">{% for tm in times %}<span{% if loop.index0 % 2 %} class="half"{% endif %}>{{ tm }}</span>{% endfor %}</div>
   {% for d in days %}
-  <div class="week-col{% if d.today %} today{% endif %}" style="--lanes: {{ d.lanes }}">
+  <div class="week-col{% if d.today %} today{% endif %}" style="--lanes: {{ d.lanes }}" data-date="{{ d.date }}">
     {% for i in range(rows) %}<span class="week-slot{% if i % 2 %} half{% endif %}" style="--row: {{ i + 1 }}"></span>{% endfor %}
     {% for b in d.blocks %}{% set j = b.job %}
-    <a class="week-block{% if j.status == 'done' %} done{% elif j.status == 'in_progress' %} running{% endif %}" href="{{ url_for('jobs.job_detail', job_id=j.id) }}"
+    <a class="week-block{% if j.status == 'done' %} done{% elif j.status == 'in_progress' %} running{% elif j.status == 'scheduled' %} movable{% endif %}" href="{{ url_for('jobs.job_detail', job_id=j.id) }}"
+       {% if j.status == 'scheduled' %}data-move="{{ url_for('jobs.move_job', job_id=j.id) }}" data-span="{{ b.span }}" data-start="{{ j.start_time }}" draggable="false"{% endif %}
        style="--row: {{ b.row }}; --span: {{ b.span }}; --lane: {{ b.lane }};{% if b.color %} --co: {{ b.color }};{% endif %}"
        title="{{ j.client_name }} · {{ j.start_time }} · {{ j.employee_name or t('common.no_employee') }}">
       <b>{{ j.client_name }}</b>
@@ -69,6 +73,8 @@
 {% endif %}
 </div>
 
+<script type="application/json" id="week-text">{{ {'failed': t('week.move_failed'), 'moving': t('week.moving')}|tojson }}</script>
+<script src="{{ url_for('static', filename='week.js') }}" defer></script>
 {% if legend %}
 <p class="legend week-legend">{% for p in legend %}<span><i style="background: {{ p.color }}"></i>{{ p.name }}</span>{% endfor %}<span><i class="week-legend-none"></i>{{ t('common.no_employee') }}</span></p>
 {% endif %}
