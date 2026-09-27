@@ -18,6 +18,26 @@
 </figure>
 {%- endmacro %}
 
+{# Área da empresa: serviços por dia (semana e mês) ou por mês (ano), uma cor só. Tocar numa coluna abre o dia
+   (ou o relatório daquele mês). Os números também estão na tabela por jardim, logo abaixo. #}
+{% macro services_chart(bars, caption, dense=false) -%}
+{% set total = bars|sum(attribute='total') %}
+<figure class="sheet chart" role="img" aria-label="{{ t('portal.chart_services_aria', n=total) }}">
+  <figcaption>{{ caption }}</figcaption>
+  <div class="vbars{% if dense %} dense{% endif %}">
+    {% for b in bars %}
+    {% if b.link %}<a class="vbar" href="{{ b.link }}" style="--h: {{ b.pct }}%" title="{{ t('portal.bar_services', label=b.title, n=b.total) }}">
+      <span class="val">{{ b.total }}</span>
+      <div class="vbar-fill"><span class="c-done" style="flex-grow: 1"></span></div>
+    </a>
+    {% else %}<div class="vbar" style="--h: 0%" title="{{ t('portal.bar_services', label=b.title, n=0) }}"><div class="vbar-fill"></div></div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  <div class="vlabels{% if dense %} dense{% endif %}">{% for b in bars %}<span>{{ b.label }}</span>{% endfor %}</div>
+</figure>
+{%- endmacro %}
+
 {% macro hours_chart(people, peak, caption=none) -%}
 <figure class="sheet chart">
   <figcaption>{{ caption or t('company.chart_hours') }}</figcaption>

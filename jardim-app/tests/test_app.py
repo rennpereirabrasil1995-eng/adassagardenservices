@@ -2454,6 +2454,64 @@ class AppTests(unittest.TestCase):
         # sem serviço hoje: mostra o último dia que teve, com o caminho pro anterior
         self.assertIn("No services on this day.", laura.get(f"/portal/?day={self.day(-5)}").get_data(as_text=True))
 
+    def test_company_area_report_sums_the_period_by_garden(self):
+        company_id, elm, private, ana_id, _ = self.company_setup()
+        oak = self.create_client("5 Oak Avenue")
+        self.owner.post(f"/empresas/{company_id}/jardins", {"client_id": oak})
+        today = self.day(0)
+        week_start, _ = utils.week_bounds(today)
+        j1 = self.create_job(elm, ana_id, week_start, tasks="Mow the lawn\nTrim the hedge\nTake photos\nWeed the path")
+        ids = [t["id"] for t in self.query("SELECT id FROM job_tasks WHERE job_id = ? ORDER BY position, id", (j1,))]
+        ana = self.employee_browser()
+        ana.post(f"/trabalhos/{j1}/fotos/depois", {"photo": [(self._photo(), "b.jpg"), (self._photo(), "c.jpg")]})
+        ana.post(f"/trabalhos/{j1}/atualizar", {
+            "action": "finish", f"task_{ids[0]}": "done", f"task_{ids[1]}": "done", f"task_{ids[2]}": "done",
+            f"task_{ids[3]}": "not_done", f"note_{ids[3]}": "Path blocked by a skip", "cash": "45"})
+        self.set_times(j1, "09:00", "10:30")
+        j2 = self.create_job(oak, ana_id, week_start, tasks="Mow the lawn")
+        self.set_times(j2, "11:00", "11:45")
+        self.create_job(elm, ana_id, today)  # ainda não concluído: fora do relatório
+        other = self.create_job(private, ana_id, week_start)  # jardim particular: fora
+        self.set_times(other, "12:00", "13:00")
+        old = self.create_job(oak, ana_id, "2025-03-10")  # outro período
+        self.set_times(old, "12:00", "13:00")
+
+        laura = self.portal_browser()
+        page = laura.get("/portal/report").get_data(as_text=True)
+        for expected in ("2</b><span>services done", "2h15", "2</b><span>gardens visited", "of 2", "2</b><span>tasks done",
+                         "1 not done", "12 Elm Road", "5 Oak Avenue", "1h30", "45 min", "Path blocked by a skip", "Weed the path",
+                         "Services per day", f"/portal/?day={week_start}", "Time on site per garden"):
+            self.assertIn(expected, page)
+        for private_bit in ("Sítio das Flores", "£45", "Ana", "Take photos"):
+            self.assertNotIn(private_bit, page)
+        year = laura.get("/portal/report?periodo=ano&data=2025-06-01").get_data(as_text=True)
+        self.assertIn("1</b><span>service done", year)
+        self.assertIn("Services per month", year)
+        self.assertIn("/portal/report?periodo=mes&amp;data=2025-03-01", year)
+        self.assertIn("No services at your gardens in this period.", laura.get("/portal/report?periodo=mes&data=2020-01-01").get_data(as_text=True))
+        self.assertEqual(laura.get("/portal/report?periodo=xyz&data=bobagem").status_code, 200)  # cai no padrão
+        with laura.get(f"/portal/report/pdf?periodo=semana&data={today}") as r:
+            self.assertEqual((r.status_code, r.mimetype), (200, "application/pdf"))
+            self.assertTrue(r.data.startswith(b"%PDF"))
+            self.assertIn("report-semana-", r.headers["Content-Disposition"])
+            pdf = r.data
+        if shutil.which("pdftotext"):
+            text = subprocess.run(["pdftotext", "-", "-"], input=pdf, capture_output=True, check=True).stdout.decode()
+            for expected in ("Hillside Property Services", "12 Elm Road", "2h15", "Path blocked by a skip"):
+                self.assertIn(expected, text)
+            self.assertNotIn("£45", text)
+        with laura.get("/portal/report/pdf?periodo=ano&data=2020-01-01") as r:  # período vazio também gera
+            self.assertEqual(r.status_code, 200)
+        # a prévia do dono mostra o mesmo, pelos endereços da prévia; a equipe não entra na área da empresa
+        preview = self.owner.get(f"/empresas/{company_id}/previa/relatorio").get_data(as_text=True)
+        self.assertIn("2</b><span>services done", preview)
+        self.assertIn(f"/empresas/{company_id}/previa/relatorio/pdf", preview)
+        self.assertIn(f"/empresas/{company_id}/previa/?day={week_start}", preview)
+        with self.owner.get(f"/empresas/{company_id}/previa/relatorio/pdf") as r:
+            self.assertEqual(r.mimetype, "application/pdf")
+        self.assertEqual(ana.get("/portal/report").status_code, 302)
+        self.assertIn("/portal/report", laura.get("/portal/").get_data(as_text=True))  # a aba nova
+
     def test_company_comments_reach_the_owner_and_the_reply_goes_back(self):
         company_id, elm, private, ana_id, _ = self.company_setup()
         self.enable_email()

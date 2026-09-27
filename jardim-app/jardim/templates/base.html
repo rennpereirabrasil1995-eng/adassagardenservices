@@ -61,7 +61,8 @@
       {% if 'schedule' in user_permissions %}{{ tab('jobs.list_jobs', t('nav.agenda'), ['jobs.list_jobs', 'jobs.new_job', 'jobs.edit_job']) }}{% endif %}
       {% if 'clients' in user_permissions %}{{ tab('clients.list_clients', t('nav.clients'), ['clients.list_clients', 'clients.new_client', 'clients.client_detail', 'clients.edit_client',
         'companies.list_companies', 'companies.company_detail', 'companies.new_login', 'companies.reset_login',
-        'companies.preview_days', 'companies.preview_gardens', 'companies.preview_garden', 'companies.preview_service']) }}{% endif %}
+        'companies.preview_days', 'companies.preview_gardens', 'companies.preview_garden', 'companies.preview_service',
+        'companies.preview_report']) }}{% endif %}
       {% if 'quotes' in user_permissions %}{{ tab('quotes.list_quotes', t('nav.quotes'), ['quotes.list_quotes', 'quotes.new_quote', 'quotes.quote_detail', 'quotes.edit_quote']) }}{% endif %}
       {% if current_user.role == 'owner' %}{{ tab('team.list_team', t('nav.team'), ['team.list_team', 'team.new_member', 'team.edit_member']) }}{% endif %}
       {{ tab('jobs.my_jobs', t('nav.my_jobs'), ['jobs.my_jobs']) }}

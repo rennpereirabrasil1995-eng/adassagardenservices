@@ -16,6 +16,7 @@ As mesmas telas servem de prévia pro dono (Empresas → Ver como a empresa vê)
   /portal/gardens               os jardins da empresa
   /portal/gardens/<id>          o histórico de um jardim
   /portal/service/<id>          um serviço: tarefas, materiais, fotos e comentários
+  /portal/report                relatório do período (semana, mês, ano): serviços, tempo, tarefas e fotos, por jardim
   /portal/account               senha e idioma
 """
 import bisect
@@ -24,9 +25,10 @@ import os
 import re
 import secrets
 from datetime import date, datetime, timedelta, timezone
+from io import BytesIO
 
-from flask import (Blueprint, abort, current_app, flash, g, redirect, render_template, request, send_from_directory,
-                   session, url_for)
+from flask import (Blueprint, abort, current_app, flash, g, redirect, render_template, request, send_file,
+                   send_from_directory, session, url_for)
 from werkzeug.security import check_password_hash
 
 from . import branding, i18n, notifications, photos, utils
@@ -217,6 +219,110 @@ def service_page(company, job_id, links, preview=False):
                            max_files=MAX_FILES, max_doc_mb=MAX_DOC_MB)
 
 
+# ---------- Relatório da empresa: o que foi feito nos jardins dela num período ----------
+# Só o que a empresa já pode ver nas outras telas (serviços concluídos, tempo no local, tarefas, fotos),
+# somado por semana, mês ou ano e por jardim. Nada de dinheiro nem de quem da equipe foi.
+
+REPORT_PERIODS = ("semana", "mes", "ano")
+NOT_DONE_LIMIT = 40  # tarefas não feitas listadas no relatório (as mais recentes)
+
+
+def read_report_period(args):
+    period = args.get("periodo", "semana")
+    if period not in REPORT_PERIODS:
+        period = "semana"
+    try:
+        ref = date.fromisoformat(args.get("data", "")).isoformat()
+    except ValueError:
+        ref = utils.today_iso()
+    return period, ref
+
+
+def _report_bars(period, start, end, rows, links):
+    """Colunas do gráfico: um dia por coluna (semana e mês) ou um mês por coluna (ano). Cada coluna leva
+    ao dia (ou ao relatório do mês)."""
+    s, e = date.fromisoformat(start), date.fromisoformat(end)
+    if period == "ano":
+        keys = [f"{s.year}-{m:02d}" for m in range(1, 13)]
+        key_of = lambda day: day[:7]
+        label_of = lambda k: utils.month_abbr(k + "-01")
+        title_of = lambda k: f"{utils.month_abbr(k + '-01')} {k[:4]}"
+        link_of = lambda k: links("report", periodo="mes", data=k + "-01")
+    else:
+        keys = [(s + timedelta(days=i)).isoformat() for i in range((e - s).days + 1)]
+        key_of = lambda day: day
+        if period == "semana":
+            label_of = utils.weekday
+        else:  # mês: rótulo só em alguns dias, pra não embolar
+            label_of = lambda k: str(int(k[8:])) if int(k[8:]) in (1, 8, 15, 22, 29) else ""
+        title_of = lambda k: f"{utils.weekday(k)} {int(k[8:])} {utils.month_abbr(k)}"
+        link_of = lambda k: links("days", day=k)
+    counts = {k: 0 for k in keys}
+    for r in rows:
+        k = key_of(r["job_date"])
+        if k in counts:
+            counts[k] += 1
+    peak = max(counts.values(), default=0) or 1
+    return [{"label": label_of(k), "title": title_of(k), "total": counts[k], "pct": round(counts[k] * 100 / peak, 1),
+             "link": link_of(k) if counts[k] else ""} for k in keys]
+
+
+def report_data(company, period, ref, links):
+    """Tudo que o relatório da empresa mostra (a tela e o PDF usam os mesmos números)."""
+    from .reports import _period_label  # o mesmo rótulo de período do relatório do dono
+    start, end = utils.period_bounds(period, ref)
+    rows = services(company["id"], "j.job_date BETWEEN ? AND ?", (start, end), order=" ORDER BY j.job_date, j.id")
+    gardens = {}
+    for s in rows:
+        gd = gardens.setdefault(s["client_id"], {"id": s["client_id"], "name": s["garden"], "services": 0, "minutes": 0,
+                                                 "done": 0, "not_done": 0, "photos": 0})
+        gd["services"] += 1
+        gd["minutes"] += s["minutes"] or 0
+        gd["done"] += len(s["done"])
+        gd["not_done"] += len(s["not_done"])
+        gd["photos"] += len(s["before"]) + len(s["after"])
+    gardens = sorted(gardens.values(), key=lambda gd: (-gd["services"], gd["name"].lower()))
+    not_done = [{"job_id": s["id"], "garden": s["garden"], "date": s["job_date"], "text": t["text"], "note": t["note"]}
+                for s in reversed(rows) for t in s["not_done"]]
+    today = utils.today_iso()
+    return dict(
+        period=period, ref=ref, start=start, end=end, period_label=_period_label(period, start, end),
+        periods=[("semana", i18n.t("history.period_week")), ("mes", i18n.t("history.period_month")),
+                 ("ano", i18n.t("history.period_year"))],
+        prev_ref=(date.fromisoformat(start) - timedelta(days=1)).isoformat(),
+        next_ref=(date.fromisoformat(end) + timedelta(days=1)).isoformat(),
+        is_current=start <= today <= end,
+        services_count=len(rows), total_minutes=sum(gd["minutes"] for gd in gardens),
+        gardens_served=len(gardens),
+        gardens_total=get_db().execute("SELECT COUNT(*) FROM clients WHERE company_id = ?", (company["id"],)).fetchone()[0],
+        tasks_done=sum(gd["done"] for gd in gardens), tasks_not_done=sum(gd["not_done"] for gd in gardens),
+        photos=sum(gd["photos"] for gd in gardens), comments=sum(s["comments"] for s in rows),
+        gardens=gardens, max_minutes=max((gd["minutes"] for gd in gardens), default=0),
+        not_done=not_done[:NOT_DONE_LIMIT], not_done_total=len(not_done),
+        bars=_report_bars(period, start, end, rows, links),
+    )
+
+
+def report_page(company, links, preview=False):
+    period, ref = read_report_period(request.args)
+    return render_template("portal_report.html", company=company, links=links, preview=preview,
+                           **report_data(company, period, ref, links))
+
+
+def report_pdf_file(company, links):
+    """O relatório da empresa em PDF, pra ela guardar ou repassar."""
+    period, ref = read_report_period(request.args)
+    try:
+        from . import pdf_report  # o reportlab só é carregado quando alguém baixa um PDF
+    except ImportError:  # esqueceram o "pip install -r requirements.txt" depois de atualizar
+        flash(i18n.t("company.pdf_missing_lib"), "error")
+        return redirect(links("report", periodo=period, data=ref))
+    data = report_data(company, period, ref, links)
+    tag = {"semana": data["start"], "mes": data["start"][:7], "ano": data["start"][:4]}[period]
+    return send_file(BytesIO(pdf_report.build_company(data, company["name"], branding.app_name())),
+                     mimetype="application/pdf", as_attachment=True, download_name=f"report-{period}-{tag}.pdf")
+
+
 def _company():
     return {"id": g.portal["company_id"], "name": g.portal["company_name"]}
 
@@ -247,6 +353,20 @@ def garden(client_id):
 def service(job_id):
     company = _company()
     return service_page(company, job_id, Links(company))
+
+
+@bp.route("/report")
+@portal_required
+def report():
+    company = _company()
+    return report_page(company, Links(company))
+
+
+@bp.route("/report/pdf")
+@portal_required
+def report_pdf():
+    company = _company()
+    return report_pdf_file(company, Links(company))
 
 
 @bp.route("/service/<int:job_id>/photo/<filename>")

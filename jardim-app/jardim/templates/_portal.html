@@ -1,6 +1,6 @@
 {# Peças da área da empresa (portal.py), usadas também na prévia do dono e na página do trabalho (conversa).
    Importe com:  {% from "_portal.html" import portal_top, service_card, time_range, thread with context %}
-   links('days' | 'gardens' | 'garden' | 'service', ...) monta o endereço certo (área da empresa ou prévia). #}
+   links('days' | 'gardens' | 'garden' | 'service' | 'report' | 'report_pdf', ...) monta o endereço certo (área da empresa ou prévia). #}
 
 {% macro portal_top(company, links, preview, active) -%}
 {% if preview %}
@@ -12,6 +12,7 @@
 <nav class="seg portal-nav" aria-label="{{ t('portal.nav_label') }}">
   <a href="{{ links('days') }}"{% if active == 'days' %} class="on" aria-current="page"{% endif %}>{{ t('portal.nav_services') }}</a>
   <a href="{{ links('gardens') }}"{% if active == 'gardens' %} class="on" aria-current="page"{% endif %}>{{ t('portal.nav_gardens') }}</a>
+  <a href="{{ links('report') }}"{% if active == 'report' %} class="on" aria-current="page"{% endif %}>{{ t('portal.nav_report') }}</a>
 </nav>
 {%- endmacro %}
 

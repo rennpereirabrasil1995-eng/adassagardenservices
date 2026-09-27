@@ -324,6 +324,20 @@ def preview_service(company_id, job_id):
     return portal.service_page(company, job_id, links, preview=True)
 
 
+@bp.route("/empresas/<int:company_id>/previa/relatorio")
+@owner_required
+def preview_report(company_id):
+    company, links = _preview(company_id)
+    return portal.report_page(company, links, preview=True)
+
+
+@bp.route("/empresas/<int:company_id>/previa/relatorio/pdf")
+@owner_required
+def preview_report_pdf(company_id):
+    company, links = _preview(company_id)
+    return portal.report_pdf_file(company, links)
+
+
 # ---------- A equipe responde na página do trabalho ----------
 
 @bp.route("/trabalhos/<int:job_id>/comentarios", methods=("POST",))

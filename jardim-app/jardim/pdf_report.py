@@ -91,7 +91,7 @@ def _legend(items, drawing, y):
         x += 4.5 * mm + pdfmetrics.stringWidth(text, "Atkinson", 8.5) + 7 * mm
 
 
-def _timeline(bars, t):
+def _timeline(bars, t, legend=None):
     height = 52 * mm
     d = Drawing(WIDTH, height)
     n = len(bars)
@@ -113,7 +113,7 @@ def _timeline(bars, t):
             d.add(String(x + bw / 2, base + h_all + 1.2 * mm, str(b["total"]), fontName="Atkinson-Bold",
                          fontSize=8, fillColor=INK, textAnchor="middle"))
     d.add(Line(0, base, WIDTH, base, strokeColor=NEUTRAL, strokeWidth=0.6))
-    _legend([(OK, t("company.legend_done")), (NEUTRAL, t("company.legend_open"))], d, 0)
+    _legend(legend or [(OK, t("company.legend_done")), (NEUTRAL, t("company.legend_open"))], d, 0)
     return d
 
 
@@ -264,5 +264,97 @@ def build(data, company):
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=MARGIN, rightMargin=MARGIN, topMargin=16 * mm,
                             bottomMargin=18 * mm, title=_clean(f"{t('company.page_title')} – {data['period_label']}"),
                             author=_clean(company))
+    doc.build(story, onFirstPage=footer, onLaterPages=footer)
+    return buf.getvalue()
+
+
+def build_company(data, company, app_name):
+    """O relatório da área da empresa em PDF: só o que ela vê na tela (portal.report_data)."""
+    _fonts()
+    t = i18n.t
+    h2 = _style("h2", 13.5, bold=True, spaceBefore=12, spaceAfter=6)
+    body, small = _style("body", 9.5), _style("small", 8.5, color=MUTED)
+    now = datetime.now(utils.tz()).strftime("%d/%m/%Y %H:%M")
+    story = [
+        _p(f"{company} · {app_name}", _style("company", 10, bold=True, color=MUTED)),
+        _p(t("portal.report_title"), _style("title", 22, bold=True, spaceBefore=2)),
+        _p(data["period_label"], _style("sub", 12, color=MUTED, spaceBefore=2)),
+        _p(t("pdf.generated", when=now), small),
+        Spacer(0, 6 * mm),
+    ]
+    n = data["services_count"]
+    stats = [(str(n), t("portal.stat_services_one") if n == 1 else t("portal.stat_services"), ""),
+             (utils.format_minutes(data["total_minutes"]) if data["total_minutes"] else "—", t("portal.stat_time"), ""),
+             (str(data["gardens_served"]),
+              t("portal.stat_gardens_one") if data["gardens_served"] == 1 else t("portal.stat_gardens"),
+              t("portal.of_gardens", n=data["gardens_total"])),
+             (str(data["tasks_done"]), t("portal.stat_tasks_one") if data["tasks_done"] == 1 else t("portal.stat_tasks"),
+              (t("portal.not_done_one") if data["tasks_not_done"] == 1 else t("portal.not_done_many", n=data["tasks_not_done"]))
+              if data["tasks_not_done"] else "")]
+    cells = [[[_p(v, _style("stat", 19, bold=True)), _p(label, _style("statl", 9, bold=True)), _p(extra, small)]
+              for v, label, extra in stats]]
+    summary = Table(cells, colWidths=[WIDTH / 4] * 4)
+    summary.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), SOFT), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                                 ("LINEAFTER", (0, 0), (-2, -1), 4, colors.white),
+                                 ("TOPPADDING", (0, 0), (-1, -1), 8), ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                                 ("LEFTPADDING", (0, 0), (-1, -1), 8)]))
+    story.append(summary)
+
+    if not n:
+        story.append(_p(t("portal.report_empty"), _style("empty", 10, color=MUTED, spaceBefore=10)))
+    else:
+        title = t("portal.chart_services_month") if data["period"] == "ano" else t("portal.chart_services_day")
+        bars = [dict(b, done=b["total"]) for b in data["bars"]]  # tudo concluído: coluna inteira verde
+        story.append(KeepTogether([_p(title, h2), _timeline(bars, t, legend=[(OK, t("portal.col_services"))])]))
+
+        # por jardim
+        block = [_p(t("portal.by_garden"), h2)]
+        if len(data["gardens"]) > 1 and data["max_minutes"]:
+            block += [_hours(data["gardens"], data["max_minutes"]), Spacer(0, 3 * mm)]
+        rows = [[t("portal.col_garden"), t("portal.col_services"), t("portal.col_time"), t("portal.col_tasks_done"),
+                 t("portal.col_not_done"), t("portal.col_photos")]]
+        rows += [[_p(gd["name"], body), str(gd["services"]), utils.format_minutes(gd["minutes"]) if gd["minutes"] else "—",
+                  str(gd["done"]), str(gd["not_done"] or "—"), str(gd["photos"] or "—")] for gd in data["gardens"]]
+        many = len(data["gardens"]) > 1
+        if many:
+            rows.append([t("company.total"), str(n), utils.format_minutes(data["total_minutes"]) if data["total_minutes"] else "—",
+                         str(data["tasks_done"]), str(data["tasks_not_done"] or "—"), str(data["photos"] or "—")])
+        block.append(_table([[_clean(c) if isinstance(c, str) else c for c in r] for r in rows],
+                            [WIDTH - 112 * mm, 20 * mm, 26 * mm, 24 * mm, 22 * mm, 20 * mm], num_cols=(1, 2, 3, 4, 5), total=many))
+        story.append(KeepTogether(block[:3]))
+        story += block[3:]
+
+        # tarefas
+        block = [_p(t("portal.tasks_section"), h2)]
+        if data["tasks_done"] + data["tasks_not_done"]:
+            block += [_stack([(OK, data["tasks_done"], t("company.legend_tasks_done"), str(data["tasks_done"])),
+                              (LATE, data["tasks_not_done"], t("company.legend_tasks_skipped"), str(data["tasks_not_done"]))]),
+                      Spacer(0, 2 * mm)]
+        if data["not_done"]:
+            rows = [[t("portal.col_date"), t("portal.col_garden"), t("portal.col_task"), t("portal.col_note")]]
+            rows += [[f"{utils.day_num(x['date'])} {utils.month_abbr(x['date'])}", _p(x["garden"], body), _p(x["text"], body),
+                      _p(x["note"] or "—", small)] for x in data["not_done"]]
+            block.append(_table([[_clean(c) if isinstance(c, str) else c for c in r] for r in rows],
+                                [20 * mm, 45 * mm, WIDTH - 125 * mm, 60 * mm]))
+            if data["not_done_total"] > len(data["not_done"]):
+                block += [Spacer(0, 1.5 * mm),
+                          _p(t("portal.not_done_more", n=len(data["not_done"]), total=data["not_done_total"]), small)]
+        else:
+            block.append(_p(t("portal.not_done_none"), small))
+        story.append(KeepTogether(block[:3]))
+        story += block[3:]
+
+    def footer(canvas, doc):
+        canvas.saveState()
+        canvas.setFont("Atkinson", 8)
+        canvas.setFillColor(MUTED)
+        canvas.drawString(MARGIN, 10 * mm, _clean(f"{company} · {data['period_label']}"))
+        canvas.drawRightString(A4[0] - MARGIN, 10 * mm, _clean(t("pdf.page", n=doc.page)))
+        canvas.restoreState()
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=MARGIN, rightMargin=MARGIN, topMargin=16 * mm,
+                            bottomMargin=18 * mm, title=_clean(f"{t('portal.report_title')} – {company} – {data['period_label']}"),
+                            author=_clean(app_name))
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
     return buf.getvalue()
