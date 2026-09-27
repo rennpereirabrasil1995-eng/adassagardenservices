@@ -45,7 +45,7 @@
       <a class="btn small" href="{{ c.sms }}" data-channel="sms_phone">{{ t('reminders.btn_sms') }}</a>
       {% endif %}
       {% if sms_ready and c.state != 'sending' %}
-      <form method="post" action="{{ url_for('reminders.send_now', client_id=c.id, day=day) }}"{% if c.state == 'sent' %} onsubmit='return confirm({{ t('reminders.resend_confirm')|tojson }})'{% endif %}>
+      <form method="post" action="{{ url_for('reminders.send_now', client_id=c.id, day=day) }}"{% if c.state == 'sent' %} data-confirm="{{ t('reminders.resend_confirm') }}"{% endif %}>
         {{ csrf_field() }}<button class="btn small" type="submit">{{ t('reminders.btn_resend') if c.state in ('sent', 'failed') else t('reminders.btn_send_now') }}</button>
       </form>
       {% endif %}

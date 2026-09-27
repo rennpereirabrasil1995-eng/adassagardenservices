@@ -86,7 +86,7 @@ data-more="{{ start }}" data-more-step="{{ step }}" data-more-label="{{ t('commo
 <div class="photo{% if captions %} photo-captioned{% endif %}">
   <a href="{{ p.full }}" target="_blank" rel="noopener"><img src="{{ p.mini }}" alt="{{ alt }}" loading="lazy"></a>
   {%- if p.delete %}
-  <form method="post" action="{{ p.delete }}" data-delete onsubmit='return confirm({{ t('clientdetail.delete_photo_confirm')|tojson }})'>
+  <form method="post" action="{{ p.delete }}" data-delete data-confirm="{{ t('clientdetail.delete_photo_confirm') }}">
     {{ csrf_field() }}
     <button class="del" type="submit" aria-label="{{ t('photos.delete') }}">×</button>
   </form>

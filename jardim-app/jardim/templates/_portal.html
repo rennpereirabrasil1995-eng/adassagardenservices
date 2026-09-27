@@ -96,7 +96,7 @@
     </div>
     {% endif %}
     {% if delete_job and (not delete_own or m.user_id == me or current_user.role == 'owner') %}
-    <form method="post" action="{{ url_for(delete_endpoint, job_id=delete_job, comment_id=m.id) }}" onsubmit='return confirm({{ (t('jobdetail.team_delete_confirm') if delete_own else t('companies.comment_delete_confirm'))|tojson }})'>
+    <form method="post" action="{{ url_for(delete_endpoint, job_id=delete_job, comment_id=m.id) }}" data-confirm="{{ t('jobdetail.team_delete_confirm') if delete_own else t('companies.comment_delete_confirm') }}">
       {{ csrf_field() }}
       <button class="linkbtn danger-link" type="submit">{{ t('companies.comment_delete') }}</button>
     </form>

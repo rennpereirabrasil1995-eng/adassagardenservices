@@ -77,7 +77,7 @@
 
     <div class="actions">
       <button class="btn primary" type="submit">{{ t('prefs.look_save') }}</button>
-      <button class="btn small" type="submit" name="reset" value="1" onclick='return confirm({{ t('prefs.look_reset_confirm')|tojson }})'>{{ t('prefs.look_reset') }}</button>
+      <button class="btn small" type="submit" name="reset" value="1" data-confirm="{{ t('prefs.look_reset_confirm') }}">{{ t('prefs.look_reset') }}</button>
     </div>
   </form>
 </section>

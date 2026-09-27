@@ -35,7 +35,7 @@
       </div>
       <button class="btn small" type="submit">{{ t('jobdetail.create_repeats') }}</button>
     </form>
-    <form method="post" action="{{ url_for('jobs.delete_job', job_id=job.id) }}" onsubmit='return confirm({{ t('jobdetail.delete_confirm')|tojson }})'>
+    <form method="post" action="{{ url_for('jobs.delete_job', job_id=job.id) }}" data-confirm="{{ t('jobdetail.delete_confirm') }}">
       {{ csrf_field() }}
       <button class="btn danger small" type="submit">{{ t('jobdetail.delete_job') }}</button>
     </form>

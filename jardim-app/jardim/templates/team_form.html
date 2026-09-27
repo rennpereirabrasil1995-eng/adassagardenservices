@@ -59,7 +59,7 @@
   {% if has_jobs %}
   <p class="hint">{{ t('team.delete_blocked_hint') }}</p>
   {% else %}
-  <form method="post" action="{{ url_for('team.delete_member', member_id=member.id) }}" onsubmit='return confirm({{ t('team.delete_confirm')|tojson }})'>
+  <form method="post" action="{{ url_for('team.delete_member', member_id=member.id) }}" data-confirm="{{ t('team.delete_confirm') }}">
     {{ csrf_field() }}
     <button class="btn danger small" type="submit">{{ t('team.delete_person') }}</button>
   </form>

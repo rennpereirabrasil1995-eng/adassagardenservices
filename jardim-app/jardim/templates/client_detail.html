@@ -33,7 +33,7 @@
 <div class="actions">
   <a class="btn" href="{{ url_for('clients.edit_client', client_id=client.id) }}">{{ t('clientdetail.edit') }}</a>
   {% if can('quotes') %}<a class="btn" href="{{ url_for('quotes.new_quote', client=client.id) }}">{{ t('quotes.new') }}</a>{% endif %}
-  <form method="post" action="{{ url_for('clients.toggle_client', client_id=client.id) }}">
+  <form method="post" action="{{ url_for('clients.toggle_client', client_id=client.id) }}"{% if client.active %} data-confirm="{{ t('clientdetail.archive_confirm', name=client.name) }}"{% endif %}>
     {{ csrf_field() }}
     <button class="btn small" type="submit">{{ t('clientdetail.archive') if client.active else t('clientdetail.reactivate') }}</button>
   </form>

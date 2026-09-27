@@ -32,7 +32,7 @@
 </section>
 {% endif %}
 
-<form method="post" action="{{ url_for('auth.logout') }}" class="block account-logout">
+<form method="post" action="{{ url_for('auth.logout') }}" class="block account-logout" data-confirm="{{ t('nav.logout_confirm') }}">
   {{ csrf_field() }}
   <button class="btn block" type="submit">{{ icon('logout') }}<span>{{ t('nav.logout') }}</span></button>
 </form>

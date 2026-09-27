@@ -60,7 +60,7 @@
   </form>
 </section>
 
-<form method="post" action="{{ url_for('auth.logout') }}" class="account-logout">
+<form method="post" action="{{ url_for('auth.logout') }}" class="account-logout" data-confirm="{{ t('nav.logout_confirm') }}">
   {{ csrf_field() }}
   <button class="btn" type="submit">{{ t('nav.logout') }}</button>
 </form>

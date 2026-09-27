@@ -2340,8 +2340,8 @@ class AppTests(unittest.TestCase):
         client_id = self.create_client()
         job_id = self.create_job(client_id, self.create_employee())
         page = self.owner.get(f"/trabalhos/{job_id}").get_data(as_text=True)
-        self.assertIn('return confirm("Delete this job? This can\\u0027t be undone.")', page)
-        self.assertNotIn("confirm('", page)
+        self.assertIn('data-confirm="Delete this job? This can&#39;t be undone."', page)  # a janelinha "Você tem certeza?"
+        self.assertNotIn("return confirm(", page)
 
     def test_duration_and_date_filters(self):
         with self.app.test_request_context():

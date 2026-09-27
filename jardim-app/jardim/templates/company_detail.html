@@ -24,7 +24,7 @@
       {{ company_style_fields(company.tier, company.color) }}
       <div class="actions"><button class="btn" type="submit">{{ t('common.save_changes') }}</button></div>
     </form>
-    <form method="post" action="{{ url_for('companies.delete_company', company_id=company.id) }}" onsubmit='return confirm({{ t('companies.delete_confirm', name=company.name)|tojson }})'>
+    <form method="post" action="{{ url_for('companies.delete_company', company_id=company.id) }}" data-confirm="{{ t('companies.delete_confirm', name=company.name) }}">
       {{ csrf_field() }}
       <button class="btn danger small" type="submit">{{ t('companies.delete') }}</button>
       <span class="hint">{{ t('companies.delete_hint') }}</span>
@@ -54,7 +54,7 @@
       </div>
       <div class="row-act-side">
         {% if c.active and can('schedule') %}<a class="btn small primary" href="{{ url_for('jobs.new_job', client=c.id) }}">{{ t('companies.book_garden') }}</a>{% endif %}
-        <form method="post" action="{{ url_for('companies.remove_garden', company_id=company.id, client_id=c.id) }}" onsubmit='return confirm({{ t('companies.remove_confirm')|tojson }})'>
+        <form method="post" action="{{ url_for('companies.remove_garden', company_id=company.id, client_id=c.id) }}" data-confirm="{{ t('companies.remove_confirm') }}">
           {{ csrf_field() }}
           <button class="btn small" type="submit">{{ t('companies.remove') }}</button>
         </form>
@@ -91,15 +91,15 @@
         <span class="member-meta">{{ t('companies.last_login', when=u.last_login_at|dt_local) if u.last_login_at else t('companies.never_logged') }}</span>
       </div>
       <div class="row-act-buttons">
-        <form method="post" action="{{ url_for('companies.reset_login', company_id=company.id, login_id=u.id) }}" onsubmit='return confirm({{ t('companies.new_password_confirm', name=u.name)|tojson }})'>
+        <form method="post" action="{{ url_for('companies.reset_login', company_id=company.id, login_id=u.id) }}" data-confirm="{{ t('companies.new_password_confirm', name=u.name) }}">
           {{ csrf_field() }}
           <button class="btn small" type="submit">{{ t('companies.new_password') }}</button>
         </form>
-        <form method="post" action="{{ url_for('companies.toggle_login', company_id=company.id, login_id=u.id) }}">
+        <form method="post" action="{{ url_for('companies.toggle_login', company_id=company.id, login_id=u.id) }}"{% if u.active %} data-confirm="{{ t('companies.disable_login_confirm', name=u.name) }}"{% endif %}>
           {{ csrf_field() }}
           <button class="btn small" type="submit">{{ t('companies.disable') if u.active else t('companies.enable') }}</button>
         </form>
-        <form method="post" action="{{ url_for('companies.delete_login', company_id=company.id, login_id=u.id) }}" onsubmit='return confirm({{ t('companies.delete_login_confirm', name=u.name)|tojson }})'>
+        <form method="post" action="{{ url_for('companies.delete_login', company_id=company.id, login_id=u.id) }}" data-confirm="{{ t('companies.delete_login_confirm', name=u.name) }}">
           {{ csrf_field() }}
           <button class="btn small danger" type="submit">{{ t('companies.delete_login') }}</button>
         </form>
@@ -152,7 +152,7 @@
       </div>
     </details>
     {% if daily.email_on and daily.people %}
-    <form method="post" action="{{ url_for('companies.daily_send_now', company_id=company.id) }}" onsubmit='return confirm({{ t('companies.daily_send_confirm')|tojson }})'>
+    <form method="post" action="{{ url_for('companies.daily_send_now', company_id=company.id) }}" data-confirm="{{ t('companies.daily_send_confirm') }}">
       {{ csrf_field() }}
       <button class="btn small" type="submit">{{ t('companies.daily_send_now') }}</button>
     </form>

@@ -328,6 +328,15 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
 .search-btn svg { width: 1.35rem; height: 1.35rem; flex: none; }
 .search-note { margin: -.3rem 0 0; }
 .list-filter { margin: 0 0 .75rem; }
+/* A janelinha "Você tem certeza?" */
+.confirm-box { border: 0; border-radius: 14px; padding: 1.25rem 1.3rem; width: min(24rem, calc(100vw - 2rem));
+  background: var(--surface); color: var(--ink); box-shadow: 0 18px 50px rgba(0, 0, 0, .3); }
+.confirm-box::backdrop { background: rgba(0, 0, 0, .45); }
+.confirm-box h2 { margin: 0; font-size: 1.25rem; }
+.confirm-box p { margin: 0; color: var(--muted); }
+.confirm-box .actions { margin: .35rem 0 0; justify-content: flex-end; }
+.confirm-box[open] { animation: pop-in .15s ease-out; }
+@keyframes pop-in { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
 .row-act-side { display: flex; gap: .5rem; align-items: center; flex: none; }
 .row-act-side form { margin: 0; }
 .list-filter .search-btn { pointer-events: none; }

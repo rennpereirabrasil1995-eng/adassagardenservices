@@ -96,7 +96,7 @@
       <div class="pay-side">
         <b>{{ e.pence|money }}</b>
         {% if e.kind == 'transfer' %}
-        <form method="post" action="{{ url_for('finance.delete_transfer', transfer_id=e.id) }}" onsubmit='return confirm({{ t("finance.delete_confirm")|tojson }})'>
+        <form method="post" action="{{ url_for('finance.delete_transfer', transfer_id=e.id) }}" data-confirm="{{ t("finance.delete_confirm") }}">
           {{ csrf_field() }}
           <input type="hidden" name="next" value="{{ next_url }}">
           <button class="linkbtn" type="submit">{{ t('finance.delete') }}</button>

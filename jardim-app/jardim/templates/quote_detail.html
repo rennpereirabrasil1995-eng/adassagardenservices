@@ -97,7 +97,7 @@
   <div class="sheet pad stack">
     <div class="actions">
       {% if q.status == 'open' %}
-      <form method="post" action="{{ url_for('quotes.cancel_quote', quote_id=q.id) }}" onsubmit='return confirm({{ t('quotes.cancel_confirm')|tojson }})'>
+      <form method="post" action="{{ url_for('quotes.cancel_quote', quote_id=q.id) }}" data-confirm="{{ t('quotes.cancel_confirm') }}">
         {{ csrf_field() }}<button class="btn small" type="submit">{{ t('quotes.cancel') }}</button>
       </form>
       {% elif q.status in ('cancelled', 'declined') %}
@@ -105,7 +105,7 @@
         {{ csrf_field() }}<button class="btn small" type="submit">{{ t('quotes.reopen') }}</button>
       </form>
       {% endif %}
-      <form method="post" action="{{ url_for('quotes.delete_quote', quote_id=q.id) }}" onsubmit='return confirm({{ t('quotes.delete_confirm')|tojson }})'>
+      <form method="post" action="{{ url_for('quotes.delete_quote', quote_id=q.id) }}" data-confirm="{{ t('quotes.delete_confirm') }}">
         {{ csrf_field() }}<button class="btn danger small" type="submit">{{ t('quotes.delete') }}</button>
       </form>
     </div>

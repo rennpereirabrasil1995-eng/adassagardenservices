@@ -35,7 +35,7 @@
         </a>
         {# Minha conta: senha, idioma e (dono) as configurações da empresa, cada assunto na sua página #}
         <a class="linkish" href="{{ url_for('auth.account') }}"{% if request.path.startswith('/conta') %} aria-current="page"{% endif %}>{{ t('nav.account') }}</a>
-        <form method="post" action="{{ url_for('auth.logout') }}">
+        <form method="post" action="{{ url_for('auth.logout') }}" data-confirm="{{ t('nav.logout_confirm') }}">
           {{ csrf_field() }}
           <button class="linkish" type="submit">{{ t('nav.logout') }}</button>
         </form>
@@ -44,7 +44,7 @@
       {# Área da empresa: só a conta dela e sair (as abas Serviços/Jardins ficam no começo de cada tela) #}
       <div class="bar-actions">
         <a class="linkish" href="{{ url_for('portal.account') }}"{% if request.endpoint == 'portal.account' %} aria-current="page"{% endif %}>{{ t('nav.account') }}</a>
-        <form method="post" action="{{ url_for('auth.logout') }}">
+        <form method="post" action="{{ url_for('auth.logout') }}" data-confirm="{{ t('nav.logout_confirm') }}">
           {{ csrf_field() }}
           <button class="linkish" type="submit">{{ t('nav.logout') }}</button>
         </form>
@@ -77,6 +77,17 @@
   {% endfor %}
   {% block content %}{% endblock %}
 </main>
+{# "Você tem certeza?": toda ação de apagar, desativar, tirar ou sair passa por aqui (form[data-confirm]) #}
+<dialog class="confirm-box" id="confirm-box">
+  <div class="stack">
+    <h2>{{ t('common.confirm_title') }}</h2>
+    <p id="confirm-text"></p>
+    <div class="actions">
+      <button class="btn" type="button" data-answer="cancel" autofocus>{{ t('common.cancel') }}</button>
+      <button class="btn danger" type="button" data-answer="ok">{{ t('common.confirm_yes') }}</button>
+    </div>
+  </div>
+</dialog>
 <script>
   /* Abas do celular: esmaece a borda onde há mais abas para rolar e centraliza a aba ativa. */
   document.querySelectorAll('.tabs').forEach(function (nav) {
@@ -184,6 +195,32 @@
   document.addEventListener('click', function (e) {
     document.querySelectorAll('.popmenu[open]').forEach(function (menu) { if (!menu.contains(e.target)) menu.removeAttribute('open'); });
   });
+  /* Confirmação: um formulário com data-confirm só segue depois do "Sim" na janelinha (ou no confirm do navegador) */
+  (function () {
+    var box = document.getElementById('confirm-box'), text = document.getElementById('confirm-text');
+    var native = !box || typeof box.showModal !== 'function';
+    document.addEventListener('submit', function (e) {
+      var form = e.target, button = e.submitter;
+      if (!form.matches) return;
+      var message = form.getAttribute('data-confirm') || (button && button.getAttribute('data-confirm'));
+      if (!message) return;
+      if (form.getAttribute('data-confirmed') === '1') { form.removeAttribute('data-confirmed'); return; }
+      if (native) { if (!window.confirm(message)) e.preventDefault(); return; }
+      e.preventDefault();
+      text.textContent = message;
+      box.returnValue = 'cancel';
+      box.onclose = function () {
+        if (box.returnValue !== 'ok') return;
+        form.setAttribute('data-confirmed', '1');
+        if (form.requestSubmit) form.requestSubmit(button || undefined); else form.submit();
+      };
+      box.showModal();
+    }, true);
+    if (box) {
+      box.querySelectorAll('[data-answer]').forEach(function (b) { b.addEventListener('click', function () { box.close(b.getAttribute('data-answer')); }); });
+      box.addEventListener('click', function (e) { if (e.target === box) box.close('cancel'); });  /* tocar fora fecha */
+    }
+  })();
   /* Conversa de um serviço: abre já rolada no fim, na mensagem mais nova. */
   document.querySelectorAll('.thread').forEach(function (box) { box.scrollTop = box.scrollHeight; });
 </script>
