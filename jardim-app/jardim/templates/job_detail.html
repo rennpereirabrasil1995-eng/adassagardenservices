@@ -8,7 +8,7 @@
 <div class="page-head">
   <div>
     <h1>{% if can_clients %}<a href="{{ url_for('clients.client_detail', client_id=job.client_id) }}">{{ job.client_name }}</a>{% else %}{{ job.client_name }}{% endif %}</h1>
-    <p class="sub">{{ job.title }}</p>
+    <p class="sub">{{ job.title|job_title }}</p>
   </div>
   <div class="head-side">
     {{ pill(job.status) }}

@@ -428,7 +428,7 @@ def new_job():
     else:
         form = {"client_id": request.args.get("client", ""), "people": [],
                 "job_date": request.args.get("date") or utils.today_iso(),
-                "title": "Manutenção do jardim", "start_time": "", "planned_hours": "", "description": "", "tasks": "",
+                "title": i18n.t("jobform.default_title"), "start_time": "", "planned_hours": "", "description": "", "tasks": "",
                 "picked": None}  # None = todas as tarefas padrão já vêm marcadas
         from_quote = request.args.get("cotacao", "")
         prefill = quotes.job_prefill(int(from_quote)) if from_quote.isdigit() and can("quotes") else None

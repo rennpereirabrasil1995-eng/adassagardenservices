@@ -63,7 +63,7 @@ data-more="{{ start }}" data-more-step="{{ step }}" data-more-label="{{ t('commo
   </span>
   <span class="job-main">
     {% if show_client %}<span class="job-client">{{ j.client_name }}</span>{% endif %}
-    <span class="{{ 'job-what' if show_client else 'job-client' }}">{{ j.title }}</span>
+    <span class="{{ 'job-what' if show_client else 'job-client' }}">{{ j.title|job_title }}</span>
     {% if show_client and j.client_address %}<span class="job-where">{{ j.client_address }}</span>{% endif %}
     <span class="job-status">
       {{ pill(j.status) }}

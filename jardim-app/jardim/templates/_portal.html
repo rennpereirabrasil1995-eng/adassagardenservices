@@ -54,7 +54,7 @@
     {% if s.new_replies %}<span class="pill pill-new">{{ t('portal.new_reply') }}</span>{% endif %}
   </div>
   <p class="svc-when">{% if show_date %}{{ s.job_date|date_long }} · {% endif %}{{ time_range(s) }}</p>
-  <p class="svc-what">{{ s.title }}{% if number and total and total > 1 %} · {{ t('portal.job_n_of', n=number, total=total) }}{% endif %}</p>
+  <p class="svc-what">{{ s.title|job_title }}{% if number and total and total > 1 %} · {{ t('portal.job_n_of', n=number, total=total) }}{% endif %}</p>
   {% if s.done or s.not_done or s.people > 1 %}
   <ul class="svc-facts">
     {% if s.done %}<li class="svc-done"><span aria-hidden="true">✓</span> {{ t('portal.tasks_done_one') if s.done|length == 1 else t('portal.tasks_done_many', n=s.done|length) }}</li>{% endif %}

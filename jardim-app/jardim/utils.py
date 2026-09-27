@@ -192,6 +192,20 @@ def week_bounds(today_iso_str):
     return monday.isoformat(), (monday + timedelta(days=6)).isoformat()
 
 
+# Títulos que o app mesmo dá aos trabalhos ("Manutenção do jardim", "Serviço extra"), em qualquer idioma:
+# na tela, saem no idioma de quem está olhando (o que a pessoa digitou fica como está).
+_APP_TITLES = {}
+
+
+def job_title(title):
+    if not _APP_TITLES:
+        for key in ("jobform.default_title", "extras.job_title"):
+            for lang in i18n.LANGUAGES:
+                _APP_TITLES[i18n.translate(key, lang).strip().lower()] = key
+    key = _APP_TITLES.get((title or "").strip().lower())
+    return i18n.t(key) if key else title
+
+
 def status_label(value):
     return i18n.t(f"common.status_{value}") if value in STATUS_KEYS else value
 
@@ -277,7 +291,7 @@ def maps_link(address, postcode=""):
 def init_app(app):
     for func in (date_br, weekday, day_num, month_abbr, date_long, dt_local,
                  time_local, duration, format_minutes, status_label, tier_label, maps_link,
-                 money, money_plain):
+                 money, money_plain, job_title):
         app.add_template_filter(func, func.__name__)
     app.add_template_global(phone_parts, "phone_parts")
     app.add_template_global(country_codes, "country_codes")

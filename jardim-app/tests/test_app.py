@@ -2696,6 +2696,21 @@ class AppTests(unittest.TestCase):
         self.assertIn("Nothing waiting.", self.owner.get("/servicos-extras/").get_data(as_text=True))
         self.assertNotIn("waiting for your approval", self.owner.get("/painel").get_data(as_text=True))
 
+    def test_app_given_job_titles_follow_the_viewers_language(self):
+        self.create_owner()
+        client = self.create_client()
+        ana = self.create_employee()
+        # o padrão do formulário vem no idioma da pessoa; o título gravado em português aparece em inglês pra quem usa inglês
+        self.assertIn('value="Garden maintenance"', self.owner.get("/trabalhos/novo").get_data(as_text=True))
+        self.owner.post("/trabalhos/novo", {"client_id": client, "assigned_to": ana, "title": "Manutenção do jardim", "job_date": self.day(1)})
+        self.owner.post("/trabalhos/novo", {"client_id": client, "assigned_to": ana, "title": "Cortar a cerca", "job_date": self.day(1)})
+        page = self.owner.get("/trabalhos").get_data(as_text=True)
+        self.assertIn("Garden maintenance", page)
+        self.assertNotIn("Manutenção do jardim", page)
+        self.assertIn("Cortar a cerca", page)  # o que a pessoa digitou fica como está
+        self.owner.post("/conta/idioma", {"language": "pt_BR"})
+        self.assertIn("Manutenção do jardim", self.owner.get("/trabalhos").get_data(as_text=True))
+
     def test_schedule_search_by_client_name(self):
         self.create_owner()
         rosa, elm = self.create_client("Sítio das Flores"), self.create_client("12 Elm Road")
