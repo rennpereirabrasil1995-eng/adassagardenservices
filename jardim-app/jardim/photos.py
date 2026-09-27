@@ -59,6 +59,25 @@ def comment_dir(job_id):
     return _upload_root() / "comments" / str(job_id)
 
 
+def request_dir(request_id):
+    """Fotos, vídeos e documentos de um pedido de cotação (quote_requests.py)."""
+    return _upload_root() / "requests" / str(request_id)
+
+
+def remove_request_folder(request_id):
+    shutil.rmtree(request_dir(request_id), ignore_errors=True)
+
+
+def copy_photo(src_folder, filename, dst_folder):
+    """Copia uma foto (e a miniatura, se houver) pra outra pasta, com um nome novo. Devolve o nome novo."""
+    dst_folder.mkdir(parents=True, exist_ok=True)
+    new_name = f"{secrets.token_hex(8)}.jpg"
+    shutil.copyfile(src_folder / filename, dst_folder / new_name)
+    if (src_folder / _mini_name(filename)).exists():
+        shutil.copyfile(src_folder / _mini_name(filename), dst_folder / _mini_name(new_name))
+    return new_name
+
+
 def remove_comment_folder(job_id):
     shutil.rmtree(comment_dir(job_id), ignore_errors=True)
 

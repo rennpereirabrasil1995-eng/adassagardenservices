@@ -284,3 +284,40 @@ CREATE TABLE IF NOT EXISTS job_changes (
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_job_changes_job ON job_changes(job_id, status);
+
+-- Pedido de cotação (quote_requests.py): alguém da equipe visita o cliente, tira fotos ou um vídeo e anota o que
+-- ele pediu, com uma estimativa de tempo e de valor. Quem tem o acesso "Cotações" transforma em cotação (quote_id)
+-- ou recusa. Arquivos em instance/uploads/requests/<request_id>/.
+CREATE TABLE IF NOT EXISTS quote_requests (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    client_id     INTEGER REFERENCES clients(id) ON DELETE SET NULL,
+    client_name   TEXT NOT NULL,
+    phone         TEXT NOT NULL DEFAULT '',
+    address       TEXT NOT NULL DEFAULT '',
+    postcode      TEXT NOT NULL DEFAULT '',
+    request       TEXT NOT NULL,                       -- o que o cliente pediu
+    notes         TEXT NOT NULL DEFAULT '',
+    time_text     TEXT NOT NULL DEFAULT '',            -- tempo estimado, como foi digitado ("1 to 2hrs")
+    minutes       INTEGER,                             -- o maior tempo entendido, em minutos
+    price_pence   INTEGER,                             -- valor estimado
+    status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'quoted', 'declined')),
+    decided_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    decided_at    TEXT,
+    decision_note TEXT NOT NULL DEFAULT '',
+    quote_id      INTEGER REFERENCES quotes(id) ON DELETE SET NULL,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_quote_requests_status ON quote_requests(status, id);
+CREATE INDEX IF NOT EXISTS idx_quote_requests_user ON quote_requests(user_id, id);
+
+CREATE TABLE IF NOT EXISTS quote_request_files (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id  INTEGER NOT NULL REFERENCES quote_requests(id) ON DELETE CASCADE,
+    kind        TEXT NOT NULL CHECK (kind IN ('photo', 'video', 'doc')),
+    filename    TEXT NOT NULL,                -- nome no disco (aleatório)
+    original    TEXT NOT NULL DEFAULT '',     -- nome do arquivo como a pessoa mandou
+    size        INTEGER NOT NULL DEFAULT 0,   -- bytes
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_quote_request_files_request ON quote_request_files(request_id);

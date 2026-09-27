@@ -30,7 +30,7 @@ from werkzeug.exceptions import HTTPException
 from werkzeug.routing import IntegerConverter, ValidationError
 
 from . import (auth, branding, changes, clients, companies, db, extras, finance, hours, i18n, jobs, notifications, photos,
-               portal, portal_mail, preferences, quotes, reminders, reports, team, utils)
+               portal, portal_mail, preferences, quote_requests, quotes, reminders, reports, team, utils)
 
 ERROR_CODES = (400, 403, 404, 405, 413, 429, 500)
 
@@ -80,7 +80,7 @@ def create_app(test_config=None):
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.environ.get("COOKIE_SECURE") == "1",
         PERMANENT_SESSION_LIFETIME=timedelta(days=30),  # funcionário não precisa logar todo dia
-        MAX_CONTENT_LENGTH=25 * 1024 * 1024,  # algumas fotos de celular de uma vez (o normal é o celular reduzir antes)
+        MAX_CONTENT_LENGTH=80 * 1024 * 1024,  # um vídeo curto de celular, ou várias fotos de uma vez (o celular reduz antes)
         PHOTO_SPACE_MB=float(os.environ.get("PHOTO_SPACE_MB", "300")),  # teto para as fotos no disco (0 = sem teto)
         DAILY_EMAIL_HOUR=int(os.environ.get("DAILY_EMAIL_HOUR", "17")),  # a partir de que hora saem os e-mails de lembrete
     )
@@ -118,6 +118,7 @@ def create_app(test_config=None):
     app.register_blueprint(portal_mail.bp)
     app.register_blueprint(extras.bp)
     app.register_blueprint(changes.bp)
+    app.register_blueprint(quote_requests.bp)
 
     # --- Proteção contra CSRF: todo formulário POST leva um token da sessão ---
     def csrf_token():

@@ -12,6 +12,7 @@
   try { TEXT = JSON.parse(document.getElementById('comment-text').textContent); } catch (e) { /* fica sem os textos */ }
 
   function isPhoto(file) { return /^image\//i.test(file.type || '') || /\.(heic|heif)$/i.test(file.name || ''); }
+  function isVideo(file) { return /^video\//i.test(file.type || '') || /\.(mp4|mov|m4v|webm|3gp)$/i.test(file.name || ''); }
 
   function sizeText(n) { return n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toFixed(1) + ' MB'; }
 
@@ -42,7 +43,7 @@
   Array.prototype.forEach.call(document.querySelectorAll('form[data-comment-form]'), function (form) {
     var input = form.querySelector('input[type="file"]'), list = form.querySelector('[data-attach-list]');
     var status = form.querySelector('[data-attach-status]'), button = form.querySelector('button[type="submit"]');
-    var text = form.querySelector('textarea'), max = parseInt(form.getAttribute('data-max'), 10) || 6;
+    var text = form.querySelector('textarea[name="body"]'), max = parseInt(form.getAttribute('data-max'), 10) || 6;
     var picked = [];
 
     function say(message) { status.textContent = message || ''; status.hidden = !message; }
@@ -61,6 +62,14 @@
           item.classList.add('is-photo');
           item.appendChild(img);
         } else {
+          if (isVideo(file)) {
+            item.classList.add('is-video');
+            var play = document.createElement('span');
+            play.className = 'attach-play';
+            play.setAttribute('aria-hidden', 'true');
+            play.textContent = '▶';
+            item.appendChild(play);
+          }
           var name = document.createElement('span');
           name.className = 'attach-name';
           name.textContent = file.name || '?';
@@ -91,23 +100,27 @@
 
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      if (!picked.length && !text.value.trim()) { say(TEXT.empty); text.focus(); return; }
+      if (text && !picked.length && !text.value.trim()) { say(TEXT.empty); text.focus(); return; }
+      if (form.reportValidity && !form.reportValidity()) return;  /* campos obrigatórios (formulário do pedido de cotação) */
       button.disabled = true;
       say(TEXT.sending);
       Promise.all(picked.map(function (file) { return isPhoto(file) ? shrink(file).catch(function () { return file; }) : Promise.resolve(file); }))
         .then(function (blobs) {
-          var data = new FormData();
-          data.append('_csrf', form.querySelector('input[name="_csrf"]').value);
-          data.append('body', text.value);
+          var data = new FormData(form);  /* todos os campos do formulário, seja a caixa de comentário ou o pedido de cotação */
+          data.delete('files');
           blobs.forEach(function (blob, i) {
             var name = picked[i].name || 'foto.jpg';
             data.append('files', blob, blob === picked[i] ? name : name.replace(/\.[^.]*$/, '') + '.jpg');
           });
           /* redirect "manual": o aviso ("Comentário enviado") fica pra página que abre em seguida */
-          return fetch(form.action, { method: 'POST', body: data, credentials: 'same-origin', redirect: 'manual' });
+          return fetch(form.action, { method: 'POST', body: data, credentials: 'same-origin', redirect: 'manual',
+                                      headers: { 'Accept': 'application/json' } });
         })
         .then(function (res) {
           if (res.status === 413) throw new Error(TEXT.too_big);
+          if (res.status === 400) {  /* o servidor não aceitou o que foi digitado: mostra, sem perder as fotos */
+            return res.json().then(function (body) { throw new Error((body.errors || []).join(' ') || TEXT.failed); });
+          }
           if (res.type !== 'opaqueredirect' && !res.ok) throw new Error(TEXT.failed);
           var done = form.getAttribute('data-done'), path = done.split('#')[0];
           if (location.pathname + location.search === path) {

@@ -7,8 +7,23 @@
     <h1>{{ t('myjobs.title') }}</h1>
     <p class="sub">{{ today|date_long }} · <a href="{{ url_for('hours.my_hours') }}">{{ t('myjobs.weekly_hours') }}: {{ weekly_minutes|format_minutes }}</a></p>
   </div>
-  {% if current_user.role != 'owner' %}<a class="btn" href="{{ url_for('extras.new_report') }}">{{ t('extras.report_button') }}</a>{% endif %}
+  <div class="head-side">
+    <a class="btn" href="{{ url_for('quote_requests.new_request') }}">{{ t('qreq.new_button') }}</a>
+    {% if current_user.role != 'owner' %}<a class="btn" href="{{ url_for('extras.new_report') }}">{{ t('extras.report_button') }}</a>{% endif %}
+  </div>
 </div>
+
+{% if my_requests %}
+{# Pedidos de cotação que a pessoa mandou e ainda aguardam análise (ou foram recusados) #}
+<div class="callout">
+  <b>{{ t('qreq.mine_title') }}</b>
+  <ul class="plain-list">
+    {% for r in my_requests %}<li><a href="{{ url_for('quote_requests.detail', request_id=r.id) }}">{{ r.client_name }}</a> · {{ r.created_at|dt_local }} ·
+      {% if r.status == 'pending' %}<span class="pill pill-pending">{{ t('qreq.pending') }}</span>{% else %}<span class="pill pill-failed">{{ t('qreq.declined') }}</span>{% endif %}</li>{% endfor %}
+  </ul>
+  <p><a href="{{ url_for('quote_requests.list_requests') }}">{{ t('extras.see_all') }}</a></p>
+</div>
+{% endif %}
 
 {% if my_changes %}
 {# O dono quer editar ou excluir um trabalho concluído meu: eu decido #}

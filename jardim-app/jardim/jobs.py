@@ -333,7 +333,7 @@ def _read_job_form(with_status=False, form=None):
 @bp.route("/painel")
 @permission_required("schedule")
 def dashboard():
-    from . import extras  # importado aqui: o extras.py usa este arquivo
+    from . import extras, quote_requests  # importados aqui: eles usam este arquivo
     today = utils.today_iso()
     db = get_db()
     return render_template(
@@ -349,6 +349,7 @@ def dashboard():
         team_cash=reports.team_cash(*utils.week_bounds(today)),
         reminders_card=reminders.summary(),
         extras_pending=extras.pending_count() if g.user["role"] == "owner" else 0,
+        qreq_pending=quote_requests.pending_count() if can("quotes") else 0,
     )
 
 
@@ -625,7 +626,7 @@ def repeat_job(job_id):
 @bp.route("/meus-trabalhos")
 @login_required
 def my_jobs():
-    from . import changes, extras  # importados aqui: eles usam este arquivo
+    from . import changes, extras, quote_requests  # importados aqui: eles usam este arquivo
     uid, today = g.user["id"], utils.today_iso()
     return render_template(
         "my_jobs.html",
@@ -639,6 +640,7 @@ def my_jobs():
         weekly_minutes=_weekly_minutes(uid),
         my_reports=[r for r in extras.mine(uid) if r["status"] != "approved"][:5] if g.user["role"] != "owner" else [],
         my_changes=changes.waiting_for(uid),
+        my_requests=[r for r in quote_requests.mine(uid) if r["status"] != "quoted"][:5],
     )
 
 

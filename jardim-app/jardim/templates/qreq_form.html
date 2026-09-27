@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% from "_macros.html" import phone_input with context %}
+{% from "_portal.html" import composer_assets with context %}
+{% block title %}{{ t('qreq.form_title') }} – {% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('jobs.my_jobs') }}">‹ {{ t('nav.my_jobs') }}</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ t('qreq.form_title') }}</h1>
+    <p class="sub">{{ t('qreq.form_hint') }}</p>
+  </div>
+</div>
+
+{# O comments.js cuida dos anexos (miniaturas, reduz as fotos no celular, manda tudo junto) e mostra os erros
+   sem perder o que foi escolhido. Sem ele, o formulário funciona do jeito normal. #}
+<form method="post" enctype="multipart/form-data" class="sheet pad stack qreq-form" data-comment-form data-done="{{ url_for('quote_requests.list_requests') }}" data-max="{{ max_files }}">
+  {{ csrf_field() }}
+
+  <div class="qreq-media">
+    <label class="btn photo-pick attach-pick qreq-pick">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6H8l1.3-2h5.4L16 6h1.5A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-8Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12.5" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+      <span>{{ t('qreq.attach') }}</span>
+      <input type="file" name="files" multiple accept="image/*,video/*,.heic,.heif,.mp4,.mov,.m4v,.3gp,.pdf,.doc,.docx,.xls,.xlsx">
+    </label>
+    <span class="hint">{{ t('qreq.attach_hint', n=max_files, mb=max_video_mb) }}</span>
+    <ul class="attach-list" data-attach-list hidden></ul>
+  </div>
+
+  <label>{{ t('extras.client_label') }}
+    <select name="client_id" id="qreq-client">
+      <option value="">{{ t('extras.client_new') }}</option>
+      {% for c in clients %}<option value="{{ c.id }}"{% if form.client_id|string == c.id|string %} selected{% endif %}>{{ c.name }}{% if c.address %}, {{ c.address }}{% endif %}</option>{% endfor %}
+    </select>
+    <span class="hint">{{ t('extras.client_pick') }}</span>
+  </label>
+  <div class="stack" id="qreq-new-client">
+    <label>{{ t('extras.client_name_label') }}
+      <input name="client_name" value="{{ form.client_name }}" maxlength="120" autocomplete="off">
+    </label>
+    <label><span class="label-line">{{ t('qreq.phone_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
+      {{ phone_input('phone', form.phone, autocomplete='off') }}
+    </label>
+    <div class="grid-2">
+      <label><span class="label-line">{{ t('clientform.address_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
+        <input name="address" value="{{ form.address }}" maxlength="300" autocomplete="off">
+      </label>
+      <label><span class="label-line">{{ t('quotes.postcode') }} <span class="hint">{{ t('common.optional') }}</span></span>
+        <input name="postcode" value="{{ form.postcode }}" maxlength="20" autocomplete="off">
+      </label>
+    </div>
+  </div>
+
+  <h2 class="form-section">{{ t('qreq.work_section') }}</h2>
+  <label>{{ t('qreq.request_label') }}
+    <textarea name="request" rows="4" maxlength="3000" required placeholder="{{ t('qreq.request_placeholder') }}">{{ form.request }}</textarea>
+  </label>
+  <label><span class="label-line">{{ t('qreq.notes_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
+    <textarea name="notes" rows="2" maxlength="2000" placeholder="{{ t('qreq.notes_placeholder') }}">{{ form.notes }}</textarea>
+  </label>
+  <div class="grid-2">
+    <label><span class="label-line">{{ t('qreq.time_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
+      <input name="time_text" value="{{ form.time_text }}" maxlength="40" autocomplete="off" placeholder="{{ t('jobform.hours_placeholder') }}">
+    </label>
+    <label><span class="label-line">{{ t('qreq.price_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
+      <span class="money-input"><span aria-hidden="true">£</span><input name="price_text" value="{{ form.price_text }}" inputmode="decimal" autocomplete="off" placeholder="0.00"></span>
+    </label>
+  </div>
+
+  <p class="hint attach-status" data-attach-status role="status" aria-live="polite" hidden></p>
+  <div class="actions">
+    <button class="btn primary" type="submit">{{ t('qreq.submit') }}</button>
+    <a class="btn" href="{{ url_for('jobs.my_jobs') }}">{{ t('common.cancel') }}</a>
+  </div>
+</form>
+{{ composer_assets() }}
+<script>
+  /* Cliente da lista: nome, telefone e endereço vêm do cadastro, então os campos de cliente novo somem. */
+  (function () {
+    var pick = document.getElementById('qreq-client'), box = document.getElementById('qreq-new-client');
+    function sync() { box.hidden = !!pick.value; }
+    pick.addEventListener('change', sync);
+    sync();
+  })();
+</script>
+{% endblock %}

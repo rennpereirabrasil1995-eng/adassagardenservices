@@ -30,6 +30,12 @@
   </div>
 </section>
 
+{% if qreq_pending %}
+<a class="callout extras-card" href="{{ url_for('quote_requests.list_requests') }}">
+  <b>{{ t('qreq.dashboard_pending_one') if qreq_pending == 1 else t('qreq.dashboard_pending_many', n=qreq_pending) }}</b>
+  <span>{{ t('extras.review') }} ›</span>
+</a>
+{% endif %}
 {% if extras_pending %}
 <a class="callout extras-card" href="{{ url_for('extras.list_reports') }}">
   <b>{{ t('extras.dashboard_pending_one') if extras_pending == 1 else t('extras.dashboard_pending_many', n=extras_pending) }}</b>

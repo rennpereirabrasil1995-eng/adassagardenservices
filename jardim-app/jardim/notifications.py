@@ -53,6 +53,10 @@ CHANGE_REQUESTED = "change_requested"  # o dono quer editar/excluir um trabalho 
 CHANGE_ACCEPTED = "change_accepted"
 CHANGE_DECLINED = "change_declined"
 CHANGE_KINDS = (CHANGE_REQUESTED, CHANGE_ACCEPTED, CHANGE_DECLINED)
+QREQ_SENT = "qreq_sent"              # alguém da equipe mandou um pedido de cotação (quote_requests.py)
+QREQ_QUOTED = "qreq_quoted"          # virou cotação
+QREQ_DECLINED = "qreq_declined"      # o pedido foi recusado
+QREQ_KINDS = (QREQ_SENT, QREQ_QUOTED, QREQ_DECLINED)
 OPEN_STATUSES = ("scheduled", "in_progress")
 EMAIL_MAX_AGE = timedelta(days=2)    # aviso que não saiu por e-mail em 2 dias não sai mais
 RECENT_NOTICE = timedelta(hours=20)  # quem acabou de ser avisado do trabalho não precisa de lembrete também
@@ -264,6 +268,9 @@ def render(row):
         title = t(f"notif.{kind}_title", author=p.get("author", ""), client=p.get("client", ""))
         body = t(f"notif.{kind}_body", date=utils.date_long(p.get("date")) if p.get("date") else "", hours=p.get("hours", ""),
                  note=(" · " + p["note"]) if p.get("note") else "")
+    elif kind in QREQ_KINDS:
+        title = t(f"notif.{kind}_title", author=p.get("author", ""), client=p.get("client", ""), ref=p.get("ref", ""))
+        body = " · ".join(x for x in (p.get("time", ""), p.get("price", ""), p.get("note", "")) if x)
     else:
         title = t(f"notif.{kind}_title", client=p.get("client", ""))
         body = " · ".join(x for x in (p.get("title", ""), _when(p.get("date"), p.get("time"))) if x)
@@ -279,6 +286,8 @@ def render(row):
         url = url_for("jobs.job_detail", job_id=row["job_id"]) if row["job_id"] else url_for("jobs.list_jobs")
     elif kind in EXTRA_KINDS:
         url = url_for("extras.list_reports")
+    elif kind in QREQ_KINDS:
+        url = url_for("quote_requests.detail", request_id=p["request_id"]) if p.get("request_id") else url_for("quote_requests.list_requests")
     else:
         url = url_for("jobs.job_detail", job_id=row["job_id"]) if row["job_id"] and kind not in (JOB_UNASSIGNED, JOB_DELETED) else None
     return {"title": title, "body": body, "read": bool(row["read_at"]), "created_at": row["created_at"], "url": url}

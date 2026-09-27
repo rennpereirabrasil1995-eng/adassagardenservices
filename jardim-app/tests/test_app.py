@@ -2696,6 +2696,103 @@ class AppTests(unittest.TestCase):
         self.assertIn("Nothing waiting.", self.owner.get("/servicos-extras/").get_data(as_text=True))
         self.assertNotIn("waiting for your approval", self.owner.get("/painel").get_data(as_text=True))
 
+    def test_team_sends_a_quick_quote_request_and_the_owner_makes_a_quote_or_declines(self):
+        import io
+
+        self.create_owner()
+        client = self.create_client()
+        ana_id = self.create_employee()
+        bruno_id = self.create_employee("Bruno", "bruno@example.com", "senha-do-bruno-1")
+        gil_id = self.create_manager(perms=("quotes",))
+        owner_id = self.query("SELECT id FROM users WHERE role = 'owner'")[0]["id"]
+        ana, bruno = self.employee_browser(), self.employee_browser("bruno@example.com", "senha-do-bruno-1")
+        gil = self.employee_browser("gil@example.com", "senha-do-gil-1")
+        # todo mundo da equipe vê o botão em Meus trabalhos; o formulário confere cliente, pedido, tempo e valor
+        for who in (ana, self.owner):
+            self.assertIn("/pedidos-de-cotacao/novo", who.get("/meus-trabalhos").get_data(as_text=True))
+        bad = ana.post("/pedidos-de-cotacao/novo", {"client_name": "", "request": "", "time_text": "abc", "price_text": "x"},
+                       follow_redirects=True).get_data(as_text=True)
+        for msg in ("Pick a client or type the name.", "Say what the client asked for.", "Estimated time: use", "Estimated price: use"):
+            self.assertIn(msg, bad)
+        as_json = ana.post("/pedidos-de-cotacao/novo", {"client_name": "", "request": "x"}, headers={"Accept": "application/json"})
+        self.assertEqual(as_json.status_code, 400)  # o comments.js mostra os erros sem perder as fotos escolhidas
+        self.assertEqual(as_json.get_json()["errors"], ["Pick a client or type the name."])
+        self.assertEqual(self.query("SELECT COUNT(*) AS n FROM quote_requests")[0]["n"], 0)
+        # um pedido com cliente novo: foto, vídeo (de verdade por dentro), e dois arquivos que não servem
+        fake_video = io.BytesIO(b"\x00\x00\x00\x18ftypmp42" + b"\x00" * 200)
+        r = ana.post("/pedidos-de-cotacao/novo", {
+            "client_name": "Mrs Patel", "phone_cc": "44", "phone": "07700 900111", "address": "4 Lime Walk", "postcode": "SW15 2AA",
+            "request": "Cut the front hedge\nClear the leaves", "notes": "Side gate is locked", "time_text": "1 to 2hrs", "price_text": "120",
+            "files": [(self._photo(), "hedge.jpg"), (fake_video, "clip.mp4"), (io.BytesIO(b"not a video"), "x.mov"),
+                      (io.BytesIO(b"plain text"), "notes.txt")]},
+            content_type="multipart/form-data")
+        self.assertEqual(r.status_code, 302)
+        req = self.query("SELECT * FROM quote_requests")[0]
+        self.assertEqual((req["client_name"], req["minutes"], req["price_pence"], req["status"], req["address"]),
+                         ("Mrs Patel", 120, 12000, "pending", "4 Lime Walk"))
+        self.assertTrue(req["phone"].startswith("+44"))
+        files = self.query("SELECT kind, original FROM quote_request_files WHERE request_id = ? ORDER BY id", (req["id"],))
+        self.assertEqual([(f["kind"], f["original"]) for f in files], [("photo", "hedge.jpg"), ("video", "clip.mp4")])
+        detail = ana.get(r.headers["Location"]).get_data(as_text=True)
+        self.assertIn("2 files were left out", detail)
+        self.assertIn("Waiting for review", detail)
+        self.assertIn("<video", detail)
+        self.assertIn("1 to 2hrs", detail)
+        self.assertIn("£120", detail)
+        # quem analisa (dono e gerente com Cotações) fica sabendo; o outro funcionário não
+        self.assertEqual(len(self.notices(owner_id, "qreq_sent")), 1)
+        self.assertEqual(len(self.notices(gil_id, "qreq_sent")), 1)
+        self.assertEqual(len(self.notices(bruno_id, "qreq_sent")), 0)
+        self.assertIn("Ana sent a quote request: Mrs Patel", self.owner.get("/avisos/").get_data(as_text=True))
+        self.assertIn("1 quote request waiting for your review", self.owner.get("/painel").get_data(as_text=True))
+        self.assertIn("1 quote request waiting for your review", self.owner.get("/cotacoes/").get_data(as_text=True))
+        self.assertIn("Waiting for review", ana.get("/meus-trabalhos").get_data(as_text=True))
+        # os arquivos: quem pediu e quem analisa abrem; o resto da equipe não
+        photo_id, video_id = self.query("SELECT id FROM quote_request_files ORDER BY id")[0]["id"], self.query("SELECT id FROM quote_request_files ORDER BY id")[1]["id"]
+        img = gil.get(f"/pedidos-de-cotacao/{req['id']}/arquivo/{photo_id}?mini=1")
+        self.assertEqual((img.status_code, img.mimetype), (200, "image/jpeg"))
+        video = ana.get(f"/pedidos-de-cotacao/{req['id']}/arquivo/{video_id}")
+        self.assertEqual((video.status_code, video.mimetype), (200, "video/mp4"))
+        self.assertEqual(bruno.get(f"/pedidos-de-cotacao/{req['id']}").status_code, 403)
+        self.assertEqual(bruno.get(f"/pedidos-de-cotacao/{req['id']}/arquivo/{photo_id}").status_code, 403)
+        self.assertEqual(bruno.post(f"/pedidos-de-cotacao/{req['id']}/cotar").status_code, 403)
+        # o gerente cria a cotação: já preenchida, com o item no valor estimado e a foto copiada
+        r = gil.post(f"/pedidos-de-cotacao/{req['id']}/cotar")
+        self.assertEqual(r.status_code, 302)
+        q = self.query("SELECT * FROM quotes")[0]
+        self.assertEqual(r.headers["Location"], f"/cotacoes/{q['id']}/editar")
+        self.assertEqual((q["to_name"], q["to_address"], q["to_postcode"], q["title"], q["created_by"], q["status"]),
+                         ("Mrs Patel", "4 Lime Walk", "SW15 2AA", "Cut the front hedge", gil_id, "open"))
+        self.assertIn("Clear the leaves", q["intro"])
+        self.assertEqual(self.query("SELECT description, unit_pence FROM quote_items WHERE quote_id = ?", (q["id"],)),
+                         [{"description": "Cut the front hedge", "unit_pence": 12000}])
+        copied = self.query("SELECT filename FROM quote_photos WHERE quote_id = ?", (q["id"],))
+        self.assertEqual(len(copied), 1)
+        self.assertTrue(os.path.exists(os.path.join(self.tmp.name, "uploads", "quotes", str(q["id"]), copied[0]["filename"])))
+        self.assertEqual(self.query("SELECT status, quote_id FROM quote_requests WHERE id = ?", (req["id"],))[0], {"status": "quoted", "quote_id": q["id"]})
+        self.assertIn("became quote Q-0001", ana.get("/avisos/").get_data(as_text=True))
+        self.assertIn("Quote Q-0001 was created from this request", ana.get(f"/pedidos-de-cotacao/{req['id']}").get_data(as_text=True))
+        self.assertEqual(gil.post(f"/pedidos-de-cotacao/{req['id']}/cotar").status_code, 404)  # já decidido
+        self.assertNotIn("waiting for your review", self.owner.get("/painel").get_data(as_text=True))
+        # outro pedido, com cliente da lista: os dados vêm do cadastro; o dono recusa com motivo
+        ana.post("/pedidos-de-cotacao/novo", {"client_id": str(client), "request": "New lawn"})
+        second = self.query("SELECT * FROM quote_requests ORDER BY id DESC LIMIT 1")[0]
+        self.assertEqual((second["client_name"], second["address"], second["client_id"]), ("Sítio das Flores", "12 Rose Lane", client))
+        self.assertEqual(self.owner.post(f"/pedidos-de-cotacao/{second['id']}/recusar", {"note": "We don't lay lawns"}).status_code, 302)
+        self.assertEqual(self.query("SELECT status FROM quote_requests WHERE id = ?", (second["id"],))[0]["status"], "declined")
+        self.assertIn("Quote request declined: Sítio das Flores", ana.get("/avisos/").get_data(as_text=True))
+        mine = ana.get("/pedidos-de-cotacao/").get_data(as_text=True)
+        self.assertIn("Declined", mine)
+        self.assertIn("Reason: We don&#39;t lay lawns", ana.get(f"/pedidos-de-cotacao/{second['id']}").get_data(as_text=True))
+        # apagar: quem pediu só enquanto espera; quem analisa, qualquer um (a pasta das fotos vai junto)
+        self.assertEqual(ana.post(f"/pedidos-de-cotacao/{req['id']}/excluir").status_code, 403)
+        folder = os.path.join(self.tmp.name, "uploads", "requests", str(req["id"]))
+        self.assertTrue(os.path.isdir(folder))
+        self.assertEqual(self.owner.post(f"/pedidos-de-cotacao/{req['id']}/excluir").status_code, 302)
+        self.assertFalse(os.path.exists(folder))
+        self.assertEqual(self.query("SELECT COUNT(*) AS n FROM quote_requests")[0]["n"], 1)
+        self.assertEqual(self.query("SELECT COUNT(*) AS n FROM quotes")[0]["n"], 1)  # a cotação fica
+
     def test_app_given_job_titles_follow_the_viewers_language(self):
         self.create_owner()
         client = self.create_client()

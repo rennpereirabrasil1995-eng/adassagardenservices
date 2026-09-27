@@ -269,6 +269,36 @@ def _form_items(items):
     return rows or [{"description": "", "qty": "1", "price": ""}]
 
 
+def create_quote(form, items, created_by):
+    """Grava uma cotação nova (sem commit). form: as chaves de _read_form(); items: dicts com description, quantity
+    e unit_pence. Devolve (id, número)."""
+    db = get_db()
+    for _attempt in range(3):  # número e link únicos (duas cotações ao mesmo tempo: tenta de novo)
+        number = db.execute("SELECT COALESCE(MAX(number), 0) + 1 FROM quotes").fetchone()[0]
+        try:
+            cur = db.execute(
+                "INSERT INTO quotes (number, token, client_id, company_id, to_name, to_email, to_phone, to_address, "
+                "to_postcode, title, intro, notes, frequency, valid_until, language, created_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (number, secrets.token_urlsafe(18), form["client_id"], form.get("company_id"), form["to_name"],
+                 form.get("to_email", ""), form.get("to_phone", ""), form.get("to_address", ""), form.get("to_postcode", ""),
+                 form["title"], form.get("intro", ""), form.get("notes", ""), form.get("frequency", "once"),
+                 form["valid_until"], form.get("language", "en"), created_by))
+            break
+        except sqlite3.IntegrityError:
+            db.rollback()
+    else:
+        abort(500)
+    _save_items(db, cur.lastrowid, items)
+    return cur.lastrowid, number
+
+
+def last_defaults():
+    """Idioma e condições da última cotação: costumam se repetir."""
+    last = get_db().execute("SELECT notes, language FROM quotes ORDER BY id DESC LIMIT 1").fetchone()
+    return {"language": last["language"] if last else "en", "notes": last["notes"] if last else ""}
+
+
 # ---------- Telas da equipe ----------
 
 LIST_VIEWS = ("abertas", "aceitas", "recusadas", "todas")
@@ -292,7 +322,9 @@ def list_quotes():
     counts = dict(db.execute("SELECT status, COUNT(*) FROM quotes GROUP BY status").fetchall())
     views = [(key, i18n.t(f"quotes.view_{key}"), counts.get(status) if status else None)
              for key, status in (("abertas", "open"), ("aceitas", "accepted"), ("recusadas", "declined"), ("todas", None))]
-    return render_template("quotes_list.html", quotes=quotes, view=view, views=views)
+    from . import quote_requests  # importado aqui: ele usa este arquivo
+    return render_template("quotes_list.html", quotes=quotes, view=view, views=views,
+                           requests_pending=quote_requests.pending_count())
 
 
 @bp.route("/cotacoes/nova", methods=("GET", "POST"))
@@ -301,34 +333,16 @@ def new_quote():
     if request.method == "POST":
         form, items, errors = _read_form()
         if not errors:
-            db = get_db()
-            for _attempt in range(3):  # número e link únicos (duas cotações ao mesmo tempo: tenta de novo)
-                number = db.execute("SELECT COALESCE(MAX(number), 0) + 1 FROM quotes").fetchone()[0]
-                try:
-                    cur = db.execute(
-                        "INSERT INTO quotes (number, token, client_id, company_id, to_name, to_email, to_phone, to_address, "
-                        "to_postcode, title, intro, notes, frequency, valid_until, language, created_by) "
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        (number, secrets.token_urlsafe(18), form["client_id"], form["company_id"], form["to_name"], form["to_email"],
-                         form["to_phone"], form["to_address"], form["to_postcode"], form["title"], form["intro"],
-                         form["notes"], form["frequency"], form["valid_until"], form["language"], g.user["id"]))
-                    break
-                except sqlite3.IntegrityError:
-                    db.rollback()
-            else:
-                abort(500)
-            _save_items(db, cur.lastrowid, items)
-            db.commit()
+            quote_id, number = create_quote(form, items, g.user["id"])
+            get_db().commit()
             flash(i18n.t("quotes.created", ref=ref(number)), "ok")
-            return redirect(url_for("quotes.quote_detail", quote_id=cur.lastrowid, _anchor="fotos"))
+            return redirect(url_for("quotes.quote_detail", quote_id=quote_id, _anchor="fotos"))
         for msg in errors:
             flash(msg, "error")
     else:
-        last = get_db().execute("SELECT notes, language FROM quotes ORDER BY id DESC LIMIT 1").fetchone()
         form = {"client_id": request.args.get("client", ""), "frequency": "once",
                 "valid_until": (date.fromisoformat(utils.today_iso()) + timedelta(days=VALID_DAYS)).isoformat(),
-                "language": last["language"] if last else "en",
-                "notes": last["notes"] if last else ""}  # as condições costumam se repetir
+                **last_defaults()}
         client = get_db().execute("SELECT * FROM clients WHERE id = ?", (form["client_id"],)).fetchone() \
             if form["client_id"].isdigit() else None
         if client is not None:

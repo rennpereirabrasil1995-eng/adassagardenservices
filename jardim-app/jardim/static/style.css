@@ -970,6 +970,26 @@ a.vbar:hover .vbar-fill, a.vbar:focus-visible .vbar-fill { filter: brightness(1.
 .week-legend i { border-radius: 50%; }
 .week-legend-none { background: var(--line-strong); }
 .week-print-head { display: none; }
+/* Pedido de cotação (quote_requests.py): fotos e vídeo em cima, os dados embaixo */
+.qreq-media { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
+.qreq-media .attach-list { flex-basis: 100%; }
+.qreq-pick { flex: 0 1 auto; }
+.attach-item.is-video { background: var(--ink); color: #fff; }
+.attach-item.is-video .attach-name, .attach-item.is-video small { color: #fff; }
+.attach-play { font-size: 1.1rem; line-height: 1; }
+.qreq-files { display: flex; flex-wrap: wrap; gap: .5rem; }
+.qreq-photo { width: 7.4rem; height: 7.4rem; }
+.qreq-video { flex-basis: 100%; max-height: 24rem; width: 100%; border-radius: 10px; background: #000; }
+.qreq-dl { margin: 0; }
+.qreq-dl dd.pre { white-space: pre-wrap; }
+.qreq-row { align-items: center; gap: .75rem; flex-wrap: wrap; }
+.qreq-row .qrow-main { flex: 1 1 10rem; }
+.qreq-row .qrow-main > span:not(.hint) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qreq-row .qrow-side { flex: none; margin-left: auto; }
+.qreq-thumb { width: 3.4rem; height: 3.4rem; flex: none; border-radius: 8px; object-fit: cover; background: var(--line); }
+.qreq-thumb-none { display: inline-flex; align-items: center; justify-content: center; color: var(--muted); font-size: 1.1rem; }
+.qreq-delete { margin-top: 1rem; }
+
 @media print {
   .week-wrap { overflow: visible; margin: 0; padding: 0; }
   .week { min-width: 0; font-size: .7rem; }
