@@ -29,8 +29,8 @@ from markupsafe import Markup, escape
 from werkzeug.exceptions import HTTPException
 from werkzeug.routing import IntegerConverter, ValidationError
 
-from . import (auth, branding, clients, companies, db, extras, finance, hours, i18n, jobs, notifications, photos, portal,
-               portal_mail, preferences, quotes, reminders, reports, team, utils)
+from . import (auth, branding, changes, clients, companies, db, extras, finance, hours, i18n, jobs, notifications, photos,
+               portal, portal_mail, preferences, quotes, reminders, reports, team, utils)
 
 ERROR_CODES = (400, 403, 404, 405, 413, 429, 500)
 
@@ -117,6 +117,7 @@ def create_app(test_config=None):
     app.register_blueprint(portal.bp)
     app.register_blueprint(portal_mail.bp)
     app.register_blueprint(extras.bp)
+    app.register_blueprint(changes.bp)
 
     # --- Proteção contra CSRF: todo formulário POST leva um token da sessão ---
     def csrf_token():

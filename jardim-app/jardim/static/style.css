@@ -336,6 +336,8 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
 .search-btn svg { width: 1.35rem; height: 1.35rem; flex: none; }
 .search-note { margin: -.3rem 0 0; }
 .list-filter { margin: 0 0 .75rem; }
+.change-callout { border-left-color: var(--marker); }
+.change-callout .actions { margin: .6rem 0 0; }
 /* Serviços extras (extras.py): o cartão de cada pedido */
 .report { padding: 1rem 1.15rem; display: grid; gap: .6rem; }
 .report + .report { border-top: 1px solid var(--line); }

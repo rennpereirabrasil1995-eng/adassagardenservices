@@ -11,6 +11,7 @@
 
 <form method="post" class="sheet pad stack">
   {{ csrf_field() }}
+  {% if needs_consent %}<div class="callout change-callout"><b>{{ t('changes.form_title') }}</b><p>{{ t('changes.form_hint', names=consent_names) }}</p></div>{% endif %}
   {% if form.quote_id %}<input type="hidden" name="quote_id" value="{{ form.quote_id }}">{% endif %}
   <label>{{ t('jobform.client_label') }}
     <select name="client_id" required>

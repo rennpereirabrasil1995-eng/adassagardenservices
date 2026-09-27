@@ -2711,6 +2711,75 @@ class AppTests(unittest.TestCase):
         self.owner.post("/conta/idioma", {"language": "pt_BR"})
         self.assertIn("Manutenção do jardim", self.owner.get("/trabalhos").get_data(as_text=True))
 
+    def test_editing_or_deleting_a_done_job_needs_the_workers_acceptance(self):
+        self.create_owner()
+        client = self.create_client()
+        ana_id = self.create_employee()
+        bruno_id = self.create_employee("Bruno", "bruno@example.com", "senha-do-bruno-1")
+        owner_id = self.query("SELECT id FROM users WHERE role = 'owner'")[0]["id"]
+        ana, bruno = self.employee_browser(), self.employee_browser("bruno@example.com", "senha-do-bruno-1")
+        today = self.day(0)
+        done = self.create_job(client, ana_id, self.day(-1))
+        self.set_times(done, "09:00", "11:00")
+        open_job = self.create_job(client, ana_id, today)
+        edit_data = {"client_id": client, "assigned_to": str(ana_id), "title": "Manutenção", "job_date": self.day(-1),
+                     "start_time": "08:30", "status": "done", "tasks": "Cortar a grama"}
+        # trabalho em aberto: edita e apaga na hora, como sempre
+        self.owner.post(f"/trabalhos/{open_job}/editar", {**edit_data, "job_date": today, "status": "scheduled", "title": "Poda"})
+        self.assertEqual(self.query("SELECT title FROM jobs WHERE id = ?", (open_job,))[0]["title"], "Poda")
+        self.owner.post(f"/trabalhos/{open_job}/excluir")
+        self.assertEqual(self.query("SELECT COUNT(*) AS n FROM jobs WHERE id = ?", (open_job,))[0]["n"], 0)
+        # concluído com a Ana: o dono vê o aviso, e editar vira um pedido; nada muda ainda
+        self.assertIn("needs Ana to accept", self.owner.get(f"/trabalhos/{done}").get_data(as_text=True))
+        self.assertIn("Saving sends the change to Ana", self.owner.get(f"/trabalhos/{done}/editar").get_data(as_text=True))
+        r = self.owner.post(f"/trabalhos/{done}/editar", {**edit_data, "start_time": "10:00", "title": "Manutenção"})
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(self.query("SELECT start_time, status FROM jobs WHERE id = ?", (done,))[0]["start_time"], "08:30")
+        change = self.query("SELECT * FROM job_changes WHERE job_id = ?", (done,))[0]
+        self.assertEqual((change["kind"], change["status"], change["required"]), ("edit", "pending", f"[{ana_id}]"))
+        self.assertEqual(len(self.notices(ana_id, "change_requested")), 1)
+        self.assertIn("Dono Teste wants to edit: Sítio das Flores", ana.get("/avisos/").get_data(as_text=True))
+        self.assertIn("Changes waiting for your acceptance", ana.get("/meus-trabalhos").get_data(as_text=True))
+        page = ana.get(f"/trabalhos/{done}").get_data(as_text=True)
+        self.assertIn("Dono Teste wants to edit this job", page)
+        self.assertIn(f"/trabalhos/{done}/mudancas/{change['id']}/aceitar", page)
+        self.assertIn("Waiting for Ana to accept", self.owner.get(f"/trabalhos/{done}").get_data(as_text=True))
+        # o Bruno não é do trabalho: não decide. A Ana recusa: nada muda e o dono fica sabendo
+        self.assertEqual(bruno.post(f"/trabalhos/{done}/mudancas/{change['id']}/aceitar").status_code, 403)
+        ana.post(f"/trabalhos/{done}/mudancas/{change['id']}/recusar", {"note": "I did start at 8:30"})
+        self.assertEqual(self.query("SELECT status, note FROM job_changes WHERE id = ?", (change["id"],))[0]["note"], "I did start at 8:30")
+        self.assertEqual(self.query("SELECT start_time FROM jobs WHERE id = ?", (done,))[0]["start_time"], "08:30")
+        self.assertIn("Ana declined the edit: Sítio das Flores", self.owner.get("/avisos/").get_data(as_text=True))
+        # o dono pede de novo e a Ana aceita: a edição é aplicada
+        self.owner.post(f"/trabalhos/{done}/editar", {**edit_data, "start_time": "10:00"})
+        change = self.query("SELECT id FROM job_changes WHERE job_id = ? AND status = 'pending'", (done,))[0]
+        ana.post(f"/trabalhos/{done}/mudancas/{change['id']}/aceitar")
+        self.assertEqual(self.query("SELECT start_time FROM jobs WHERE id = ?", (done,))[0]["start_time"], "10:00")
+        self.assertEqual(len(self.notices(owner_id, "change_accepted")), 1)
+        # excluir também espera o aceite; um pedido novo substitui o anterior; aceito, o trabalho some
+        self.owner.post(f"/trabalhos/{done}/excluir")
+        self.assertEqual(self.query("SELECT COUNT(*) AS n FROM jobs WHERE id = ?", (done,))[0]["n"], 1)
+        first = self.query("SELECT id FROM job_changes WHERE job_id = ? AND status = 'pending'", (done,))[0]["id"]
+        self.owner.post(f"/trabalhos/{done}/excluir")
+        pending = self.query("SELECT id, kind FROM job_changes WHERE job_id = ? AND status = 'pending'", (done,))
+        self.assertEqual(len(pending), 1)
+        self.assertNotEqual(pending[0]["id"], first)
+        self.assertIn("wants to delete this job", ana.get(f"/trabalhos/{done}").get_data(as_text=True))
+        ana.post(f"/trabalhos/{done}/mudancas/{pending[0]['id']}/aceitar")
+        self.assertEqual(self.query("SELECT COUNT(*) AS n FROM jobs WHERE id = ?", (done,))[0]["n"], 0)
+        # sem ninguém escalado, o concluído muda na hora; e o dono pode cancelar o próprio pedido
+        alone = self.create_job(client, None, self.day(-2))
+        self.set_times(alone, "09:00", "10:00")
+        self.owner.post(f"/trabalhos/{alone}/excluir")
+        self.assertEqual(self.query("SELECT COUNT(*) AS n FROM jobs WHERE id = ?", (alone,))[0]["n"], 0)
+        other = self.create_job(client, bruno_id, self.day(-3))
+        self.set_times(other, "09:00", "10:00")
+        self.owner.post(f"/trabalhos/{other}/excluir")
+        ch = self.query("SELECT id FROM job_changes WHERE job_id = ? AND status = 'pending'", (other,))[0]["id"]
+        self.owner.post(f"/trabalhos/{other}/mudancas/{ch}/cancelar")
+        self.assertEqual(self.query("SELECT status FROM job_changes WHERE id = ?", (ch,))[0]["status"], "cancelled")
+        self.assertNotIn("Changes waiting", bruno.get("/meus-trabalhos").get_data(as_text=True))
+
     def test_schedule_search_by_client_name(self):
         self.create_owner()
         rosa, elm = self.create_client("Sítio das Flores"), self.create_client("12 Elm Road")
@@ -3320,7 +3389,9 @@ class AppTests(unittest.TestCase):
         self.owner.post(f"/trabalhos/{job}/comentarios/{first}/apagar")
         self.assertFalse((folder / photo["filename"]).exists() or (folder / doc["filename"]).exists())
         self.assertEqual(self.query("SELECT COUNT(*) AS n FROM comment_files WHERE comment_id = ?", (first,))[0]["n"], 0)
-        self.owner.post(f"/trabalhos/{job}/excluir")
+        self.owner.post(f"/trabalhos/{job}/excluir")  # concluído com a Ana: ela precisa aceitar (changes.py)
+        change = self.query("SELECT id FROM job_changes WHERE job_id = ? AND status = 'pending'", (job,))[0]["id"]
+        self.employee_browser().post(f"/trabalhos/{job}/mudancas/{change}/aceitar")
         self.assertFalse(folder.exists())
 
     def test_file_only_comment_notifies_with_the_file_names(self):

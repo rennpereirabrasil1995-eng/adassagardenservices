@@ -266,3 +266,21 @@ CREATE TABLE IF NOT EXISTS job_reports (
 );
 CREATE INDEX IF NOT EXISTS idx_job_reports_status ON job_reports(status, id);
 CREATE INDEX IF NOT EXISTS idx_job_reports_user ON job_reports(user_id, id);
+
+-- Mudança num trabalho concluído (changes.py): editar ou excluir precisa do aceite de quem fez o trabalho,
+-- senão a pessoa perde o controle das próprias horas. O pedido guarda o que o dono quer mudar (payload: os
+-- campos do formulário) e quem precisa aceitar (required) e já aceitou (accepted), como listas em JSON.
+CREATE TABLE IF NOT EXISTS job_changes (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id        INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+    kind          TEXT NOT NULL CHECK (kind IN ('edit', 'delete')),
+    payload       TEXT NOT NULL DEFAULT '{}',
+    requested_by  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    required      TEXT NOT NULL DEFAULT '[]',
+    accepted      TEXT NOT NULL DEFAULT '[]',
+    status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'cancelled')),
+    note          TEXT NOT NULL DEFAULT '',
+    decided_at    TEXT,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_job_changes_job ON job_changes(job_id, status);

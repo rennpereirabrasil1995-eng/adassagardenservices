@@ -49,6 +49,10 @@ EXTRA_REPORTED = "extra_reported"    # alguém da equipe reportou um serviço fo
 EXTRA_APPROVED = "extra_approved"    # o dono aprovou o serviço extra
 EXTRA_REJECTED = "extra_rejected"    # o dono recusou o serviço extra
 EXTRA_KINDS = (EXTRA_REPORTED, EXTRA_APPROVED, EXTRA_REJECTED)
+CHANGE_REQUESTED = "change_requested"  # o dono quer editar/excluir um trabalho concluído: quem fez precisa aceitar (changes.py)
+CHANGE_ACCEPTED = "change_accepted"
+CHANGE_DECLINED = "change_declined"
+CHANGE_KINDS = (CHANGE_REQUESTED, CHANGE_ACCEPTED, CHANGE_DECLINED)
 OPEN_STATUSES = ("scheduled", "in_progress")
 EMAIL_MAX_AGE = timedelta(days=2)    # aviso que não saiu por e-mail em 2 dias não sai mais
 RECENT_NOTICE = timedelta(hours=20)  # quem acabou de ser avisado do trabalho não precisa de lembrete também
@@ -251,6 +255,11 @@ def render(row):
         title = t("notif.team_comment_title", author=p.get("author", ""), client=p.get("client", ""))
         body = t("notif.team_comment_body", text=p.get("text", ""), title=p.get("title", ""),
                  when=utils.date_long(p.get("date")) if p.get("date") else "")
+    elif kind in CHANGE_KINDS:
+        what = t("changes.kind_delete") if p.get("what") == "delete" else t("changes.kind_edit")
+        title = t(f"notif.{kind}_title", author=p.get("author", ""), client=p.get("client", ""), what=what)
+        body = t(f"notif.{kind}_body", date=utils.date_long(p.get("date")) if p.get("date") else "",
+                 note=(" · " + p["note"]) if p.get("note") else "")
     elif kind in EXTRA_KINDS:
         title = t(f"notif.{kind}_title", author=p.get("author", ""), client=p.get("client", ""))
         body = t(f"notif.{kind}_body", date=utils.date_long(p.get("date")) if p.get("date") else "", hours=p.get("hours", ""),
@@ -266,6 +275,8 @@ def render(row):
         url = url_for("jobs.job_detail", job_id=row["job_id"], _anchor="equipe") if row["job_id"] else None
     elif kind == EXTRA_APPROVED and row["job_id"]:
         url = url_for("jobs.job_detail", job_id=row["job_id"])
+    elif kind in CHANGE_KINDS:
+        url = url_for("jobs.job_detail", job_id=row["job_id"]) if row["job_id"] else url_for("jobs.list_jobs")
     elif kind in EXTRA_KINDS:
         url = url_for("extras.list_reports")
     else:

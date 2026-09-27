@@ -10,6 +10,16 @@
   {% if current_user.role != 'owner' %}<a class="btn" href="{{ url_for('extras.new_report') }}">{{ t('extras.report_button') }}</a>{% endif %}
 </div>
 
+{% if my_changes %}
+{# O dono quer editar ou excluir um trabalho concluído meu: eu decido #}
+<div class="callout change-callout">
+  <b>{{ t('changes.mine_title') }}</b>
+  <ul class="plain-list">
+    {% for ch in my_changes %}<li><a href="{{ url_for('jobs.job_detail', job_id=ch.job_id) }}">{{ ch.client_name }}</a> · {{ ch.job_date|date_long }} · {{ t('changes.kind_delete') if ch.kind == 'delete' else t('changes.kind_edit') }} · {{ t('extras.by', name=ch.requester_name) }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
 {% if my_reports %}
 {# Serviços extras que a pessoa reportou e ainda aguardam o dono (ou foram recusados) #}
 <div class="callout">

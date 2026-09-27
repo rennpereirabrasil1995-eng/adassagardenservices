@@ -283,8 +283,8 @@ def duration_bounds(text):
     return (min(values), max(values)) if values else None
 
 
-def _read_job_form(with_status=False):
-    f = request.form
+def _read_job_form(with_status=False, form=None):
+    f = form if form is not None else request.form
     db = get_db()
     data = {
         "client_id": f.get("client_id", "").strip(),
@@ -440,25 +440,16 @@ def new_job():
 @bp.route("/trabalhos/<int:job_id>/editar", methods=("GET", "POST"))
 @permission_required("schedule")
 def edit_job(job_id):
+    from . import changes  # importado aqui: o changes.py usa este arquivo
     job = get_job_or_404(job_id)
     db = get_db()
     if request.method == "POST":
         form, tasks, errors = _read_job_form(with_status=True)
         if not errors:
-            started, finished = _timestamps_for_status(job, form["status"])
-            db.execute(
-                "UPDATE jobs SET client_id = ?, title = ?, job_date = ?, start_time = ?, "
-                "description = ?, status = ?, started_at = ?, finished_at = ?, planned_minutes = ?, planned_text = ? "
-                "WHERE id = ?",
-                (int(form["client_id"]), form["title"], form["job_date"], form["start_time"], form["description"],
-                 form["status"], started, finished, form["planned_minutes"], form["planned_hours"], job_id),
-            )
-            _save_people(db, job_id, form["people"])
-            _save_tasks(db, job_id, tasks)
-            if form["save_template"]:
-                _add_to_template(db, int(form["client_id"]), form["extras"])
-            notifications.job_updated(job, job_id)  # job = como estava antes da edição
-            db.commit()
+            if changes.needs_consent(job):  # concluído, com gente escalada: vira um pedido de mudança
+                changes.request_change(job, "edit", request.form.to_dict(flat=False))
+                return redirect(url_for("jobs.job_detail", job_id=job_id))
+            perform_edit(job, form, tasks)
             flash(i18n.t("common.changes_saved"), "ok")
             return redirect(url_for("jobs.job_detail", job_id=job_id))
         for msg in errors:
@@ -473,19 +464,49 @@ def edit_job(job_id):
         form["planned_hours"] = job["planned_label"]
         form["picked"] = [t for t in task_lines if t.lower() in template]  # já vêm marcadas na lista
         form["tasks"] = "\n".join(t for t in task_lines if t.lower() not in template)  # o resto vai em "outras"
-    return render_template("job_form.html", form=form, job=job, **_form_options(job))
+    return render_template("job_form.html", form=form, job=job, needs_consent=changes.needs_consent(job),
+                           consent_names=changes._people_names([u for u in job["people_ids"] if u != g.user["id"]]),
+                           **_form_options(job))
+
+
+def perform_edit(job, form, tasks):
+    """Grava a edição (job = como estava antes; form e tasks já conferidos por _read_job_form)."""
+    db = get_db()
+    started, finished = _timestamps_for_status(job, form["status"])
+    db.execute(
+        "UPDATE jobs SET client_id = ?, title = ?, job_date = ?, start_time = ?, "
+        "description = ?, status = ?, started_at = ?, finished_at = ?, planned_minutes = ?, planned_text = ? "
+        "WHERE id = ?",
+        (int(form["client_id"]), form["title"], form["job_date"], form["start_time"], form["description"],
+         form["status"], started, finished, form["planned_minutes"], form["planned_hours"], job["id"]),
+    )
+    _save_people(db, job["id"], form["people"])
+    _save_tasks(db, job["id"], tasks)
+    if form["save_template"]:
+        _add_to_template(db, int(form["client_id"]), form["extras"])
+    notifications.job_updated(job, job["id"])
+    db.commit()
+
+
+def perform_delete(job):
+    """Apaga o trabalho de verdade (tarefas, avisos, fotos e anexos junto)."""
+    db = get_db()
+    notifications.job_deleted(job)
+    db.execute("DELETE FROM jobs WHERE id = ?", (job["id"],))  # leva junto tarefas, avisos e fotos (no banco)
+    db.commit()
+    photos.remove_job_folder(job["id"])  # e aqui os arquivos das fotos de Antes e Depois
+    photos.remove_comment_folder(job["id"])  # e os anexos da conversa com a empresa
 
 
 @bp.route("/trabalhos/<int:job_id>/excluir", methods=("POST",))
 @permission_required("schedule")
 def delete_job(job_id):
+    from . import changes
     job = get_job_or_404(job_id)
-    db = get_db()
-    notifications.job_deleted(job)
-    db.execute("DELETE FROM jobs WHERE id = ?", (job_id,))  # leva junto tarefas, avisos e fotos (no banco)
-    db.commit()
-    photos.remove_job_folder(job_id)  # e aqui os arquivos das fotos de Antes e Depois
-    photos.remove_comment_folder(job_id)  # e os anexos da conversa com a empresa
+    if changes.needs_consent(job):  # concluído, com gente escalada: quem fez precisa aceitar
+        changes.request_change(job, "delete")
+        return redirect(url_for("jobs.job_detail", job_id=job_id))
+    perform_delete(job)
     flash(i18n.t("jobs.deleted"), "ok")
     return redirect(url_for("jobs.list_jobs"))
 
@@ -528,7 +549,7 @@ def repeat_job(job_id):
 @bp.route("/meus-trabalhos")
 @login_required
 def my_jobs():
-    from . import extras  # importado aqui: o extras.py usa este arquivo
+    from . import changes, extras  # importados aqui: eles usam este arquivo
     uid, today = g.user["id"], utils.today_iso()
     return render_template(
         "my_jobs.html",
@@ -541,6 +562,7 @@ def my_jobs():
                                order=" ORDER BY j.finished_at DESC, j.id DESC", limit=20),
         weekly_minutes=_weekly_minutes(uid),
         my_reports=[r for r in extras.mine(uid) if r["status"] != "approved"][:5] if g.user["role"] != "owner" else [],
+        my_changes=changes.waiting_for(uid),
     )
 
 
@@ -559,7 +581,7 @@ def job_detail(job_id):
     tasks = get_db().execute(
         "SELECT * FROM job_tasks WHERE job_id = ? ORDER BY position, id", (job_id,)).fetchall()
     report = build_report(job, tasks) if job["status"] == "done" else None
-    from . import portal  # importado aqui: o portal.py usa este arquivo
+    from . import changes, portal  # importados aqui: eles usam este arquivo
     company_thread = None
     if job["client_company_id"] and can("schedule"):  # jardim de uma empresa: a conversa com ela (área da empresa)
         company_thread = portal.staff_view(job)
@@ -567,7 +589,9 @@ def job_detail(job_id):
                            report=report, report_rows=(report.count("\n") + 2) if report else 0,
                            can_work=job["status"] in OPEN_STATUSES,
                            photo_sets=_job_photo_sets(job_id), max_photos=photos.MAX_PHOTOS,
-                           company_thread=company_thread, team_thread=portal.team_view(job))
+                           company_thread=company_thread, team_thread=portal.team_view(job),
+                           pending_change=changes.pending_for(job_id), needs_consent=changes.needs_consent(job),
+                           consent_names=changes._people_names([u for u in job["people_ids"] if u != g.user["id"]]))
 
 
 # ---------- Conversa da equipe: dono, gerentes e quem está escalado, sobre este trabalho ----------

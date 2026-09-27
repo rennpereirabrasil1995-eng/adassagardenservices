@@ -17,6 +17,7 @@
     <details class="popmenu" id="manage">
       <summary class="btn small" aria-label="{{ t('jobdetail.manage_title') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 13.5a7.9 7.9 0 0 0 0-3l2-1.5-2-3.4-2.3.9a8 8 0 0 0-2.6-1.5L14.1 2.6H9.9L9.5 5a8 8 0 0 0-2.6 1.5l-2.3-.9-2 3.4 2 1.5a7.9 7.9 0 0 0 0 3l-2 1.5 2 3.4 2.3-.9a8 8 0 0 0 2.6 1.5l.4 2.4h4.2l.4-2.4a8 8 0 0 0 2.6-1.5l2.3.9 2-3.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>{{ t('jobdetail.manage_title') }}</span></summary>
       <div class="popmenu-panel sheet pad stack">
+    {% if needs_consent %}<p class="hint">{{ t('changes.manage_hint', names=consent_names) }}</p>{% endif %}
     <div class="actions"><a class="btn" href="{{ url_for('jobs.edit_job', job_id=job.id) }}">{{ t('jobdetail.edit_job') }}</a></div>
     <form method="post" action="{{ url_for('jobs.repeat_job', job_id=job.id) }}" class="repeat">
       {{ csrf_field() }}
@@ -44,6 +45,31 @@
     {% endif %}
   </div>
 </div>
+
+{% if pending_change %}{% set ch = pending_change %}
+{# Mudança num trabalho concluído: quem fez precisa aceitar (changes.py) #}
+<div class="callout change-callout">
+  <b>{{ t('changes.pending_delete_title', name=ch.requester_name) if ch.kind == 'delete' else t('changes.pending_edit_title', name=ch.requester_name) }}</b>
+  <p>{% if current_user.id in ch.waiting_ids %}{{ t('changes.you_decide') }}{% else %}{{ t('changes.waiting_for', names=ch.waiting_names) }}{% endif %}</p>
+  <div class="actions">
+    {% if current_user.id in ch.waiting_ids %}
+    <form method="post" action="{{ url_for('changes.accept', job_id=job.id, change_id=ch.id) }}" data-confirm="{{ t('changes.accept_confirm_delete') if ch.kind == 'delete' else t('changes.accept_confirm_edit') }}">
+      {{ csrf_field() }}<button class="btn small primary" type="submit">{{ t('changes.accept') }}</button>
+    </form>
+    <form method="post" action="{{ url_for('changes.decline', job_id=job.id, change_id=ch.id) }}" class="report-reject">
+      {{ csrf_field() }}
+      <input name="note" maxlength="300" placeholder="{{ t('extras.reject_note') }}" aria-label="{{ t('extras.reject_note') }}">
+      <button class="btn small danger" type="submit">{{ t('changes.decline') }}</button>
+    </form>
+    {% endif %}
+    {% if current_user.id == ch.requested_by or current_user.role == 'owner' %}
+    <form method="post" action="{{ url_for('changes.cancel', job_id=job.id, change_id=ch.id) }}">
+      {{ csrf_field() }}<button class="linkbtn" type="submit">{{ t('changes.cancel_request') }}</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
 
 <dl class="facts sheet pad">
   <div><dt>{{ t('jobdetail.date_label') }}</dt><dd>{{ job.job_date|date_long }}{% if job.start_time %}, {{ job.start_time }}{% endif %}</dd></div>
