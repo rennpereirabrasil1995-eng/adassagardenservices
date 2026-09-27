@@ -153,6 +153,21 @@
 </section>
 {{ photo_assets() }}
 
+{# A conversa da equipe sobre este trabalho: quem abre a página escreve; a empresa e o cliente nunca veem #}
+<section class="block" id="equipe">
+  <h2>{{ t('jobdetail.team_thread_title') }}{% if team_thread.comments %} <span class="count">{{ team_thread.comments|length }}</span>{% endif %}</h2>
+  <p class="hint block-hint">{{ t('jobdetail.team_thread_hint') }}</p>
+  <div class="sheet pad stack">
+    {% if team_thread.comments %}
+    {{ thread(team_thread.comments, 'staff', [], none, delete_job=job.id, me=current_user.id, delete_endpoint='jobs.delete_team_comment', delete_own=true) }}
+    {% else %}
+    <p class="hint">{{ t('jobdetail.team_thread_empty') }}</p>
+    {% endif %}
+    {{ composer(url_for('jobs.team_comment', job_id=job.id), url_for('jobs.job_detail', job_id=job.id) ~ '#equipe',
+                t('jobdetail.team_message_label'), t('jobdetail.team_send'), team_thread.max_files, team_thread.max_doc_mb, t('jobdetail.team_placeholder')) }}
+  </div>
+</section>
+
 {% if company_thread %}
 {# Jardim de uma empresa (área da empresa): a conversa sobre este serviço #}
 {% set co = company_thread.company %}
@@ -169,8 +184,8 @@
                 t('companies.reply_label', company=co.name), t('companies.reply_send'), company_thread.max_files, company_thread.max_doc_mb) }}
   </div>
 </section>
-{{ composer_assets() }}
 {% endif %}
+{{ composer_assets() }}
 
 {% if can_schedule %}
 <section class="block">

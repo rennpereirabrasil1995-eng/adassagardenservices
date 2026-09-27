@@ -44,6 +44,7 @@ QUOTE_ACCEPTED = "quote_accepted"
 QUOTE_DECLINED = "quote_declined"
 QUOTE_KINDS = (QUOTE_VIEWED, QUOTE_ACCEPTED, QUOTE_DECLINED)
 COMPANY_COMMENT = "company_comment"  # alguém da empresa comentou um serviço (área da empresa, portal.py)
+TEAM_COMMENT = "team_comment"        # alguém da equipe escreveu na conversa do trabalho (jobs.py)
 OPEN_STATUSES = ("scheduled", "in_progress")
 EMAIL_MAX_AGE = timedelta(days=2)    # aviso que não saiu por e-mail em 2 dias não sai mais
 RECENT_NOTICE = timedelta(hours=20)  # quem acabou de ser avisado do trabalho não precisa de lembrete também
@@ -242,6 +243,10 @@ def render(row):
         title = t("notif.company_comment_title", company=p.get("company", ""), client=p.get("client", ""))
         body = t("notif.company_comment_body", author=p.get("author", ""), text=p.get("text", ""),
                  when=utils.date_long(p.get("date")) if p.get("date") else "")
+    elif kind == TEAM_COMMENT:
+        title = t("notif.team_comment_title", author=p.get("author", ""), client=p.get("client", ""))
+        body = t("notif.team_comment_body", text=p.get("text", ""), title=p.get("title", ""),
+                 when=utils.date_long(p.get("date")) if p.get("date") else "")
     else:
         title = t(f"notif.{kind}_title", client=p.get("client", ""))
         body = " · ".join(x for x in (p.get("title", ""), _when(p.get("date"), p.get("time"))) if x)
@@ -249,6 +254,8 @@ def render(row):
         url = url_for("quotes.quote_detail", quote_id=row["quote_id"]) if row["quote_id"] else None
     elif kind == COMPANY_COMMENT:
         url = url_for("jobs.job_detail", job_id=row["job_id"], _anchor="comentarios") if row["job_id"] else None
+    elif kind == TEAM_COMMENT:
+        url = url_for("jobs.job_detail", job_id=row["job_id"], _anchor="equipe") if row["job_id"] else None
     else:
         url = url_for("jobs.job_detail", job_id=row["job_id"]) if row["job_id"] and kind not in (JOB_UNASSIGNED, JOB_DELETED) else None
     return {"title": title, "body": body, "read": bool(row["read_at"]), "created_at": row["created_at"], "url": url}

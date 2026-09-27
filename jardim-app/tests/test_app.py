@@ -2454,6 +2454,66 @@ class AppTests(unittest.TestCase):
         # sem serviço hoje: mostra o último dia que teve, com o caminho pro anterior
         self.assertIn("No services on this day.", laura.get(f"/portal/?day={self.day(-5)}").get_data(as_text=True))
 
+    def test_team_chat_on_a_job_stays_between_the_team(self):
+        company_id, elm, private, ana_id, _ = self.company_setup()
+        bruno = self.create_employee("Bruno", "bruno@example.com", "senha-do-bruno-1")
+        gil = self.create_manager(perms=("schedule",))
+        owner_id = self.query("SELECT id FROM users WHERE role = 'owner'")[0]["id"]
+        job = self.create_job(elm, ana_id, self.day(0))
+        ana, bruno_b = self.employee_browser(), self.employee_browser("bruno@example.com", "senha-do-bruno-1")
+        # a Ana, escalada, escreve com uma foto; o Bruno, que não está no trabalho, nem abre a página
+        r = ana.post(f"/trabalhos/{job}/equipe", {"body": "Gate code changed to 4321", "files": [(self._photo(), "gate.jpg")]})
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(bruno_b.post(f"/trabalhos/{job}/equipe", {"body": "Hi"}).status_code, 404)
+        page = ana.get(f"/trabalhos/{job}").get_data(as_text=True)
+        self.assertIn("Gate code changed to 4321", page)
+        self.assertIn("Team chat", page)
+        file_id = self.query("SELECT id FROM comment_files")[0]["id"]
+        self.assertIn(f"/trabalhos/{job}/equipe/arquivo/{file_id}", page)
+        with ana.get(f"/trabalhos/{job}/equipe/arquivo/{file_id}?mini=1") as r:
+            self.assertEqual((r.status_code, r.mimetype), (200, "image/jpeg"))
+        self.assertEqual(bruno_b.get(f"/trabalhos/{job}/equipe/arquivo/{file_id}").status_code, 404)
+        self.assertEqual(self.owner.get(f"/trabalhos/{job}/comentarios/arquivo/{file_id}").status_code, 404)  # não é da empresa
+        # o dono e o gerente da agenda ficam sabendo; a própria Ana e o Bruno, não
+        self.assertEqual(len(self.notices(owner_id, "team_comment")), 1)
+        self.assertEqual(len(self.notices(gil, "team_comment")), 1)
+        self.assertEqual(self.notices(ana_id, "team_comment"), [])
+        self.assertEqual(self.notices(bruno, "team_comment"), [])
+        bell = self.owner.get("/avisos/").get_data(as_text=True)
+        self.assertIn("Ana wrote about: 12 Elm Road", bell)
+        self.assertIn("Gate code changed to 4321", bell)
+        self.assertIn(f"/trabalhos/{job}#equipe", bell)
+        # o dono responde duas vezes: a Ana recebe um aviso só, com o texto da última
+        self.owner.post(f"/trabalhos/{job}/equipe", {"body": "Thanks, noted."})
+        self.owner.post(f"/trabalhos/{job}/equipe", {"body": "Also bring the long ladder."})
+        mine = self.notices(ana_id, "team_comment")
+        self.assertEqual(len(mine), 1)
+        self.assertIn("Also bring the long ladder.", mine[0]["params"])
+        self.assertEqual(self.notices(bruno, "team_comment"), [])
+        self.assertIn("Write something or attach a file before sending.",
+                      ana.post(f"/trabalhos/{job}/equipe", {"body": "  "}, follow_redirects=True).get_data(as_text=True))
+        # a empresa nunca vê: nem na área dela, nem na conversa com ela na página do trabalho
+        self.set_times(job, "09:00", "10:00")
+        laura = self.portal_browser()
+        service = laura.get(f"/portal/service/{job}").get_data(as_text=True)
+        for private_bit in ("Gate code changed", "long ladder", "Thanks, noted"):
+            self.assertNotIn(private_bit, service)
+        self.assertEqual(laura.get(f"/portal/service/{job}/file/{file_id}").status_code, 404)
+        laura.post(f"/portal/service/{job}/comment", {"body": "Lovely work"})
+        owner_page = self.owner.get(f"/trabalhos/{job}").get_data(as_text=True)
+        self.assertIn("Lovely work", owner_page)
+        self.assertLess(owner_page.index("Gate code changed"), owner_page.index("Lovely work"))  # conversa da equipe vem antes
+        self.assertEqual(self.query("SELECT COUNT(*) AS n FROM job_comments WHERE internal = 1")[0]["n"], 3)
+        # apagar: a Ana apaga a dela (e o aviso some); não apaga a do dono; o dono apaga qualquer uma
+        ids = [m["id"] for m in self.query("SELECT id FROM job_comments WHERE internal = 1 ORDER BY id")]
+        self.assertEqual(ana.post(f"/trabalhos/{job}/equipe/{ids[1]}/apagar").status_code, 403)
+        ana.post(f"/trabalhos/{job}/equipe/{ids[0]}/apagar")
+        self.assertEqual(self.query("SELECT COUNT(*) AS n FROM comment_files")[0]["n"], 0)
+        self.assertEqual(self.notices(owner_id, "team_comment"), [])
+        self.owner.post(f"/trabalhos/{job}/equipe/{ids[1]}/apagar")
+        self.assertEqual(self.query("SELECT COUNT(*) AS n FROM job_comments WHERE internal = 1")[0]["n"], 1)
+        self.assertIn("Message deleted.", self.owner.get(f"/trabalhos/{job}").get_data(as_text=True))
+
     def test_company_area_report_sums_the_period_by_garden(self):
         company_id, elm, private, ana_id, _ = self.company_setup()
         oak = self.create_client("5 Oak Avenue")

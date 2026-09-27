@@ -74,12 +74,14 @@
 
 {# A conversa de um serviço. side = quem está olhando ('company' na área da empresa, 'staff' na página do trabalho):
    as mensagens desse lado ficam à direita. fresh = ids das novas (destacadas). delete_job = id do trabalho, se pode apagar. #}
-{% macro thread(comments, side, fresh, company_name, delete_job=none) -%}
+{#  Conversa da equipe (página do trabalho): me = id de quem está olhando (as mensagens dele à direita),
+    delete_endpoint = rota de apagar, delete_own = quem escreveu apaga a própria (o dono apaga qualquer uma). #}
+{% macro thread(comments, side, fresh, company_name, delete_job=none, me=none, delete_endpoint='companies.delete_comment', delete_own=false) -%}
 <ol class="thread">
   {% for m in comments %}
-  {% set mine = (m.from_company and side == 'company') or (not m.from_company and side == 'staff') %}
+  {% set mine = (m.user_id == me) if me is not none else ((m.from_company and side == 'company') or (not m.from_company and side == 'staff')) %}
   <li class="msg {{ 'msg-mine' if mine else 'msg-theirs' }}{% if m.id in fresh %} msg-new{% endif %}">
-    <p class="msg-meta"><b>{{ m.author_name }}</b> · {{ (m.company_name or t('companies.company_gone')) if m.from_company else app_name }} · {{ m.created_at|dt_local }}
+    <p class="msg-meta"><b>{{ m.author_name }}</b>{% if me is none %} · {{ (m.company_name or t('companies.company_gone')) if m.from_company else app_name }}{% endif %} · {{ m.created_at|dt_local }}
       {%- if m.id in fresh %} <span class="pill pill-new">{{ t('portal.new') }}</span>{% endif %}</p>
     {% if m.body %}<p class="msg-body pre">{{ m.body }}</p>{% endif %}
     {% if m.files %}
@@ -93,8 +95,8 @@
       {%- endfor %}
     </div>
     {% endif %}
-    {% if delete_job %}
-    <form method="post" action="{{ url_for('companies.delete_comment', job_id=delete_job, comment_id=m.id) }}" onsubmit='return confirm({{ t('companies.comment_delete_confirm')|tojson }})'>
+    {% if delete_job and (not delete_own or m.user_id == me or current_user.role == 'owner') %}
+    <form method="post" action="{{ url_for(delete_endpoint, job_id=delete_job, comment_id=m.id) }}" onsubmit='return confirm({{ (t('jobdetail.team_delete_confirm') if delete_own else t('companies.comment_delete_confirm'))|tojson }})'>
       {{ csrf_field() }}
       <button class="linkbtn danger-link" type="submit">{{ t('companies.comment_delete') }}</button>
     </form>

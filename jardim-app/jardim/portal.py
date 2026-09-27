@@ -389,12 +389,13 @@ def clean_comment(text):
     return re.sub(r"\n{3,}", "\n\n", text).strip()[:MAX_COMMENT]
 
 
-def thread(job_id, company_id=None):
+def thread(job_id, company_id=None, internal=False):
     """A conversa de um serviço, com o nome da empresa de cada comentário. Com company_id, só a conversa com
-    essa empresa: se o jardim mudar de empresa, a nova não vê o que foi falado com a antiga."""
+    essa empresa: se o jardim mudar de empresa, a nova não vê o que foi falado com a antiga.
+    internal=True é a outra conversa: a da equipe entre si (jobs.py), que a empresa nunca vê."""
     sql = ("SELECT m.*, co.name AS company_name FROM job_comments m LEFT JOIN companies co ON co.id = m.company_id "
-           "WHERE m.job_id = ?")
-    args = [job_id]
+           "WHERE m.job_id = ? AND m.internal = ?")
+    args = [job_id, 1 if internal else 0]
     if company_id is not None:
         sql, args = sql + " AND m.company_id = ?", args + [company_id]
     return [dict(r) for r in get_db().execute(sql + " ORDER BY m.id", args)]
@@ -410,15 +411,15 @@ def _mark_seen(ids):
     db.commit()
 
 
-def add_comment(job_id, body, company_id, user=None, portal=None):
-    """Grava um comentário na conversa com a empresa (o commit fica com quem chamou).
+def add_comment(job_id, body, company_id, user=None, portal=None, internal=False):
+    """Grava um comentário na conversa com a empresa, ou na da equipe (internal) (o commit fica com quem chamou).
     portal = quem da empresa escreveu; user = quem da equipe."""
     author = portal if portal is not None else user
     cur = get_db().execute(
         "INSERT INTO job_comments (job_id, company_id, from_company, user_id, company_user_id, author_name, body, "
-        "created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "created_at, internal) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (job_id, company_id, 1 if portal is not None else 0, None if portal is not None else user["id"],
-         portal["id"] if portal is not None else None, author["name"], body, utils.now_utc_iso()))
+         portal["id"] if portal is not None else None, author["name"], body, utils.now_utc_iso(), 1 if internal else 0))
     return cur.lastrowid
 
 
@@ -449,6 +450,25 @@ def staff_view(job):
     return {"company": company, "comments": comments, "fresh": fresh, "max_files": MAX_FILES, "max_doc_mb": MAX_DOC_MB}
 
 
+def team_view(job):
+    """A conversa da equipe sobre o trabalho (dono, gerentes e quem está escalado). Sem "novo": o aviso no
+    sininho já leva cada pessoa até aqui."""
+    comments = attach_files(thread(job["id"], internal=True),
+                            lambda file_id, mini=False: url_for("jobs.team_comment_file", job_id=job["id"], file_id=file_id,
+                                                                **({"mini": 1} if mini else {})))
+    return {"comments": comments, "max_files": MAX_FILES, "max_doc_mb": MAX_DOC_MB}
+
+
+def coalesce_notice(db, user_id, kind, job_id, params):
+    """Um aviso só por conversa: quem ainda não leu o aviso deste trabalho fica com o texto do último comentário."""
+    unread = db.execute("SELECT id FROM notifications WHERE user_id = ? AND job_id = ? AND kind = ? AND read_at IS NULL "
+                        "ORDER BY id DESC LIMIT 1", (user_id, job_id, kind)).fetchone()
+    if unread:
+        db.execute("UPDATE notifications SET params = ? WHERE id = ?", (json.dumps(params, ensure_ascii=False), unread["id"]))
+    else:
+        notifications.notify(user_id, kind, job_id, **params)
+
+
 MAX_PER_HOUR = 20  # comentários por hora de cada login de empresa (cada um vira aviso e e-mail pra equipe)
 
 
@@ -477,13 +497,7 @@ def comment(job_id):
     params = {"company": company["name"], "client": s["garden"], "title": s["title"], "date": s["job_date"],
               "author": g.portal["name"], "text": snippet(body) if body else snippet("📎 " + ", ".join(names))}
     for user_id in staff_to_tell():  # no sininho (e por e-mail, se ligado, depois que a página sai)
-        # quem ainda não leu o aviso deste serviço fica com um aviso só (o texto do último comentário)
-        unread = db.execute("SELECT id FROM notifications WHERE user_id = ? AND job_id = ? AND kind = ? AND read_at IS NULL "
-                            "ORDER BY id DESC LIMIT 1", (user_id, job_id, notifications.COMPANY_COMMENT)).fetchone()
-        if unread:
-            db.execute("UPDATE notifications SET params = ? WHERE id = ?", (json.dumps(params, ensure_ascii=False), unread["id"]))
-        else:
-            notifications.notify(user_id, notifications.COMPANY_COMMENT, job_id, **params)
+        coalesce_notice(db, user_id, notifications.COMPANY_COMMENT, job_id, params)
     db.commit()
     if not problems:
         flash(i18n.t("portal.comment_sent"), "ok")
@@ -560,7 +574,7 @@ def save_files(job_id, comment_id, files):
     return saved, bad, no_space
 
 
-def create_comment(job_id, company_id, body, files, user=None, portal=None):
+def create_comment(job_id, company_id, body, files, user=None, portal=None, internal=False):
     """Grava o comentário com os anexos. Devolve (id, [(mensagem, categoria)]); id None = não gravou nada."""
     t = i18n.t
     if len(files) > MAX_FILES:
@@ -568,7 +582,7 @@ def create_comment(job_id, company_id, body, files, user=None, portal=None):
     if not body and not files:
         return None, [(t("portal.comment_empty"), "error")]
     db = get_db()
-    comment_id = add_comment(job_id, body, company_id, user=user, portal=portal)
+    comment_id = add_comment(job_id, body, company_id, user=user, portal=portal, internal=internal)
     saved, bad, no_space = save_files(job_id, comment_id, files)
     problems = []
     if bad:
@@ -610,12 +624,13 @@ def remove_files(comment_id, job_id):
         photos.remove_photo_files(folder, f["filename"])  # a foto e a miniatura (documento não tem)
 
 
-def send_comment_file(job_id, file_id, company_id=None):
-    """Um anexo da conversa. Com company_id, só se o comentário é da conversa com essa empresa."""
+def send_comment_file(job_id, file_id, company_id=None, internal=False):
+    """Um anexo da conversa. Com company_id, só se o comentário é da conversa com essa empresa.
+    internal=True: só anexo da conversa da equipe (a empresa nunca chega aqui)."""
     row = get_db().execute(
-        "SELECT f.*, m.company_id FROM comment_files f JOIN job_comments m ON m.id = f.comment_id "
+        "SELECT f.*, m.company_id, m.internal FROM comment_files f JOIN job_comments m ON m.id = f.comment_id "
         "WHERE f.id = ? AND m.job_id = ?", (file_id, job_id)).fetchone()
-    if row is None or (company_id is not None and row["company_id"] != company_id):
+    if row is None or (company_id is not None and row["company_id"] != company_id) or bool(row["internal"]) != internal:
         abort(404)
     folder = photos.comment_dir(job_id)
     if row["kind"] == "photo":

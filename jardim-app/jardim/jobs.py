@@ -1,4 +1,5 @@
 """Trabalhos (visitas): agenda do dono, checklist do funcionário, iniciar e concluir."""
+import json
 import re
 from datetime import date, timedelta
 
@@ -461,15 +462,84 @@ def job_detail(job_id):
     tasks = get_db().execute(
         "SELECT * FROM job_tasks WHERE job_id = ? ORDER BY position, id", (job_id,)).fetchall()
     report = build_report(job, tasks) if job["status"] == "done" else None
+    from . import portal  # importado aqui: o portal.py usa este arquivo
     company_thread = None
     if job["client_company_id"] and can("schedule"):  # jardim de uma empresa: a conversa com ela (área da empresa)
-        from . import portal  # importado aqui: o portal.py usa este arquivo
         company_thread = portal.staff_view(job)
     return render_template("job_detail.html", job=job, tasks=tasks,
                            report=report, report_rows=(report.count("\n") + 2) if report else 0,
                            can_work=job["status"] in OPEN_STATUSES,
                            photo_sets=_job_photo_sets(job_id), max_photos=photos.MAX_PHOTOS,
-                           company_thread=company_thread)
+                           company_thread=company_thread, team_thread=portal.team_view(job))
+
+
+# ---------- Conversa da equipe: dono, gerentes e quem está escalado, sobre este trabalho ----------
+# Fica na página do trabalho (quem pode abrir a página pode escrever). A empresa e o cliente nunca veem.
+
+def _team_to_tell(job):
+    """Quem fica sabendo de uma mensagem: quem está escalado, os donos e os gerentes com acesso à agenda
+    (o notify() já pula quem escreveu)."""
+    from . import portal
+    return list(dict.fromkeys([*job["people_ids"], *portal.staff_to_tell()]))
+
+
+@bp.route("/trabalhos/<int:job_id>/equipe", methods=("POST",))
+@login_required
+def team_comment(job_id):
+    from . import portal
+    job = get_job_or_404(job_id)
+    back = redirect(url_for("jobs.job_detail", job_id=job_id, _anchor="equipe"))
+    body = portal.clean_comment(request.form.get("body", ""))
+    comment_id, problems = portal.create_comment(job_id, None, body, portal.picked_files(), user=g.user, internal=True)
+    if comment_id is None:
+        for message, category in problems:
+            flash(message, category)
+        return back
+    db = get_db()
+    names = [r["original"] for r in db.execute("SELECT original FROM comment_files WHERE comment_id = ? ORDER BY id", (comment_id,))]
+    params = {"client": job["client_name"], "title": job["title"], "date": job["job_date"], "author": g.user["name"],
+              "text": portal.snippet(body) if body else portal.snippet("📎 " + ", ".join(names))}
+    for user_id in _team_to_tell(job):  # no sininho (e por e-mail, se ligado, depois que a página sai)
+        portal.coalesce_notice(db, user_id, notifications.TEAM_COMMENT, job_id, params)
+    db.commit()
+    flash(i18n.t("jobdetail.team_sent"), "ok")
+    for message, category in problems[1:]:  # o primeiro é o "enviado"; o resto, anexo que ficou de fora
+        flash(message, category)
+    return back
+
+
+@bp.route("/trabalhos/<int:job_id>/equipe/arquivo/<int:file_id>")
+@login_required
+def team_comment_file(job_id, file_id):
+    from . import portal
+    get_job_or_404(job_id)
+    return portal.send_comment_file(job_id, file_id, internal=True)
+
+
+@bp.route("/trabalhos/<int:job_id>/equipe/<int:comment_id>/apagar", methods=("POST",))
+@login_required
+def delete_team_comment(job_id, comment_id):
+    """Quem escreveu apaga a própria mensagem; o dono apaga qualquer uma."""
+    from . import portal
+    get_job_or_404(job_id)
+    db = get_db()
+    row = db.execute("SELECT body, user_id FROM job_comments WHERE id = ? AND job_id = ? AND internal = 1",
+                     (comment_id, job_id)).fetchone()
+    if row is None:
+        abort(404)
+    if row["user_id"] != g.user["id"] and g.user["role"] != "owner":
+        abort(403)
+    names = [f["original"] for f in db.execute("SELECT original FROM comment_files WHERE comment_id = ? ORDER BY id", (comment_id,))]
+    text = portal.snippet(row["body"] if row["body"] else "📎 " + ", ".join(names))  # o aviso no sininho com ele também some
+    portal.remove_files(comment_id, job_id)
+    db.execute("DELETE FROM job_comments WHERE id = ?", (comment_id,))
+    for notice in db.execute("SELECT id, params FROM notifications WHERE job_id = ? AND kind = ?",
+                             (job_id, notifications.TEAM_COMMENT)).fetchall():
+        if json.loads(notice["params"] or "{}").get("text") == text:
+            db.execute("DELETE FROM notifications WHERE id = ?", (notice["id"],))
+    db.commit()
+    flash(i18n.t("jobdetail.team_deleted"), "ok")
+    return redirect(url_for("jobs.job_detail", job_id=job_id, _anchor="equipe"))
 
 
 # ---------- Fotos de Antes e Depois ----------

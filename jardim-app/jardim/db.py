@@ -105,6 +105,9 @@ MIGRATIONS = [
     ALTER TABLE settings ADD COLUMN company_mail_checked_at TEXT NOT NULL DEFAULT '';
     COMMIT;
     """,
+    # Conversa da equipe em cada trabalho (dono, gerentes e quem está escalado), na mesma tabela dos
+    # comentários da empresa: internal = 1 é da equipe e a empresa nunca vê.
+    "ALTER TABLE job_comments ADD COLUMN internal INTEGER NOT NULL DEFAULT 0;",
 ]
 
 
