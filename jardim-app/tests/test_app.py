@@ -2462,16 +2462,12 @@ class AppTests(unittest.TestCase):
         for i in range(1, 6):
             laura.post(f"/portal/service/{job}/comment", {"body": f"Company note number {i}"}).close()
         page = self.owner.get(f"/empresas/{company_id}").get_data(as_text=True)
-        for i in (5, 4, 3):
-            self.assertIn(f"Company note number {i}", page)
-        for i in (2, 1):
-            self.assertNotIn(f"Company note number {i}", page)
-        self.assertIn("See all (5)", page)
-        everything = self.owner.get(f"/empresas/{company_id}?comentarios=todos").get_data(as_text=True)
         for i in range(1, 6):
-            self.assertIn(f"Company note number {i}", everything)
-        self.assertIn("Show only the latest", everything)
-        self.assertNotIn("See all", everything)
+            self.assertIn(f"Company note number {i}", page)
+        self.assertLess(page.index("Company note number 5"), page.index("Company note number 1"))  # o mais novo primeiro
+        # a lista abre com 3 e o botão "Show 5 more" vai abrindo o resto (script do base.html)
+        self.assertIn('data-more="3" data-more-step="5" data-more-label="Show {n} more"', page)
+        self.assertIn("Showing {shown} of {total}", page)
 
     def test_team_chat_on_a_job_stays_between_the_team(self):
         company_id, elm, private, ana_id, _ = self.company_setup()

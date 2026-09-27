@@ -151,6 +151,10 @@ a.notice:hover { background: var(--hover); }
 @media (max-width: 34rem) { .grid-2 { grid-template-columns: 1fr; } }
 .actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-bottom: 1rem; }
 .sheet .actions, .stack .actions { margin-bottom: 0; }
+/* listas com "Mostrar mais": o item escondido some mesmo quando a classe dele define o display */
+[data-more] > [hidden] { display: none !important; }
+.more-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin: -.4rem 0 1rem; }
+.sheet + .more-bar { margin-top: -.4rem; }
 
 /* Painel: fundo branco com borda fina; as linhas internas são separadas por filete */
 .sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 1rem; }

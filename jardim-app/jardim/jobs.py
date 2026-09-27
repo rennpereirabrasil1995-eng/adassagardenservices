@@ -256,7 +256,7 @@ def dashboard():
         late_jobs=fetch_jobs("j.job_date < ? AND j.status IN ('scheduled', 'in_progress')", (today,)),
         upcoming_jobs=fetch_jobs("j.job_date > ? AND j.job_date <= ? AND j.status = 'scheduled'",
                                  (today, _days_from_today(7))),
-        recent_done=fetch_jobs("j.status = 'done'", order=" ORDER BY j.finished_at DESC, j.id DESC", limit=5),
+        recent_done=fetch_jobs("j.status = 'done'", order=" ORDER BY j.finished_at DESC, j.id DESC", limit=20),
         unassigned=db.execute(
             f"SELECT COUNT(*) FROM jobs j WHERE {NO_PEOPLE} AND j.status = 'scheduled' AND j.job_date >= ?",
             (today,)).fetchone()[0],
@@ -442,7 +442,7 @@ def my_jobs():
         upcoming_jobs=fetch_jobs(f"{HAS_PERSON} AND j.job_date > ? AND j.job_date <= ? AND j.status = 'scheduled'",
                                  (uid, today, _days_from_today(14))),
         recent_done=fetch_jobs(f"{HAS_PERSON} AND j.status = 'done'", (uid,),
-                               order=" ORDER BY j.finished_at DESC, j.id DESC", limit=10),
+                               order=" ORDER BY j.finished_at DESC, j.id DESC", limit=20),
         weekly_minutes=_weekly_minutes(uid),
     )
 

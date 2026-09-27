@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import job_row with context %}
+{% from "_macros.html" import job_row, show_more with context %}
 {% block title %}{{ t('myjobs.page_title') }} – {% endblock %}
 {% block content %}
 <div class="page-head">
@@ -35,7 +35,7 @@
 {% if recent_done %}
 <section class="block">
   <h2>{{ t('dashboard.recent_done') }}</h2>
-  <div class="sheet">{% for j in recent_done %}{{ job_row(j, false) }}{% endfor %}</div>
+  <div class="sheet" {{ show_more() }}>{% for j in recent_done %}{{ job_row(j, false) }}{% endfor %}</div>
   <p class="hint"><a href="{{ url_for('hours.my_hours') }}">{{ t('myjobs.view_history') }}</a></p>
 </section>
 {% endif %}

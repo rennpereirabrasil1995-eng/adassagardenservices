@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import job_row, photo_body, photo_assets, quote_pill with context %}
+{% from "_macros.html" import job_row, photo_body, photo_assets, quote_pill, show_more with context %}
 {% block title %}{{ client.name }} – {% endblock %}
 {% block content %}
 <p class="crumb"><a href="{{ url_for('clients.list_clients') }}">{{ t('clientdetail.back') }}</a></p>
@@ -54,8 +54,8 @@
 
 {% if client_quotes %}
 <section class="block">
-  <h2>{{ t('nav.quotes') }}</h2>
-  <div class="sheet">
+  <h2>{{ t('nav.quotes') }}{% if client_quotes|length > 1 %} <span class="count">{{ client_quotes|length }}</span>{% endif %}</h2>
+  <div class="sheet" {{ show_more() }}>
     {% for q in client_quotes %}
     <a class="qrow" href="{{ url_for('quotes.quote_detail', quote_id=q.id) }}">
       <span class="qrow-main"><b>{{ q.title }}</b><span class="hint">{{ q.ref }}</span></span>
@@ -67,8 +67,8 @@
 {% endif %}
 
 <section class="block">
-  <h2>{{ t('clientdetail.jobs_title') }}</h2>
-  <div class="sheet">
+  <h2>{{ t('clientdetail.jobs_title') }}{% if jobs|length > 1 %} <span class="count">{{ jobs|length }}</span>{% endif %}</h2>
+  <div class="sheet" {{ show_more() }}>
     {% for j in jobs %}{{ job_row(j, show_client=false) }}{% else %}
     <p class="empty">{{ t('clientdetail.no_jobs') }}</p>
     {% endfor %}

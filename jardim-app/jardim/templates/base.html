@@ -90,6 +90,34 @@
     window.addEventListener('resize', update);
     update();
   });
+  /* Listas longas (data-more): só os primeiros itens aparecem; "Mostrar mais N" abre o resto aos poucos. */
+  document.querySelectorAll('[data-more]').forEach(function (box) {
+    var items = Array.prototype.filter.call(box.children, function (el) { return !el.hasAttribute('data-more-skip'); });
+    var start = parseInt(box.getAttribute('data-more'), 10) || 3, step = parseInt(box.getAttribute('data-more-step'), 10) || 5;
+    if (items.length <= start) return;
+    var shown = start, bar = document.createElement('div'), count = document.createElement('span'), btn = document.createElement('button');
+    bar.className = 'more-bar';
+    count.className = 'hint';
+    btn.type = 'button';
+    btn.className = 'btn small';
+    bar.appendChild(btn);
+    bar.appendChild(count);
+    box.insertAdjacentElement('afterend', bar);
+    function render() {
+      items.forEach(function (el, i) { el.hidden = i >= shown; });
+      var left = items.length - shown;
+      count.textContent = box.getAttribute('data-more-count').replace('{shown}', Math.min(shown, items.length)).replace('{total}', items.length);
+      btn.textContent = box.getAttribute('data-more-label').replace('{n}', Math.min(step, left));
+      bar.hidden = left <= 0;
+    }
+    btn.addEventListener('click', function () {
+      var first = items[shown];
+      shown += step;
+      render();
+      if (first && first.focus) first.focus({ preventScroll: true });
+    });
+    render();
+  });
   /* Conversa de um serviço: abre já rolada no fim, na mensagem mais nova. */
   document.querySelectorAll('.thread').forEach(function (box) { box.scrollTop = box.scrollHeight; });
 </script>

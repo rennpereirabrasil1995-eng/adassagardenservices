@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block title %}{{ t('notifications.title') }} – {% endblock %}
+{% from "_macros.html" import show_more with context %}
 {% block content %}
 <div class="page-head"><h1>{{ t('notifications.title') }}</h1></div>
-<div class="sheet">
+<div class="sheet" {{ show_more(5) }}>
   {% for n in items %}
   {% set tag = 'a' if n.url else 'div' %}
   <{{ tag }} class="notice{% if not n.read %} unread{% endif %}"{% if n.url %} href="{{ n.url }}"{% endif %}>
