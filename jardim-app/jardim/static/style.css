@@ -720,7 +720,11 @@ a.vbar:hover .vbar-fill, a.vbar:focus-visible .vbar-fill { filter: brightness(1.
 .popmenu-panel { position: absolute; right: 0; top: calc(100% + .5rem); z-index: 20; width: min(22rem, calc(100vw - 2rem));
   margin: 0; box-shadow: 0 10px 30px rgba(0, 0, 0, .18); }
 .popmenu-panel .repeat .pair { grid-template-columns: 1fr 1fr; }
-@media (max-width: 34rem) { .popmenu-panel { right: auto; left: 50%; transform: translateX(-50%); } }
+/* Celular: o painel deixa de flutuar e abre abaixo dos botões, na largura toda */
+@media (max-width: 34rem) {
+  .popmenu { flex: 1 1 100%; display: flex; flex-direction: column; align-items: flex-end; }
+  .popmenu-panel { position: static; width: 100%; margin-top: .5rem; box-shadow: none; }
+}
 .menu-row { display: flex; align-items: center; gap: .85rem; min-height: 4rem; padding: .7rem 1rem .7rem 1.05rem;
   color: inherit; text-decoration: none; }
 .menu-row + .menu-row { border-top: 1px solid var(--line); }
