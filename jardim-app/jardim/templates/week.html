@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ t('week.title') }} · {{ start|day_num }} {{ start|month_abbr }} – {% endblock %}
 {% block main_class %} wide{% endblock %}
+{% from "_macros.html" import show_more with context %}
 {% block content %}
 <div class="page-head no-print">
   <div>
@@ -41,7 +42,7 @@
 {# Histórico dos arrastos, com o Desfazer. Abre sozinho quando o último foi há pouco. #}
 <details class="fold week-moves no-print"{% if moves[0].fresh %} open{% endif %}>
   <summary><span class="fold-open">{{ t('week.moves_show', n=moves|length) }}</span><span class="fold-close">{{ t('week.moves_hide') }}</span></summary>
-  <ul class="plain-list week-moves-list">
+  <ul class="plain-list week-moves-list" {{ show_more(3, 5) }}>
     {% for m in moves %}
     <li class="week-move{% if m.undone_at %} undone{% endif %}">
       <span class="week-move-text">

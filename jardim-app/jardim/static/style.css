@@ -978,6 +978,7 @@ body.week-dragging { user-select: none; -webkit-user-select: none; cursor: grabb
 .week-status { margin: 0 0 .75rem; }
 .week-moves { margin: 0 0 1rem; background: var(--surface); }
 .week-moves-list { margin: 0; padding: .3rem .9rem; }
+.week-moves .more-bar { padding: 0 .9rem .7rem; }
 .week-move { display: flex; align-items: center; justify-content: space-between; gap: .5rem 1rem; flex-wrap: wrap; padding: .45rem 0; }
 .week-move + .week-move { border-top: 1px solid var(--line); }
 .week-move.undone .week-move-text { color: var(--muted); }
