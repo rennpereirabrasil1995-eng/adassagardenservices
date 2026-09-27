@@ -89,6 +89,8 @@
     window.addEventListener('resize', update);
     update();
   });
+  /* Conversa de um serviço: abre já rolada no fim, na mensagem mais nova. */
+  document.querySelectorAll('.thread').forEach(function (box) { box.scrollTop = box.scrollHeight; });
 </script>
 </body>
 </html>
