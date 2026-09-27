@@ -223,15 +223,15 @@ a.notice:hover { background: var(--hover); }
 .pill-company[style] { background: var(--co); border-color: var(--co); color: #ffffff; }
 .co-dot { display: inline-block; width: .8rem; height: .8rem; border-radius: 50%; background: var(--co); vertical-align: -.02rem; margin-right: .3rem; }
 .portal-nav[style] a.on { background: var(--co); border-color: var(--co); color: #ffffff; }
-/* A paleta: bolinhas de cor pra escolher */
+/* A paleta da empresa: bolinhas de cor pra escolher (co-, pra não misturar com as paletas de Aparência) */
 .palette { display: grid; gap: .5rem; }
-.swatches { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
-.swatch { position: relative; display: inline-flex; flex-direction: row; align-items: center; gap: .35rem; cursor: pointer; font-weight: 400; }
-.swatch input { position: absolute; opacity: 0; width: 0; height: 0; }
-.swatch span { display: block; width: 2.2rem; height: 2.2rem; border-radius: 50%; background: var(--sw, transparent); border: 2px solid var(--line-strong); box-sizing: border-box; }
-.swatch.none span { background: repeating-linear-gradient(45deg, var(--line) 0 4px, transparent 4px 8px); }
-.swatch input:checked + span { outline: 3px solid var(--ink); outline-offset: 2px; }
-.swatch input:focus-visible + span { outline: 3px solid var(--link); outline-offset: 2px; }
+.co-swatches { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.co-swatch { position: relative; display: inline-flex; flex-direction: row; align-items: center; gap: .35rem; cursor: pointer; font-weight: 400; }
+.co-swatch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.co-swatch span { display: block; width: 2.2rem; height: 2.2rem; border-radius: 50%; background: var(--sw, transparent); border: 2px solid var(--line-strong); box-sizing: border-box; }
+.co-swatch.none span { background: repeating-linear-gradient(45deg, var(--line) 0 4px, transparent 4px 8px); }
+.co-swatch input:checked + span { outline: 3px solid var(--ink); outline-offset: 2px; }
+.co-swatch input:focus-visible + span { outline: 3px solid var(--link); outline-offset: 2px; }
 
 /* Barra em segmentos: cada segmento é uma tarefa (como as fileiras de um canteiro) */
 .rows {

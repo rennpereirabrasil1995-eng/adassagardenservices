@@ -9,9 +9,9 @@
 {% endif %}
 <fieldset class="task-pick palette">
   <legend>{{ t('companies.color_label') }}</legend>
-  <div class="swatches">
-    <label class="swatch none" title="{{ t('companies.color_none') }}"><input type="radio" name="color" value=""{% if not color %} checked{% endif %}><span></span><small>{{ t('companies.color_none') }}</small></label>
-    {% for c in company_colors() %}<label class="swatch" title="{{ c }}"><input type="radio" name="color" value="{{ c }}"{% if c == color %} checked{% endif %}><span style="--sw: {{ c }}"></span></label>{% endfor %}
+  <div class="co-swatches">
+    <label class="co-swatch none" title="{{ t('companies.color_none') }}"><input type="radio" name="color" value=""{% if not color %} checked{% endif %}><span></span><small>{{ t('companies.color_none') }}</small></label>
+    {% for c in company_colors() %}<label class="co-swatch" title="{{ c }}"><input type="radio" name="color" value="{{ c }}"{% if c == color %} checked{% endif %}><span style="--sw: {{ c }}"></span></label>{% endfor %}
   </div>
   <p class="hint">{{ t('companies.color_hint') }}</p>
 </fieldset>
