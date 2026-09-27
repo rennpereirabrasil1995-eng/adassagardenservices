@@ -704,6 +704,17 @@ a.vbar:hover .vbar-fill, a.vbar:focus-visible .vbar-fill { filter: brightness(1.
 .me-avatar { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 3.3rem; height: 3.3rem;
   border-radius: 50%; background: var(--ink); color: var(--surface); font: 800 1.4rem/1 var(--display); }  /* contrasta no claro e no escuro */
 .menu { display: block; overflow: hidden; }
+/* Botão que abre um painel (Gerenciar, na página do trabalho): o painel cai abaixo, alinhado à direita */
+.head-side { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; justify-content: flex-end; }
+.popmenu { position: relative; }
+.popmenu > summary { list-style: none; display: inline-flex; align-items: center; gap: .4rem; cursor: pointer; }
+.popmenu > summary::-webkit-details-marker { display: none; }
+.popmenu > summary svg { width: 1.2rem; height: 1.2rem; flex: none; }
+.popmenu[open] > summary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.popmenu-panel { position: absolute; right: 0; top: calc(100% + .5rem); z-index: 20; width: min(22rem, calc(100vw - 2rem));
+  margin: 0; box-shadow: 0 10px 30px rgba(0, 0, 0, .18); }
+.popmenu-panel .repeat .pair { grid-template-columns: 1fr 1fr; }
+@media (max-width: 34rem) { .popmenu-panel { right: auto; left: 50%; transform: translateX(-50%); } }
 .menu-row { display: flex; align-items: center; gap: .85rem; min-height: 4rem; padding: .7rem 1rem .7rem 1.05rem;
   color: inherit; text-decoration: none; }
 .menu-row + .menu-row { border-top: 1px solid var(--line); }

@@ -145,6 +145,10 @@
       setTimeout(function () { requestAnimationFrame(tick); }, wait);
     });
   })();
+  /* Painéis que abrem por botão (.popmenu): tocar fora fecha */
+  document.addEventListener('click', function (e) {
+    document.querySelectorAll('.popmenu[open]').forEach(function (menu) { if (!menu.contains(e.target)) menu.removeAttribute('open'); });
+  });
   /* Conversa de um serviço: abre já rolada no fim, na mensagem mais nova. */
   document.querySelectorAll('.thread').forEach(function (box) { box.scrollTop = box.scrollHeight; });
 </script>

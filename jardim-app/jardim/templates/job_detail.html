@@ -10,7 +10,39 @@
     <h1>{% if can_clients %}<a href="{{ url_for('clients.client_detail', client_id=job.client_id) }}">{{ job.client_name }}</a>{% else %}{{ job.client_name }}{% endif %}</h1>
     <p class="sub">{{ job.title }}</p>
   </div>
-  <div>{{ pill(job.status) }}</div>
+  <div class="head-side">
+    {{ pill(job.status) }}
+    {% if can_schedule %}
+    {# Gerenciar: Editar, Repetir e Excluir num painel que abre pelo botão (fecha ao tocar fora) #}
+    <details class="popmenu" id="manage">
+      <summary class="btn small" aria-label="{{ t('jobdetail.manage_title') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 13.5a7.9 7.9 0 0 0 0-3l2-1.5-2-3.4-2.3.9a8 8 0 0 0-2.6-1.5L14.1 2.6H9.9L9.5 5a8 8 0 0 0-2.6 1.5l-2.3-.9-2 3.4 2 1.5a7.9 7.9 0 0 0 0 3l-2 1.5 2 3.4 2.3-.9a8 8 0 0 0 2.6 1.5l.4 2.4h4.2l.4-2.4a8 8 0 0 0 2.6-1.5l2.3.9 2-3.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>{{ t('jobdetail.manage_title') }}</span></summary>
+      <div class="popmenu-panel sheet pad stack">
+    <div class="actions"><a class="btn" href="{{ url_for('jobs.edit_job', job_id=job.id) }}">{{ t('jobdetail.edit_job') }}</a></div>
+    <form method="post" action="{{ url_for('jobs.repeat_job', job_id=job.id) }}" class="repeat">
+      {{ csrf_field() }}
+      <div class="pair">
+        <label>{{ t('jobdetail.repeat_every') }}
+          <select name="every">
+            <option value="1">{{ t('jobdetail.weeks_1') }}</option>
+            <option value="2">{{ t('jobdetail.weeks_2') }}</option>
+            <option value="3">{{ t('jobdetail.weeks_3') }}</option>
+            <option value="4">{{ t('jobdetail.weeks_4') }}</option>
+          </select>
+        </label>
+        <label>{{ t('jobdetail.how_many_times') }}
+          <input type="number" name="times" value="4" min="1" max="26">
+        </label>
+      </div>
+      <button class="btn small" type="submit">{{ t('jobdetail.create_repeats') }}</button>
+    </form>
+    <form method="post" action="{{ url_for('jobs.delete_job', job_id=job.id) }}" onsubmit='return confirm({{ t('jobdetail.delete_confirm')|tojson }})'>
+      {{ csrf_field() }}
+      <button class="btn danger small" type="submit">{{ t('jobdetail.delete_job') }}</button>
+    </form>
+      </div>
+    </details>
+    {% endif %}
+  </div>
 </div>
 
 <dl class="facts sheet pad">
@@ -202,33 +234,4 @@
 {% endif %}
 {{ composer_assets() }}
 
-{% if can_schedule %}
-<section class="block">
-  <h2>{{ t('jobdetail.manage_title') }}</h2>
-  <div class="sheet pad stack">
-    <div class="actions"><a class="btn" href="{{ url_for('jobs.edit_job', job_id=job.id) }}">{{ t('jobdetail.edit_job') }}</a></div>
-    <form method="post" action="{{ url_for('jobs.repeat_job', job_id=job.id) }}" class="repeat">
-      {{ csrf_field() }}
-      <div class="pair">
-        <label>{{ t('jobdetail.repeat_every') }}
-          <select name="every">
-            <option value="1">{{ t('jobdetail.weeks_1') }}</option>
-            <option value="2">{{ t('jobdetail.weeks_2') }}</option>
-            <option value="3">{{ t('jobdetail.weeks_3') }}</option>
-            <option value="4">{{ t('jobdetail.weeks_4') }}</option>
-          </select>
-        </label>
-        <label>{{ t('jobdetail.how_many_times') }}
-          <input type="number" name="times" value="4" min="1" max="26">
-        </label>
-      </div>
-      <button class="btn small" type="submit">{{ t('jobdetail.create_repeats') }}</button>
-    </form>
-    <form method="post" action="{{ url_for('jobs.delete_job', job_id=job.id) }}" onsubmit='return confirm({{ t('jobdetail.delete_confirm')|tojson }})'>
-      {{ csrf_field() }}
-      <button class="btn danger small" type="submit">{{ t('jobdetail.delete_job') }}</button>
-    </form>
-  </div>
-</section>
-{% endif %}
 {% endblock %}
