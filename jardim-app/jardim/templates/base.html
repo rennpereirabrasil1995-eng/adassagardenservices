@@ -117,16 +117,6 @@
       if (first && first.focus) first.focus({ preventScroll: true });
     });
     render();
-    /* data-more-auto: quando o botão entra na tela (a pessoa rolou até o fim), a próxima leva entra sozinha */
-    if (box.hasAttribute('data-more-auto') && window.IntersectionObserver) {
-      var watcher = new IntersectionObserver(function (entries) {
-        if (!entries.some(function (e) { return e.isIntersecting; })) return;
-        if (shown >= items.length) { watcher.disconnect(); return; }
-        shown += step;
-        render();
-      }, { rootMargin: '0px 0px 120px 0px' });
-      watcher.observe(bar);
-    }
   });
   /* Conversa de um serviço: abre já rolada no fim, na mensagem mais nova. */
   document.querySelectorAll('.thread').forEach(function (box) { box.scrollTop = box.scrollHeight; });

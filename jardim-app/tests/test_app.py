@@ -2465,8 +2465,7 @@ class AppTests(unittest.TestCase):
         self.assertIn("12 Elm Road", page)
         self.assertNotIn("Sítio das Flores", page)
         self.assertIn("Results for “elm”: 2.", page)
-        self.assertIn('data-more="5" data-more-step="4"', page)
-        self.assertIn("data-more-auto", page)
+        self.assertIn('data-more="4" data-more-step="4"', page)  # abre com 4; "Mostrar mais 4" abre o resto
         # a busca respeita o filtro de funcionário e a aba; "%" e "_" não viram coringa
         page = self.owner.get("/trabalhos?cliente=elm&func=none").get_data(as_text=True)
         self.assertEqual(page.count("12 Elm Road"), 1)

@@ -39,8 +39,8 @@
   {% if q %}<p class="hint search-note">{{ t('jobs.search_results', q=q, n=jobs|length) }} <a href="{{ url_for('jobs.list_jobs', ver=view, func=employee or None) }}">{{ t('jobs.search_clear') }}</a></p>{% endif %}
 </div>
 
-{# A lista abre com 5 e vai carregando mais 4 sozinha conforme a pessoa rola (script do base.html) #}
-<div class="sheet" {{ show_more(5, 4, auto=true) }}>
+{# A lista abre com 4 e o botão "Mostrar mais 4" vai abrindo o resto (script do base.html) #}
+<div class="sheet" {{ show_more(4, 4) }}>
   {% for j in jobs %}{{ job_row(j) }}{% else %}
   <p class="empty">{{ t('jobs.empty_search', q=q) if q else t('jobs.empty') }}</p>
   {% endfor %}
