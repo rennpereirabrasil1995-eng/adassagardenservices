@@ -352,6 +352,81 @@ def dashboard():
     )
 
 
+WEEK_COLORS = ("#2f7d46", "#2f6b86", "#6b4fa0", "#c2681b", "#b23a7a", "#1f8a7a", "#a8324a", "#7a5230", "#23406e", "#4d5d53")
+SLOT = 30            # minutos por linha da grade
+DEFAULT_LENGTH = 60  # trabalho sem horas previstas (nem Início/Fim): ocupa 1h na grade
+
+
+def _week_grid(jobs, start, end, today):
+    """A semana em grade: colunas por dia, linhas de meia hora. Cada trabalho vira um bloco no horário dele,
+    com a duração prevista (ou a real, se concluído); trabalhos sem horário ficam numa lista embaixo do dia."""
+    days = [(date.fromisoformat(start) + timedelta(days=i)).isoformat() for i in range(7)]
+    people, first_min, last_min = {}, 8 * 60, 18 * 60
+    columns = {d: {"date": d, "blocks": [], "unscheduled": []} for d in days}
+    for j in jobs:
+        for p in j["people"]:
+            people.setdefault(p["id"], p["name"])
+        col = columns.get(j["job_date"])
+        if col is None:
+            continue
+        if not utils.valid_time(j["start_time"] or ""):
+            col["unscheduled"].append(j)
+            continue
+        h, m = map(int, j["start_time"].split(":"))
+        begin = h * 60 + m
+        actual = utils.duration_minutes(j["started_at"], j["finished_at"]) if j["status"] == "done" else None
+        length = actual or j["planned_minutes"] or DEFAULT_LENGTH
+        length = max(SLOT, min(length, 12 * 60))
+        col["blocks"].append({"job": j, "begin": begin, "end": begin + length})
+        first_min, last_min = min(first_min, begin), max(last_min, begin + length)
+    first_min = max(6 * 60, first_min - first_min % SLOT)
+    last_min = min(22 * 60, -(-last_min // SLOT) * SLOT)
+    rows = (last_min - first_min) // SLOT
+    color_of = {uid: WEEK_COLORS[i % len(WEEK_COLORS)] for i, uid in enumerate(sorted(people))}
+    for col in columns.values():
+        col["blocks"].sort(key=lambda b: (b["begin"], b["job"]["id"]))
+        lanes = []  # blocos que se sobrepõem no mesmo dia ficam lado a lado
+        for b in col["blocks"]:
+            for i, lane_end in enumerate(lanes):
+                if b["begin"] >= lane_end:
+                    b["lane"], lanes[i] = i, b["end"]
+                    break
+            else:
+                b["lane"] = len(lanes)
+                lanes.append(b["end"])
+            b["row"] = (b["begin"] - first_min) // SLOT + 1
+            b["span"] = max(1, -(-(b["end"] - b["begin"]) // SLOT))
+            ids = b["job"]["people_ids"]
+            b["color"] = color_of[ids[0]] if ids else ""
+            b["colors"] = [color_of[uid] for uid in ids]
+        col["lanes"] = max(1, len(lanes))
+        col["today"] = col["date"] == today
+    times = [f"{(first_min + i * SLOT) // 60:02d}:{(first_min + i * SLOT) % 60:02d}" for i in range(rows)]
+    return {"days": [columns[d] for d in days], "times": times, "rows": rows,
+            "legend": [{"name": people[uid], "color": color_of[uid]} for uid in sorted(people, key=lambda u: people[u].lower())]}
+
+
+@bp.route("/agenda/semana")
+@permission_required("schedule")
+def week_view():
+    today = utils.today_iso()
+    ref = utils.parse_date(request.args.get("data", "")) or date.fromisoformat(today)
+    start, end = utils.week_bounds(ref.isoformat())
+    employee = request.args.get("func", "")
+    clauses, params = ["j.job_date BETWEEN ? AND ?", "j.status != 'cancelled'"], [start, end]
+    if employee.isdigit():
+        clauses.append(HAS_PERSON)
+        params.append(int(employee))
+    jobs = fetch_jobs(" AND ".join(clauses), params)
+    return render_template(
+        "week.html", start=start, end=end, today=today, employee=employee,
+        prev_ref=(date.fromisoformat(start) - timedelta(days=7)).isoformat(),
+        next_ref=(date.fromisoformat(start) + timedelta(days=7)).isoformat(),
+        is_current=start <= today <= end, jobs_count=len(jobs),
+        employees=get_db().execute("SELECT id, name FROM users WHERE active = 1 ORDER BY name COLLATE NOCASE").fetchall(),
+        **_week_grid(jobs, start, end, today))
+
+
 VIEW_KEYS = ("proximos", "hoje", "atrasados", "concluidos", "todos")
 
 

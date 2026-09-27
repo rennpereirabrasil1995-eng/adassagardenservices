@@ -2780,6 +2780,36 @@ class AppTests(unittest.TestCase):
         self.assertEqual(self.query("SELECT status FROM job_changes WHERE id = ?", (ch,))[0]["status"], "cancelled")
         self.assertNotIn("Changes waiting", bruno.get("/meus-trabalhos").get_data(as_text=True))
 
+    def test_week_grid_places_jobs_by_day_and_time(self):
+        self.create_owner()
+        client = self.create_client()
+        ana = self.create_employee()
+        bruno = self.create_employee("Bruno", "bruno@example.com", "senha-do-bruno-1")
+        monday, sunday = utils.week_bounds(self.day(0))
+        tue = (date.fromisoformat(monday) + timedelta(days=1)).isoformat()
+        self.owner.post("/trabalhos/novo", {"client_id": client, "assigned_to": str(ana), "title": "Roehampton", "job_date": monday,
+                                            "start_time": "09:30", "planned_hours": "1.5"})
+        self.owner.post("/trabalhos/novo", {"client_id": client, "assigned_to": [str(ana), str(bruno)], "title": "Share",
+                                            "job_date": monday, "start_time": "10:00", "planned_hours": "2"})  # sobrepõe: 2 faixas
+        self.owner.post("/trabalhos/novo", {"client_id": client, "assigned_to": str(bruno), "title": "Sem hora", "job_date": tue})
+        later = self.create_job(client, ana, tue)
+        self.set_job(later, status="cancelled")
+        page = self.owner.get("/agenda/semana").get_data(as_text=True)
+        self.assertIn("Weekly schedule", page)
+        self.assertEqual(page.count('class="week-block'), 2)  # o cancelado e o sem horário não entram na grade
+        self.assertIn('style="--row: 4; --span: 3; --lane: 0;', page)   # 09:30 com a grade começando às 08:00, 1h30 = 3 meias horas
+        self.assertIn('style="--row: 5; --span: 4; --lane: 1;', page)   # 10:00, 2h, na segunda faixa
+        self.assertIn('style="--lanes: 2"', page)
+        self.assertIn("No start time (not on the grid)", page)
+        self.assertIn(">Ana<", page)  # legenda
+        self.assertIn(f"/agenda/semana?data={(date.fromisoformat(monday) + timedelta(days=7)).isoformat()}", page)
+        # filtro por pessoa e semana anterior vazia
+        only_bruno = self.owner.get("/agenda/semana?func=%d" % bruno).get_data(as_text=True)
+        self.assertEqual(only_bruno.count('class="week-block'), 1)
+        self.assertIn("0 jobs", self.owner.get(f"/agenda/semana?data={(date.fromisoformat(monday) - timedelta(days=7)).isoformat()}").get_data(as_text=True))
+        self.assertEqual(self.employee_browser().get("/agenda/semana").status_code, 403)
+        self.assertIn("/agenda/semana", self.owner.get("/painel").get_data(as_text=True))
+
     def test_schedule_search_by_client_name(self):
         self.create_owner()
         rosa, elm = self.create_client("Sítio das Flores"), self.create_client("12 Elm Road")

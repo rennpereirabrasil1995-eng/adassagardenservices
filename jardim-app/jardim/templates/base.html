@@ -20,7 +20,7 @@
 <a href="{{ url_for(endpoint) }}"{% if request.endpoint in endpoints %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
 {%- endmacro %}
 <header class="masthead">
-  <div class="masthead-inner">
+  <div class="masthead-inner{{ self.main_class() }}">
     <div class="bar">
       <a class="brand{% if app_name|length > 20 and (brand.show_name or not brand.logo) %} brand-long{% endif %}" href="{{ url_for('index') }}">
         {% if brand.logo %}<img class="brand-logo {{ brand.chip_class }}" src="{{ brand.logo.logo }}" alt="{{ '' if brand.show_name else app_name }}">
@@ -58,7 +58,7 @@
       {% if 'schedule' in user_permissions %}{{ tab('jobs.dashboard', t('nav.dashboard'), ['jobs.dashboard']) }}{% endif %}
       {% if 'report' in user_permissions %}{{ tab('reports.company_report', t('nav.report'), ['reports.company_report']) }}{% endif %}
       {% if 'finance' in user_permissions %}{{ tab('finance.overview', t('nav.finance'), ['finance.overview']) }}{% endif %}
-      {% if 'schedule' in user_permissions %}{{ tab('jobs.list_jobs', t('nav.agenda'), ['jobs.list_jobs', 'jobs.new_job', 'jobs.edit_job']) }}{% endif %}
+      {% if 'schedule' in user_permissions %}{{ tab('jobs.list_jobs', t('nav.agenda'), ['jobs.list_jobs', 'jobs.new_job', 'jobs.edit_job', 'jobs.week_view']) }}{% endif %}
       {% if 'clients' in user_permissions %}{{ tab('clients.list_clients', t('nav.clients'), ['clients.list_clients', 'clients.new_client', 'clients.client_detail', 'clients.edit_client',
         'companies.list_companies', 'companies.new_company', 'companies.company_detail', 'companies.new_login', 'companies.reset_login',
         'companies.preview_days', 'companies.preview_gardens', 'companies.preview_garden', 'companies.preview_service',
@@ -71,7 +71,7 @@
     {% endif %}
   </div>
 </header>
-<main class="container">
+<main class="container{% block main_class %}{% endblock %}">
   {% for category, message in get_flashed_messages(with_categories=true) %}
     <div class="flash flash-{{ category }}" role="status">{{ message }}</div>
   {% endfor %}

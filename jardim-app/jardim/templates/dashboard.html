@@ -7,7 +7,10 @@
     <h1>{{ t('dashboard.greeting', name=current_user.name.split(' ')[0]) }}</h1>
     <p class="sub">{{ today|date_long }}</p>
   </div>
-  <a class="btn primary" href="{{ url_for('jobs.new_job') }}">{{ t('dashboard.new_job') }}</a>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('jobs.week_view') }}">{{ t('week.button') }}</a>
+    <a class="btn primary" href="{{ url_for('jobs.new_job') }}">{{ t('dashboard.new_job') }}</a>
+  </div>
 </div>
 
 {% if late_jobs %}
