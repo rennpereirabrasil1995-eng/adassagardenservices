@@ -96,7 +96,7 @@
       <label>{{ t('qp.your_name') }}
         <input name="name" maxlength="120" required autocomplete="name">
       </label>
-      <label>{{ t('qp.message_label') }} <span class="hint">{{ t('common.optional') }}</span>
+      <label><span class="label-line">{{ t('qp.message_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
         <textarea name="note" rows="2" maxlength="600" placeholder="{{ t('qp.message_placeholder') }}"></textarea>
       </label>
       <button class="btn primary block" type="submit">{{ t('qp.accept_button') }}</button>
@@ -107,7 +107,7 @@
       <form method="post" action="{{ url_for('quotes.public_answer', token=q.token) }}" class="sheet pad stack">
         {{ csrf_field() }}
         <input type="hidden" name="answer" value="decline">
-        <label>{{ t('qp.decline_reason') }} <span class="hint">{{ t('common.optional') }}</span>
+        <label><span class="label-line">{{ t('qp.decline_reason') }} <span class="hint">{{ t('common.optional') }}</span></span>
           <textarea name="note" rows="2" maxlength="600"></textarea>
         </label>
         <button class="btn" type="submit">{{ t('qp.decline_button') }}</button>

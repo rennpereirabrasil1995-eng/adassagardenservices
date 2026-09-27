@@ -108,6 +108,8 @@ MIGRATIONS = [
     # Conversa da equipe em cada trabalho (dono, gerentes e quem está escalado), na mesma tabela dos
     # comentários da empresa: internal = 1 é da equipe e a empresa nunca vê.
     "ALTER TABLE job_comments ADD COLUMN internal INTEGER NOT NULL DEFAULT 0;",
+    # Horas previstas do trabalho (o dono anota ao agendar); num Share, o tempo é dividido entre as pessoas
+    "ALTER TABLE jobs ADD COLUMN planned_minutes INTEGER;",
 ]
 
 

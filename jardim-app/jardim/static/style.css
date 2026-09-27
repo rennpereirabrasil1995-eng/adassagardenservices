@@ -292,6 +292,15 @@ input, select, textarea {
   border: 1.5px solid var(--line-strong); border-radius: 8px; padding: .7rem .8rem; min-height: 3rem; width: 100%;
 }
 textarea { min-height: 6rem; resize: vertical; }
+/* iPhone: os campos de data e hora do Safari encolhem pro tamanho do texto e ficam mais baixos que os outros */
+input[type="date"], input[type="time"] { -webkit-appearance: none; appearance: none; display: block; min-width: 0;
+  text-align: left; box-sizing: border-box; -webkit-min-logical-width: calc(100% - 1.6rem); }
+input::-webkit-date-and-time-value { text-align: left; min-height: 1.4em; }
+/* texto do rótulo e o "(opcional)" na mesma linha (o label empilha cada filho) */
+.label-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .4rem; }
+.label-line .hint { white-space: nowrap; }
+input.short { max-width: 9rem; }
+.planned { color: var(--muted); font-size: .9rem; white-space: nowrap; }
 input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
 .search { display: flex; gap: .6rem; margin: 0 0 1rem; }
 .search .btn { flex: none; }

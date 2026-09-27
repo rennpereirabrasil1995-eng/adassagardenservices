@@ -43,7 +43,7 @@
   <label>{{ t('quotes.title_label') }}
     <input name="title" value="{{ form.title }}" maxlength="160" required placeholder="{{ t('quotes.title_placeholder') }}">
   </label>
-  <label>{{ t('quotes.intro_label') }} <span class="hint">{{ t('common.optional') }}</span>
+  <label><span class="label-line">{{ t('quotes.intro_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
     <textarea name="intro" rows="3" maxlength="3000" placeholder="{{ t('quotes.intro_placeholder') }}">{{ form.intro }}</textarea>
   </label>
 

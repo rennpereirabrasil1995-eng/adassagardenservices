@@ -24,13 +24,13 @@
         <span class="money-input"><span aria-hidden="true">£</span><input name="amount" value="{{ form.amount }}" inputmode="decimal" autocomplete="off" pattern="[0-9]{1,6}([.,][0-9]{1,2})?" title="{{ t('cash.example') }}" placeholder="0.00" required></span>
       </label>
     </div>
-    <label>{{ t('finance.client_label') }} <span class="hint">{{ t('common.optional') }}</span>
+    <label><span class="label-line">{{ t('finance.client_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
       <select name="client_id">
         <option value="">{{ t('finance.no_client') }}</option>
         {% for c in clients %}<option value="{{ c.id }}"{% if form.client_id == c.id|string %} selected{% endif %}>{{ c.name }}</option>{% endfor %}
       </select>
     </label>
-    <label>{{ t('finance.note_label') }} <span class="hint">{{ t('common.optional') }}</span>
+    <label><span class="label-line">{{ t('finance.note_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
       <input name="note" value="{{ form.note }}" maxlength="200" placeholder="{{ t('finance.note_placeholder') }}">
     </label>
     <div class="actions"><button class="btn primary" type="submit">{{ t('finance.add_submit') }}</button></div>

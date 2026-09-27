@@ -29,10 +29,15 @@
     <label>{{ t('jobform.date_label') }}
       <input type="date" name="job_date" value="{{ form.job_date }}" required>
     </label>
-    <label>{{ t('jobform.time_label') }} <span class="hint">{{ t('common.optional') }}</span>
+    <label><span class="label-line">{{ t('jobform.time_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
       <input type="time" name="start_time" value="{{ form.start_time }}">
     </label>
   </div>
+
+  <label><span class="label-line">{{ t('jobform.hours_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
+    <input class="short" name="planned_hours" value="{{ form.planned_hours or '' }}" inputmode="decimal" autocomplete="off" maxlength="12" placeholder="{{ t('jobform.hours_placeholder') }}">
+    <span class="hint">{{ t('jobform.hours_hint') }}</span>
+  </label>
 
   {# Uma pessoa ou várias (trabalho "Share"). Ninguém marcado = decidir depois. #}
   <fieldset class="task-pick people-pick" id="people-pick">
@@ -68,7 +73,7 @@
     <span>{{ t('jobform.save_template') }}</span>
   </label>
 
-  <label>{{ t('jobform.extra_instructions_label') }} <span class="hint">{{ t('common.optional') }}</span>
+  <label><span class="label-line">{{ t('jobform.extra_instructions_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
     <textarea name="description" rows="3" maxlength="2000">{{ form.description }}</textarea>
   </label>
 

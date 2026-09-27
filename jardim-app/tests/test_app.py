@@ -2454,6 +2454,43 @@ class AppTests(unittest.TestCase):
         # sem serviço hoje: mostra o último dia que teve, com o caminho pro anterior
         self.assertIn("No services on this day.", laura.get(f"/portal/?day={self.day(-5)}").get_data(as_text=True))
 
+    def test_planned_hours_are_split_between_the_people_on_a_share_job(self):
+        self.create_owner()
+        client = self.create_client()
+        ana = self.create_employee("Ana", "ana@example.com")
+        bruno = self.create_employee("Bruno", "bruno@example.com", "senha-do-bruno-1")
+        # inválido: não grava
+        r = self.owner.post("/trabalhos/novo", {"client_id": client, "title": "X", "job_date": self.day(1), "planned_hours": "abc"},
+                            follow_redirects=True)
+        self.assertIn("Planned hours: use a number", r.get_data(as_text=True))
+        self.assertEqual(self.query("SELECT COUNT(*) AS n FROM jobs")[0]["n"], 0)
+        # 2 horas pra duas pessoas: 1h00 cada, com o Share
+        self.owner.post("/trabalhos/novo", {"client_id": client, "assigned_to": [str(ana), str(bruno)], "title": "Manutenção",
+                                            "job_date": self.day(1), "planned_hours": "2"})
+        job = self.query("SELECT id, planned_minutes FROM jobs ORDER BY id DESC LIMIT 1")[0]
+        self.assertEqual(job["planned_minutes"], 120)
+        detail = self.owner.get(f"/trabalhos/{job['id']}").get_data(as_text=True)
+        self.assertIn("Planned hours", detail)
+        self.assertIn("2h00", detail)
+        self.assertIn("1h00 each", detail)
+        self.assertIn("pill-share", detail)
+        agenda = self.owner.get("/trabalhos").get_data(as_text=True)
+        self.assertIn("2h00 · 1h00 each", agenda)
+        # uma pessoa só: nada de Share nem de "cada"; editar mantém o formato digitável
+        form = self.owner.get(f"/trabalhos/{job['id']}/editar").get_data(as_text=True)
+        self.assertIn('name="planned_hours" value="2"', form)
+        self.owner.post(f"/trabalhos/{job['id']}/editar", {"client_id": client, "assigned_to": str(ana), "title": "Manutenção",
+                                                          "job_date": self.day(1), "planned_hours": "1:30", "status": "scheduled"})
+        detail = self.owner.get(f"/trabalhos/{job['id']}").get_data(as_text=True)
+        self.assertIn("1h30", detail)
+        self.assertNotIn("1h30 each", detail)
+        self.assertNotIn("45 min each", detail)
+        self.assertNotIn("pill-share", detail)
+        self.assertIn('value="1:30"', self.owner.get(f"/trabalhos/{job['id']}/editar").get_data(as_text=True))
+        # repetir copia as horas previstas
+        self.owner.post(f"/trabalhos/{job['id']}/repetir", {"every": "1", "times": "2"})
+        self.assertEqual([r["planned_minutes"] for r in self.query("SELECT planned_minutes FROM jobs ORDER BY id")], [90, 90, 90])
+
     def test_schedule_search_by_client_name(self):
         self.create_owner()
         rosa, elm = self.create_client("Sítio das Flores"), self.create_client("12 Elm Road")
