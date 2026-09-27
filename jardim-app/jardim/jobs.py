@@ -52,9 +52,19 @@ def _attach_people(jobs):
         job["people_ids"] = [p["id"] for p in job["people"]]
         job["employee_name"] = ", ".join(p["name"] for p in job["people"]) or None  # "Ana, Bruno"
         job["is_share"] = len(job["people"]) > 1
-        # horas previstas: num Share, o tempo é dividido entre as pessoas (2h com 2 pessoas = 1h cada)
-        planned = job["planned_minutes"] if "planned_minutes" in job.keys() else None
-        job["each_minutes"] = planned // len(job["people"]) if planned and job["is_share"] else None
+        # horas previstas: o texto como foi digitado; num Share, dividido entre as pessoas (2h com 2 = 1h cada)
+        keys = job.keys()
+        text = (job["planned_text"] if "planned_text" in keys else "") or ""
+        minutes = job["planned_minutes"] if "planned_minutes" in keys else None
+        job["planned_label"] = text or (utils.format_minutes(minutes) if minutes else "")
+        job["each_label"] = ""
+        if job["is_share"] and job["planned_label"]:
+            bounds = duration_bounds(text) if text else (minutes, minutes)
+            if bounds:
+                low, high = (b // len(job["people"]) for b in bounds)
+                if low:
+                    job["each_label"] = utils.format_minutes(low) if low == high else \
+                        f"{utils.format_minutes(low)}–{utils.format_minutes(high)}"
     return jobs
 
 
@@ -205,32 +215,43 @@ def _form_options(job=None):
     }
 
 
-def parse_hours(text):
-    """Horas previstas digitadas ("2", "1.5", "1,5", "1:30", "1h30", "45min") em minutos.
-    Vazio = None (sem previsão). Devolve False se não deu pra entender ou passou de 24h."""
-    s = (text or "").strip().lower().replace(" ", "")
-    if not s:
-        return None
-    m = re.fullmatch(r"(\d{1,2})(?:[:h](\d{1,2})?)?", s)
-    if m:
-        minutes = int(m.group(1)) * 60 + int(m.group(2) or 0)
-    else:
-        m = re.fullmatch(r"(\d{1,2})[.,](\d{1,2})h?", s) or re.fullmatch(r"(\d{1,3})min", s)
-        if not m:
-            return False
-        if m.re.pattern.endswith("min"):
-            minutes = int(m.group(1))
+_HOURS = r"h(?:rs?|ours?|oras?)?"
+_MINS = r"m(?:in|ins|inutes?|inutos?)?"
+_DURATION = re.compile(
+    r"(\d{1,2}):(\d{2})"                                      # 1:30
+    r"|(\d{1,2})\s*" + _HOURS + r"\s*(\d{1,2})\s*(?:" + _MINS + r")?\b"  # 1h30, 1 hr 30 min
+    r"|(\d+(?:[.,]\d+)?)\s*" + _HOURS + r"\b"                 # 2h, 2 hrs, 1.5 hours
+    r"|(\d+)\s*" + _MINS + r"\b"                               # 15min, 45 minutes
+    r"|(\d+(?:[.,]\d+)?)",                                   # número solto: hora (ou o que vier a seguir)
+    re.I)
+
+
+def duration_bounds(text):
+    """Entende as horas previstas escritas de qualquer jeito ("2", "1.5", "1:30", "1h30", "2 hrs",
+    "1 to 2hrs", "15min", "45 minutes") e devolve (menor, maior) em minutos. Um número solto vale como
+    hora, ou pega a unidade do próximo número ("1 to 2hrs" = 1h a 2h; "15 to 30 min" = 15 a 30 min).
+    Sem nenhum tempo reconhecível (ou fora de 1 min a 24h), devolve None."""
+    found = []  # (minutos ou número solto, unidade: "h", "min" ou None)
+    for m in _DURATION.finditer(text or ""):
+        if m.group(1):
+            found.append((int(m.group(1)) * 60 + int(m.group(2)), "h"))
+        elif m.group(3):
+            found.append((int(m.group(3)) * 60 + int(m.group(4)), "h"))
+        elif m.group(5):
+            found.append((round(float(m.group(5).replace(",", ".")) * 60), "h"))
+        elif m.group(6):
+            found.append((int(m.group(6)), "min"))
         else:
-            minutes = round(float(f"{m.group(1)}.{m.group(2)}") * 60)
-    return minutes if 0 < minutes <= 24 * 60 else False
-
-
-def hours_text(minutes):
-    """O contrário: minutos como a pessoa digita no formulário ("2", "1:30")."""
-    if not minutes:
-        return ""
-    hours, rest = divmod(int(minutes), 60)
-    return str(hours) if not rest else f"{hours}:{rest:02d}"
+            found.append((float(m.group(7).replace(",", ".")), None))
+    values, unit = [], "h"
+    for value, known in reversed(found):  # de trás pra frente: o solto pega a unidade do que vem depois dele
+        if known:
+            unit = known
+            values.append(int(value))
+        else:
+            values.append(int(round(value if unit == "min" or value > 24 else value * 60)))  # "30" solto = 30 min
+    values = [v for v in values if 0 < v <= 24 * 60]
+    return (min(values), max(values)) if values else None
 
 
 def _read_job_form(with_status=False):
@@ -241,7 +262,7 @@ def _read_job_form(with_status=False):
         "title": f.get("title", "").strip()[:120],
         "job_date": f.get("job_date", "").strip(),
         "start_time": f.get("start_time", "").strip(),
-        "planned_hours": f.get("planned_hours", "").strip()[:12],
+        "planned_hours": " ".join(f.get("planned_hours", "").split())[:40],
         "description": f.get("description", "").strip()[:2000],
         "tasks": f.get("tasks", ""),
         "status": f.get("status", "scheduled"),
@@ -266,10 +287,8 @@ def _read_job_form(with_status=False):
         errors.append(i18n.t("jobs.date_invalid"))
     if data["start_time"] and not utils.valid_time(data["start_time"]):
         errors.append(i18n.t("jobs.time_invalid"))
-    data["planned_minutes"] = parse_hours(data["planned_hours"])
-    if data["planned_minutes"] is False:
-        errors.append(i18n.t("jobs.hours_invalid"))
-        data["planned_minutes"] = None
+    bounds = duration_bounds(data["planned_hours"])  # texto livre; guarda o maior tempo entendido, se houver
+    data["planned_minutes"] = bounds[1] if bounds else None
     if with_status and data["status"] not in utils.STATUS_LABELS:
         errors.append(i18n.t("jobs.status_invalid"))
     data["quote_id"] = f.get("quote_id", "").strip()  # trabalho que veio de uma cotação aceita
@@ -358,10 +377,10 @@ def new_job():
         if not errors:
             db = get_db()
             cur = db.execute(
-                "INSERT INTO jobs (client_id, title, job_date, start_time, description, planned_minutes) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO jobs (client_id, title, job_date, start_time, description, planned_minutes, planned_text) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (int(form["client_id"]), form["title"], form["job_date"], form["start_time"], form["description"],
-                 form["planned_minutes"]),
+                 form["planned_minutes"], form["planned_hours"]),
             )
             _save_people(db, cur.lastrowid, form["people"])
             _save_tasks(db, cur.lastrowid, tasks)
@@ -398,9 +417,10 @@ def edit_job(job_id):
             started, finished = _timestamps_for_status(job, form["status"])
             db.execute(
                 "UPDATE jobs SET client_id = ?, title = ?, job_date = ?, start_time = ?, "
-                "description = ?, status = ?, started_at = ?, finished_at = ?, planned_minutes = ? WHERE id = ?",
+                "description = ?, status = ?, started_at = ?, finished_at = ?, planned_minutes = ?, planned_text = ? "
+                "WHERE id = ?",
                 (int(form["client_id"]), form["title"], form["job_date"], form["start_time"], form["description"],
-                 form["status"], started, finished, form["planned_minutes"], job_id),
+                 form["status"], started, finished, form["planned_minutes"], form["planned_hours"], job_id),
             )
             _save_people(db, job_id, form["people"])
             _save_tasks(db, job_id, tasks)
@@ -419,7 +439,7 @@ def edit_job(job_id):
         template = {t.lower() for t in parse_tasks(client["task_template"] if client else "")}
         form = dict(job)
         form["people"] = job["people_ids"]
-        form["planned_hours"] = hours_text(job["planned_minutes"])
+        form["planned_hours"] = job["planned_label"]
         form["picked"] = [t for t in task_lines if t.lower() in template]  # já vêm marcadas na lista
         form["tasks"] = "\n".join(t for t in task_lines if t.lower() not in template)  # o resto vai em "outras"
     return render_template("job_form.html", form=form, job=job, **_form_options(job))
@@ -458,10 +478,10 @@ def repeat_job(job_id):
     new_ids = []
     for step in range(1, times + 1):
         cur = db.execute(
-            "INSERT INTO jobs (client_id, title, job_date, start_time, description, planned_minutes) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO jobs (client_id, title, job_date, start_time, description, planned_minutes, planned_text) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
             (job["client_id"], job["title"], (base + timedelta(weeks=every * step)).isoformat(),
-             job["start_time"], job["description"], job["planned_minutes"]),
+             job["start_time"], job["description"], job["planned_minutes"], job["planned_text"]),
         )
         _save_people(db, cur.lastrowid, job["people_ids"])
         _save_tasks(db, cur.lastrowid, tasks)

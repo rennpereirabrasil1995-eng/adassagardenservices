@@ -35,7 +35,7 @@
   </div>
 
   <label><span class="label-line">{{ t('jobform.hours_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
-    <input class="short" name="planned_hours" value="{{ form.planned_hours or '' }}" inputmode="decimal" autocomplete="off" maxlength="12" placeholder="{{ t('jobform.hours_placeholder') }}">
+    <input class="short" name="planned_hours" value="{{ form.planned_hours or '' }}" autocomplete="off" maxlength="40" placeholder="{{ t('jobform.hours_placeholder') }}">
     <span class="hint">{{ t('jobform.hours_hint') }}</span>
   </label>
 

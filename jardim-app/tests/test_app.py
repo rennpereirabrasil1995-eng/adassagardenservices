@@ -2459,10 +2459,19 @@ class AppTests(unittest.TestCase):
         client = self.create_client()
         ana = self.create_employee("Ana", "ana@example.com")
         bruno = self.create_employee("Bruno", "bruno@example.com", "senha-do-bruno-1")
-        # inválido: não grava
-        r = self.owner.post("/trabalhos/novo", {"client_id": client, "title": "X", "job_date": self.day(1), "planned_hours": "abc"},
-                            follow_redirects=True)
-        self.assertIn("Planned hours: use a number", r.get_data(as_text=True))
+        # texto livre: fica como foi escrito; um intervalo divide as duas pontas; sem tempo reconhecível, sem "cada"
+        for typed, each in (("1 to 2hrs", "30 min–1h00 each"), ("15min", "7 min each"), ("2 hours", "1h00 each"),
+                            ("ask the client", None)):
+            self.owner.post("/trabalhos/novo", {"client_id": client, "assigned_to": [str(ana), str(bruno)], "title": "X",
+                                                "job_date": self.day(1), "planned_hours": typed})
+            jid = self.query("SELECT id FROM jobs ORDER BY id DESC LIMIT 1")[0]["id"]
+            page = self.owner.get(f"/trabalhos/{jid}").get_data(as_text=True)
+            self.assertIn(typed, page)
+            if each:
+                self.assertIn(each, page)
+            else:
+                self.assertNotIn(" each", page.split("Planned hours")[1][:120])
+            self.owner.post(f"/trabalhos/{jid}/excluir")
         self.assertEqual(self.query("SELECT COUNT(*) AS n FROM jobs")[0]["n"], 0)
         # 2 horas pra duas pessoas: 1h00 cada, com o Share
         self.owner.post("/trabalhos/novo", {"client_id": client, "assigned_to": [str(ana), str(bruno)], "title": "Manutenção",
@@ -2471,19 +2480,17 @@ class AppTests(unittest.TestCase):
         self.assertEqual(job["planned_minutes"], 120)
         detail = self.owner.get(f"/trabalhos/{job['id']}").get_data(as_text=True)
         self.assertIn("Planned hours", detail)
-        self.assertIn("2h00", detail)
         self.assertIn("1h00 each", detail)
         self.assertIn("pill-share", detail)
         agenda = self.owner.get("/trabalhos").get_data(as_text=True)
-        self.assertIn("2h00 · 1h00 each", agenda)
+        self.assertIn("2 · 1h00 each", agenda)  # o texto como foi digitado, mais a parte de cada um
         # uma pessoa só: nada de Share nem de "cada"; editar mantém o formato digitável
         form = self.owner.get(f"/trabalhos/{job['id']}/editar").get_data(as_text=True)
         self.assertIn('name="planned_hours" value="2"', form)
         self.owner.post(f"/trabalhos/{job['id']}/editar", {"client_id": client, "assigned_to": str(ana), "title": "Manutenção",
                                                           "job_date": self.day(1), "planned_hours": "1:30", "status": "scheduled"})
         detail = self.owner.get(f"/trabalhos/{job['id']}").get_data(as_text=True)
-        self.assertIn("1h30", detail)
-        self.assertNotIn("1h30 each", detail)
+        self.assertIn("1:30", detail)
         self.assertNotIn("45 min each", detail)
         self.assertNotIn("pill-share", detail)
         self.assertIn('value="1:30"', self.owner.get(f"/trabalhos/{job['id']}/editar").get_data(as_text=True))

@@ -33,7 +33,7 @@ data-more="{{ start }}" data-more-step="{{ step }}" data-more-label="{{ t('commo
       {% if late %}<span class="late">{{ t('common.job_late_tag') }}</span>{% endif %}
       {% if show_employee %}<span class="who{% if not j.employee_name %} none{% endif %}">{{ j.employee_name or t('common.no_employee') }}</span>{% endif %}
       {% if j.is_share %}<span class="pill pill-share">{{ t('common.share') }}</span>{% endif %}
-      {% if j.planned_minutes %}<span class="planned">{{ j.planned_minutes|format_minutes }}{% if j.each_minutes %} · {{ t('common.each', time=j.each_minutes|format_minutes) }}{% endif %}</span>{% endif %}
+      {% if j.planned_label %}<span class="planned">{{ j.planned_label }}{% if j.each_label %} · {{ t('common.each', time=j.each_label) }}{% endif %}</span>{% endif %}
     </span>
     {{ rows_bar(j.tasks_done, j.tasks_total, j.tasks_skipped) }}
   </span>

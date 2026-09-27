@@ -299,7 +299,7 @@ input::-webkit-date-and-time-value { text-align: left; min-height: 1.4em; }
 /* texto do rótulo e o "(opcional)" na mesma linha (o label empilha cada filho) */
 .label-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .4rem; }
 .label-line .hint { white-space: nowrap; }
-input.short { max-width: 9rem; }
+input.short { max-width: 14rem; }
 .planned { color: var(--muted); font-size: .9rem; white-space: nowrap; }
 input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
 .search { display: flex; gap: .6rem; margin: 0 0 1rem; }

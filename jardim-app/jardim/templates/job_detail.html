@@ -16,8 +16,8 @@
 <dl class="facts sheet pad">
   <div><dt>{{ t('jobdetail.date_label') }}</dt><dd>{{ job.job_date|date_long }}{% if job.start_time %}, {{ job.start_time }}{% endif %}</dd></div>
   <div><dt>{{ t('jobdetail.team_label') if job.is_share else t('jobdetail.employee_label') }}</dt><dd>{{ job.employee_name or t('jobdetail.nobody_assigned') }}{% if job.is_share %} <span class="pill pill-share">{{ t('common.share') }}</span>{% endif %}</dd></div>
-  {% if job.planned_minutes %}
-  <div><dt>{{ t('jobdetail.hours_label') }}</dt><dd>{{ job.planned_minutes|format_minutes }}{% if job.each_minutes %} <span class="hint">({{ t('common.each', time=job.each_minutes|format_minutes) }})</span>{% endif %}</dd></div>
+  {% if job.planned_label %}
+  <div><dt>{{ t('jobdetail.hours_label') }}</dt><dd>{{ job.planned_label }}{% if job.each_label %} <span class="hint">({{ t('common.each', time=job.each_label) }})</span>{% endif %}</dd></div>
   {% endif %}
   {% if job.client_address or job.client_postcode %}
   <div><dt>{{ t('jobdetail.address_label') }}</dt><dd><a href="{{ job.client_address|maps_link(job.client_postcode) }}" target="_blank" rel="noopener">{{ job.client_address }}{% if job.client_address and job.client_postcode %}, {% endif %}<span class="nowrap">{{ job.client_postcode }}</span></a></dd></div>
