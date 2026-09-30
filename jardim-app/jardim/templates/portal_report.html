@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% from "_macros.html" import company_tag with context %}
+{% from "_portal.html" import portal_top with context %}
+{% from "_charts.html" import services_chart, hours_chart, stack_chart with context %}
+{% block title %}{{ t('portal.nav_report') }} · {{ period_label }} – {% endblock %}
+{% block content %}
+{{ portal_top(company, links, preview, 'report') }}
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('portal.report_title') }}</h1>
+    <p class="sub">{{ company_tag(company) }} · {{ period_label }}</p>
+  </div>
+  <a class="btn" href="{{ links('report_pdf', periodo=period, data=ref) }}">{{ t('company.download_pdf') }}</a>
+</div>
+
+<div class="report-nav">
+  <nav class="seg" aria-label="{{ t('jobs.filter_period_label') }}">
+    {% for key, label in periods %}<a href="{{ links('report', periodo=key, data=ref) }}"{% if key == period %} class="on" aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}
+  </nav>
+  <div class="stepper">
+    <a class="btn small arrow" href="{{ links('report', periodo=period, data=prev_ref) }}" aria-label="{{ t('company.prev') }}">‹</a>
+    {% if not is_current %}<a class="btn small" href="{{ links('report', periodo=period) }}">{{ t('company.back_to_now') }}</a>{% endif %}
+    <a class="btn small arrow" href="{{ links('report', periodo=period, data=next_ref) }}" aria-label="{{ t('company.next') }}">›</a>
+  </div>
+</div>
+
+<p class="hint block-hint">{{ t('portal.report_hint') }}</p>
+
+<section class="block">
+  <h2 class="sr-only">{{ t('company.summary') }}</h2>
+  <div class="stats">
+    <div class="stat"><b>{{ services_count }}</b><span>{{ t('portal.stat_services_one') if services_count == 1 else t('portal.stat_services') }}</span></div>
+    <div class="stat"><b>{{ total_minutes|format_minutes if total_minutes else '—' }}</b><span>{{ t('portal.stat_time') }}</span></div>
+    <div class="stat"><b>{{ gardens_served }}</b><span>{{ t('portal.stat_gardens_one') if gardens_served == 1 else t('portal.stat_gardens') }}</span><small>{{ t('portal.of_gardens', n=gardens_total) }}</small></div>
+    <div class="stat"><b>{{ tasks_done }}</b><span>{{ t('portal.stat_tasks_one') if tasks_done == 1 else t('portal.stat_tasks') }}</span>{% if tasks_not_done %}<small>{{ t('portal.not_done_one') if tasks_not_done == 1 else t('portal.not_done_many', n=tasks_not_done) }}</small>{% endif %}</div>
+  </div>
+</section>
+
+{% if services_count %}
+<section class="block">
+  {{ services_chart(bars, t('portal.chart_services_month') if period == 'ano' else t('portal.chart_services_day'), period == 'mes') }}
+</section>
+
+<section class="block">
+  <h2>{{ t('portal.by_garden') }}</h2>
+  {% if gardens|length > 1 and max_minutes %}{{ hours_chart(gardens, max_minutes, t('portal.chart_time_garden')) }}{% endif %}
+  <div class="sheet table-wrap">
+    <table class="report-table">
+      <thead><tr>
+        <th scope="col">{{ t('portal.col_garden') }}</th>
+        <th scope="col" class="num">{{ t('portal.col_services') }}</th>
+        <th scope="col" class="num">{{ t('portal.col_time') }}</th>
+        <th scope="col" class="num">{{ t('portal.col_tasks_done') }}</th>
+        <th scope="col" class="num">{{ t('portal.col_not_done') }}</th>
+        <th scope="col" class="num">{{ t('portal.col_photos') }}</th>
+      </tr></thead>
+      <tbody>
+        {% for gd in gardens %}
+        <tr>
+          <th scope="row"><a href="{{ links('garden', client_id=gd.id) }}">{{ gd.name }}</a></th>
+          <td class="num">{{ gd.services }}</td>
+          <td class="num">{{ gd.minutes|format_minutes if gd.minutes else '—' }}</td>
+          <td class="num">{{ gd.done }}</td>
+          <td class="num">{{ gd.not_done or '—' }}</td>
+          <td class="num">{{ gd.photos or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% if gardens|length > 1 %}
+      <tfoot><tr>
+        <th scope="row">{{ t('company.total') }}</th>
+        <td class="num">{{ services_count }}</td>
+        <td class="num">{{ total_minutes|format_minutes if total_minutes else '—' }}</td>
+        <td class="num">{{ tasks_done }}</td>
+        <td class="num">{{ tasks_not_done or '—' }}</td>
+        <td class="num">{{ photos or '—' }}</td>
+      </tr></tfoot>
+      {% endif %}
+    </table>
+  </div>
+</section>
+
+<section class="block">
+  <h2>{{ t('portal.tasks_section') }}</h2>
+  {% if tasks_done + tasks_not_done %}{{ stack_chart(t('portal.chart_tasks'), [
+      ('c-done', tasks_done, t('company.legend_tasks_done'), tasks_done),
+      ('c-skip', tasks_not_done, t('company.legend_tasks_skipped'), tasks_not_done)]) }}{% endif %}
+  <div class="sheet">
+    {% if not_done %}
+    <div class="table-wrap">
+    <table class="report-table">
+      <thead><tr><th scope="col">{{ t('portal.col_date') }}</th><th scope="col">{{ t('portal.col_garden') }}</th><th scope="col">{{ t('portal.col_task') }}</th><th scope="col">{{ t('portal.col_note') }}</th></tr></thead>
+      <tbody>
+        {% for x in not_done %}
+        <tr>
+          <td class="num"><a href="{{ links('service', job_id=x.job_id) }}">{{ x.date|day_num }} {{ x.date|month_abbr }}</a></td>
+          <td>{{ x.garden }}</td>
+          <td>{{ x.text }}</td>
+          <td>{{ x.note or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% if not_done_total > not_done|length %}<p class="hint table-note">{{ t('portal.not_done_more', n=not_done|length, total=not_done_total) }}</p>{% endif %}
+    {% else %}
+    <p class="empty">{{ t('portal.not_done_none') }}</p>
+    {% endif %}
+  </div>
+</section>
+{% else %}
+<div class="sheet"><p class="empty">{{ t('portal.report_empty') }}</p></div>
+{% endif %}
+{% endblock %}

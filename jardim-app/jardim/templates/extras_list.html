@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_macros.html" import show_more with context %}
+{% block title %}{{ t('extras.title') }} – {% endblock %}
+{% block content %}
+{% macro report_card(r, owner=false) -%}
+<article class="report {{ r.status }}">
+  <div class="report-head">
+    <div>
+      <b>{{ r.client_name }}</b>{% if r.place %} <span class="hint">· {{ r.place }}</span>{% endif %}
+      <p class="report-meta">{{ r.job_date|date_long }}{% if r.start_time %}, {{ r.start_time }}{% endif %} · {{ r.minutes|format_minutes }}{% if owner %} · {{ t('extras.by', name=r.user_name) }}{% endif %}</p>
+    </div>
+    {% if r.status == 'pending' %}<span class="pill pill-pending">{{ t('extras.pending') }}</span>
+    {% elif r.status == 'approved' %}<span class="pill pill-done">✓ {{ t('extras.approved') }}</span>
+    {% else %}<span class="pill pill-failed">{{ t('extras.rejected') }}</span>{% endif %}
+  </div>
+  <ul class="task-results report-tasks">
+    {% for line in r.tasks.splitlines() %}<li class="res-done"><span class="res-mark" aria-hidden="true">✓</span><span>{{ line }}</span></li>{% endfor %}
+  </ul>
+  {% if r.notes %}<p class="pre report-notes">{{ r.notes }}</p>{% endif %}
+  {% if r.status == 'rejected' and r.decision_note %}<p class="rem-error">{{ t('extras.declined_reason', note=r.decision_note) }}</p>{% endif %}
+  {% if r.status == 'approved' and r.job_id %}<p><a href="{{ url_for('jobs.job_detail', job_id=r.job_id) }}">{{ t('extras.open_job') }} ›</a></p>{% endif %}
+  {% if owner and r.status == 'pending' %}
+  <div class="report-actions">
+    <form method="post" action="{{ url_for('extras.approve', report_id=r.id) }}">
+      {{ csrf_field() }}<button class="btn small primary" type="submit">{{ t('extras.approve') }}</button>
+    </form>
+    <form method="post" action="{{ url_for('extras.reject', report_id=r.id) }}" class="report-reject" data-confirm="{{ t('extras.reject_confirm', client=r.client_name) }}">
+      {{ csrf_field() }}
+      <input name="note" maxlength="300" placeholder="{{ t('extras.reject_note') }}" aria-label="{{ t('extras.reject_note') }}">
+      <button class="btn small danger" type="submit">{{ t('extras.reject') }}</button>
+    </form>
+  </div>
+  {% endif %}
+</article>
+{%- endmacro %}
+
+<p class="crumb"><a href="{{ url_for('jobs.dashboard') if own is none else url_for('jobs.my_jobs') }}">‹ {{ t('nav.dashboard') if own is none else t('nav.my_jobs') }}</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ t('extras.title') }}</h1>
+    <p class="sub">{{ t('extras.owner_hint') if own is none else t('extras.form_hint') }}</p>
+  </div>
+  {% if own is not none %}<a class="btn primary" href="{{ url_for('extras.new_report') }}">{{ t('extras.report_button') }}</a>{% endif %}
+</div>
+
+{% if own is none %}
+<section class="block">
+  <h2>{{ t('extras.pending_title') }}{% if pending %} <span class="count">{{ pending|length }}</span>{% endif %}</h2>
+  <div class="sheet" {{ show_more(5, 5) }}>
+    {% for r in pending %}{{ report_card(r, owner=true) }}{% else %}
+    <p class="empty">{{ t('extras.none_pending') }}</p>
+    {% endfor %}
+  </div>
+</section>
+{% if decided %}
+<section class="block">
+  <h2>{{ t('extras.decided_title') }}</h2>
+  <div class="sheet" {{ show_more(3, 5) }}>{% for r in decided %}{{ report_card(r, owner=true) }}{% endfor %}</div>
+</section>
+{% endif %}
+{% else %}
+<section class="block">
+  <h2>{{ t('extras.mine_title') }}</h2>
+  <div class="sheet" {{ show_more(5, 5) }}>
+    {% for r in own %}{{ report_card(r) }}{% else %}
+    <p class="empty">{{ t('extras.none') }}</p>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

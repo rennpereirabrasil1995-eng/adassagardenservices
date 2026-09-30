@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% from "_charts.html" import timeline_chart, hours_chart, stack_chart with context %}
+{% block title %}{{ t('company.page_title') }} – {% endblock %}
+{% block content %}
+{% macro pay_row(j, show_person=true) %}
+<div class="pay-row{% if j.cash_received_at %} received{% endif %}">
+  <div class="pay-info">
+    <a href="{{ url_for('jobs.job_detail', job_id=j.id) }}">{{ j.client_name }}</a>
+    <span class="hint">{{ j.job_date|day_num }} {{ j.job_date|month_abbr }} {{ j.job_date[:4] }}{% if show_person %}, {{ j.cash_name or '—' }}{% endif %}</span>
+    {% if j.cash_received_at %}<span class="pay-status">✓ {{ t('company.received_on', when=j.cash_received_at|dt_local) }}</span>{% endif %}
+  </div>
+  <div class="pay-side">
+    <b>{{ j.cash_pence|money }}</b>
+    {% if can('cash') %}
+    <form method="post" action="{{ url_for('reports.toggle_cash_received', job_id=j.id) }}">
+      {{ csrf_field() }}
+      <input type="hidden" name="next" value="{{ next_url }}">
+      {% if j.cash_received_at %}<button class="linkbtn" type="submit">{{ t('company.undo_received') }}</button>
+      {% else %}<button class="btn small primary" type="submit">{{ t('company.mark_received') }}</button>{% endif %}
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
+<div class="page-head">
+  <div>
+    <h1>{{ t('company.page_title') }}</h1>
+    <p class="sub">{{ period_label }}</p>
+  </div>
+  <a class="btn" href="{{ url_for('reports.company_report_pdf', periodo=period, data=ref) }}">{{ t('company.download_pdf') }}</a>
+</div>
+
+<div class="report-nav">
+  <nav class="seg" aria-label="{{ t('jobs.filter_period_label') }}">
+    {% for key, label in periods %}<a href="{{ url_for('reports.company_report', periodo=key, data=ref) }}"{% if key == period %} class="on" aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}
+  </nav>
+  <div class="stepper">
+    <a class="btn small arrow" href="{{ url_for('reports.company_report', periodo=period, data=prev_ref) }}" aria-label="{{ t('company.prev') }}">‹</a>
+    {% if not is_current %}<a class="btn small" href="{{ url_for('reports.company_report', periodo=period) }}">{{ t('company.back_to_now') }}</a>{% endif %}
+    <a class="btn small arrow" href="{{ url_for('reports.company_report', periodo=period, data=next_ref) }}" aria-label="{{ t('company.next') }}">›</a>
+  </div>
+</div>
+
+<section class="block">
+  <h2 class="sr-only">{{ t('company.summary') }}</h2>
+  <div class="stats">
+    <div class="stat"><b>{{ done_count }}</b><span>{{ t('company.jobs_done') }}</span><small>{{ t('company.of_scheduled', n=scheduled_count) }}</small></div>
+    <div class="stat"><b>{{ total_minutes|format_minutes }}</b><span>{{ t('company.hours') }}</span></div>
+    <div class="stat"><b>{{ cash_total|money or '£0' }}</b><span>{{ t('company.cash_total') }}</span></div>
+    <div class="stat"><b>{{ clients_served }}</b><span>{{ t('company.clients_served') }}</span></div>
+  </div>
+</section>
+
+{% if timeline %}
+<section class="block">
+  {{ timeline_chart(timeline, t('company.chart_jobs_month') if period == 'ano' else t('company.chart_jobs_day'), period == 'mes') }}
+</section>
+{% endif %}
+
+<section class="block">
+  <h2>{{ t('company.pending_section') }}</h2>
+  <p class="hint">{{ t('company.pending_hint') }}</p>
+  <div class="sheet">
+    {% for person, rows in pending|groupby('cash_name') %}
+    <div class="pay-person"><b>{{ person }}</b><b>{{ rows|sum(attribute='cash_pence')|money }}</b></div>
+    {% for j in rows %}{{ pay_row(j, show_person=false) }}{% endfor %}
+    {% else %}
+    <p class="empty">{{ t('company.pending_none') }}</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="block">
+  <h2>{{ t('company.by_employee') }}</h2>
+  {% if people and max_minutes %}{{ hours_chart(people, max_minutes) }}{% endif %}
+  <div class="sheet table-wrap">
+    {% if people %}
+    <table class="report-table">
+      <thead><tr><th scope="col">{{ t('company.col_person') }}</th><th scope="col" class="num">{{ t('company.col_jobs') }}</th><th scope="col" class="num">{{ t('company.col_hours') }}</th><th scope="col" class="num">{{ t('company.col_cash') }}</th></tr></thead>
+      <tbody>
+        {% for p in people %}<tr><th scope="row">{{ p.name }}</th><td class="num">{{ p.done }}</td><td class="num">{{ p.minutes|format_minutes }}</td><td class="num">{{ p.cash|money or '—' }}</td></tr>{% endfor %}
+      </tbody>
+      {% if people|length > 1 %}<tfoot><tr><th scope="row">{{ t('company.total') }}</th><td class="num">{{ done_count }}</td><td class="num">{{ total_minutes|format_minutes }}</td><td class="num">{{ cash_total|money or '—' }}</td></tr></tfoot>{% endif %}
+    </table>
+    {% if has_share %}<p class="hint table-note">{{ t('company.share_note') }}</p>{% endif %}
+    {% else %}<p class="empty">{{ t('company.no_jobs_period') }}</p>{% endif %}
+  </div>
+</section>
+
+<section class="block">
+  <h2>{{ t('company.cash_section') }}</h2>
+  <p class="hint">{{ t('company.cash_hint') }}</p>
+  {% if cash_jobs %}{% set pend = cash_total - cash_received %}{{ stack_chart(t('company.chart_cash'), [
+      ('c-received', cash_received, t('company.legend_received'), cash_received|money or '£0'),
+      ('c-pending', pend, t('company.legend_pending'), pend|money or '£0')]) }}{% endif %}
+  <div class="sheet">
+    {% for j in cash_jobs %}{{ pay_row(j) }}{% else %}
+    <p class="empty">{{ t('company.no_cash') }}</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="block">
+  <h2>{{ t('company.jobs_section') }}</h2>
+  {% if tasks.done + tasks.skipped + tasks.unmarked %}{{ stack_chart(t('company.chart_tasks'), [
+      ('c-done', tasks.done, t('company.legend_tasks_done'), tasks.done),
+      ('c-skip', tasks.skipped, t('company.legend_tasks_skipped'), tasks.skipped),
+      ('c-unmarked', tasks.unmarked, t('company.legend_tasks_unmarked'), tasks.unmarked)]) }}{% endif %}
+  <dl class="facts sheet pad">
+    <div><dt>{{ t('company.jobs_scheduled') }}</dt><dd>{{ scheduled_count }}</dd></div>
+    <div><dt>{{ t('company.jobs_done_label') }}</dt><dd>{{ done_count }}</dd></div>
+    <div><dt>{{ t('company.jobs_cancelled') }}</dt><dd>{{ cancelled_count }}</dd></div>
+    <div><dt>{{ t('company.jobs_open') }}</dt><dd>{{ open_count }}</dd></div>
+    <div><dt>{{ t('company.tasks_done') }}</dt><dd>{{ tasks.done }}</dd></div>
+    <div><dt>{{ t('company.tasks_not_done') }}</dt><dd>{{ tasks.skipped }}</dd></div>
+    <div><dt>{{ t('company.tasks_unmarked') }}</dt><dd>{{ tasks.unmarked }}</dd></div>
+    <div><dt>{{ t('company.jobs_late_now') }}</dt><dd>{% if late_now %}<a href="{{ url_for('jobs.list_jobs', ver='atrasados') }}">{{ late_now }}</a>{% else %}0{% endif %}</dd></div>
+  </dl>
+</section>
+
+<section class="block">
+  <h2>{{ t('company.clients_section') }}</h2>
+  <dl class="facts sheet pad">
+    <div><dt>{{ t('company.clients_active') }}</dt><dd>{{ clients_active }}
+      <span class="tier-counts">{% for tier in ('diamante', 'platina', 'ouro', 'prata', '') %}{% if tiers[tier] %}<span class="pill {{ 'pill-tier-' ~ tier if tier else '' }}">{{ tier|tier_label }}: {{ tiers[tier] }}</span>{% endif %}{% endfor %}</span></dd></div>
+    <div><dt>{{ t('company.clients_inactive') }}</dt><dd>{{ clients_inactive }}</dd></div>
+    <div><dt>{{ t('company.clients_new') }}</dt><dd>{{ clients_new }}</dd></div>
+  </dl>
+</section>
+{% endblock %}

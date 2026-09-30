@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="{{ 'pt-BR' if lang == 'pt_BR' else 'en' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{% block title %}{% endblock %}{{ app_name }}</title>
+  <link rel="preload" href="{{ url_for('static', filename='fonts/atkinson-hyperlegible-latin-400-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% include "_brand_head.html" %}
+  {# Instalação na tela inicial do celular (Android e iPhone) #}
+  <link rel="manifest" href="{{ url_for('manifest') }}">
+  <link rel="apple-touch-icon" href="{{ brand.logo.apple if brand.logo else url_for('static', filename='icons/apple-touch-icon.png') }}">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="{{ app_short_name }}">
+</head>
+<body>
+{% macro tab(endpoint, label, endpoints) -%}
+<a href="{{ url_for(endpoint) }}"{% if request.endpoint in endpoints %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
+{%- endmacro %}
+<header class="masthead">
+  <div class="masthead-inner{{ self.main_class() }}">
+    <div class="bar">
+      <a class="brand{% if app_name|length > 20 and (brand.show_name or not brand.logo) %} brand-long{% endif %}" href="{{ url_for('index') }}">
+        {% if brand.logo %}<img class="brand-logo {{ brand.chip_class }}" src="{{ brand.logo.logo }}" alt="{{ '' if brand.show_name else app_name }}">
+        {% else %}<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 2C7 6 5 10 5 14a7 7 0 0 0 14 0c0-4-2-8-7-12z" fill="currentColor"/><path d="M12 9v12" style="stroke: var(--mast-bg)" stroke-width="1.6" stroke-linecap="round"/></svg>{% endif %}
+        {% if brand.show_name or not brand.logo %}<span>{{ app_name }}</span>{% endif %}
+      </a>
+      {% if current_user %}
+      <div class="bar-actions">
+        <a class="bell" href="{{ url_for('notifications.list_notifications') }}" aria-label="{{ t('nav.notifications') }}{% if unread_notifications %} ({{ unread_notifications }}){% endif %}"{% if request.endpoint == 'notifications.list_notifications' %} aria-current="page"{% endif %}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 20.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          {% if unread_notifications %}<span class="badge">{{ unread_notifications if unread_notifications < 100 else '99+' }}</span>{% endif %}
+        </a>
+        {# Minha conta: senha, idioma e (dono) as configurações da empresa, cada assunto na sua página #}
+        <a class="linkish" href="{{ url_for('auth.account') }}"{% if request.path.startswith('/conta') %} aria-current="page"{% endif %}>{{ t('nav.account') }}</a>
+        <form method="post" action="{{ url_for('auth.logout') }}" data-confirm="{{ t('nav.logout_confirm') }}">
+          {{ csrf_field() }}
+          <button class="linkish" type="submit">{{ t('nav.logout') }}</button>
+        </form>
+      </div>
+      {% elif portal_user %}
+      {# Área da empresa: só a conta dela e sair (as abas Serviços/Jardins ficam no começo de cada tela) #}
+      <div class="bar-actions">
+        <a class="linkish" href="{{ url_for('portal.account') }}"{% if request.endpoint == 'portal.account' %} aria-current="page"{% endif %}>{{ t('nav.account') }}</a>
+        <form method="post" action="{{ url_for('auth.logout') }}" data-confirm="{{ t('nav.logout_confirm') }}">
+          {{ csrf_field() }}
+          <button class="linkish" type="submit">{{ t('nav.logout') }}</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+    {# Abas conforme os acessos: o dono vê todas; o gerente, só as que o dono liberou; o funcionário, só
+       "Meus trabalhos" e "Minhas horas" (que todo mundo tem). #}
+    {% if current_user %}
+    <nav class="tabs" aria-label="{{ t('nav.main_menu') }}">
+      {% if 'schedule' in user_permissions %}{{ tab('jobs.dashboard', t('nav.dashboard'), ['jobs.dashboard']) }}{% endif %}
+      {% if 'report' in user_permissions %}{{ tab('reports.company_report', t('nav.report'), ['reports.company_report']) }}{% endif %}
+      {% if 'finance' in user_permissions %}{{ tab('finance.overview', t('nav.finance'), ['finance.overview']) }}{% endif %}
+      {% if 'schedule' in user_permissions %}{{ tab('jobs.list_jobs', t('nav.agenda'), ['jobs.list_jobs', 'jobs.new_job', 'jobs.edit_job', 'jobs.week_view']) }}{% endif %}
+      {% if 'clients' in user_permissions %}{{ tab('clients.list_clients', t('nav.clients'), ['clients.list_clients', 'clients.new_client', 'clients.client_detail', 'clients.edit_client',
+        'companies.list_companies', 'companies.new_company', 'companies.company_detail', 'companies.new_login', 'companies.reset_login',
+        'companies.preview_days', 'companies.preview_gardens', 'companies.preview_garden', 'companies.preview_service',
+        'companies.preview_report']) }}{% endif %}
+      {% if 'quotes' in user_permissions %}{{ tab('quotes.list_quotes', t('nav.quotes'), ['quotes.list_quotes', 'quotes.new_quote', 'quotes.quote_detail', 'quotes.edit_quote']) }}{% endif %}
+      {% if current_user.role == 'owner' %}{{ tab('team.list_team', t('nav.team'), ['team.list_team', 'team.new_member', 'team.edit_member']) }}{% endif %}
+      {{ tab('jobs.my_jobs', t('nav.my_jobs'), ['jobs.my_jobs', 'extras.new_report', 'extras.list_reports', 'quote_requests.new_request', 'quote_requests.list_requests', 'quote_requests.detail']) }}
+      {{ tab('hours.my_hours', t('nav.my_hours'), ['hours.my_hours']) }}
+    </nav>
+    {% endif %}
+  </div>
+</header>
+<main class="container{% block main_class %}{% endblock %}">
+  {% for category, message in get_flashed_messages(with_categories=true) %}
+    <div class="flash flash-{{ category }}" role="status">{{ message }}</div>
+  {% endfor %}
+  {% block content %}{% endblock %}
+</main>
+{# "Você tem certeza?": toda ação de apagar, desativar, tirar ou sair passa por aqui (form[data-confirm]) #}
+<dialog class="confirm-box" id="confirm-box">
+  <div class="stack">
+    <h2>{{ t('common.confirm_title') }}</h2>
+    <p id="confirm-text"></p>
+    <div class="actions">
+      <button class="btn" type="button" data-answer="cancel" autofocus>{{ t('common.cancel') }}</button>
+      <button class="btn danger" type="button" data-answer="ok">{{ t('common.confirm_yes') }}</button>
+    </div>
+  </div>
+</dialog>
+<script>
+  /* Abas do celular: esmaece a borda onde há mais abas para rolar e centraliza a aba ativa. */
+  document.querySelectorAll('.tabs').forEach(function (nav) {
+    function update() {
+      nav.classList.toggle('less', nav.scrollLeft > 4);
+      nav.classList.toggle('more', nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 4);
+    }
+    var active = nav.querySelector('.active');
+    if (active) nav.scrollLeft = active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2;
+    nav.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  });
+  /* Listas longas (data-more): só os primeiros itens aparecem; "Mostrar mais N" abre o resto aos poucos. */
+  document.querySelectorAll('[data-more]').forEach(function (box) {
+    var items = Array.prototype.filter.call(box.children, function (el) { return !el.hasAttribute('data-more-skip'); });
+    var start = parseInt(box.getAttribute('data-more'), 10) || 3, step = parseInt(box.getAttribute('data-more-step'), 10) || 5;
+    if (items.length <= start) return;
+    var shown = start, bar = document.createElement('div'), count = document.createElement('span'), btn = document.createElement('button');
+    bar.className = 'more-bar';
+    count.className = 'hint';
+    btn.type = 'button';
+    btn.className = 'btn small';
+    bar.appendChild(btn);
+    bar.appendChild(count);
+    box.insertAdjacentElement('afterend', bar);
+    function render() {
+      items.forEach(function (el, i) { el.hidden = i >= shown; });
+      var left = items.length - shown;
+      count.textContent = box.getAttribute('data-more-count').replace('{shown}', Math.min(shown, items.length)).replace('{total}', items.length);
+      btn.textContent = box.getAttribute('data-more-label').replace('{n}', Math.min(step, left));
+      bar.hidden = left <= 0;
+    }
+    btn.addEventListener('click', function () {
+      var first = items[shown];
+      shown += step;
+      render();
+      if (first && first.focus) first.focus({ preventScroll: true });
+    });
+    render();
+    /* enquanto a lupa filtra a lista, o "mostrar mais" sai do caminho; ao limpar, volta como estava */
+    box.addEventListener('more:filter', function (e) {
+      if (e.detail.active) { bar.hidden = true; } else { render(); }
+    });
+  });
+  /* Lupa de uma lista (data-filter-for): esconde o que não bate com o texto, sem recarregar */
+  document.querySelectorAll('[data-filter-for]').forEach(function (input) {
+    var box = document.querySelector(input.getAttribute('data-filter-for'));
+    if (!box) return;
+    var wrap = input.closest('.list-filter');
+    if (wrap) wrap.hidden = false;
+    var items = Array.prototype.filter.call(box.children, function (el) { return !el.hasAttribute('data-more-skip'); });
+    var empty = document.createElement('p');
+    empty.className = 'empty';
+    empty.hidden = true;
+    empty.setAttribute('data-more-skip', '');
+    empty.textContent = input.getAttribute('data-filter-empty') || '';
+    box.appendChild(empty);
+    function norm(s) { return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+    input.addEventListener('input', function () {
+      var q = norm(input.value.trim()), found = 0;
+      if (!q) {
+        empty.hidden = true;
+        box.dispatchEvent(new CustomEvent('more:filter', { detail: { active: false } }));
+        if (!box.hasAttribute('data-more')) items.forEach(function (el) { el.hidden = false; });
+        return;
+      }
+      items.forEach(function (el) {
+        var hit = norm(el.getAttribute('data-filter-text') || el.textContent).indexOf(q) >= 0;
+        el.hidden = !hit;
+        if (hit) found++;
+      });
+      empty.hidden = found > 0;
+      box.dispatchEvent(new CustomEvent('more:filter', { detail: { active: true } }));
+    });
+  });
+  /* Gráficos: cada barra entra um pouco depois da anterior; os números dos cartões contam do zero até o valor. */
+  (function () {
+    var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.querySelectorAll('.vbars, .hc, .hbars, .dayline').forEach(function (chart) {
+      var bars = chart.querySelectorAll('.vbar-fill, .hc-fill, .hbar-fill, .dl-bar');
+      bars.forEach(function (bar, i) { bar.style.setProperty('--delay', Math.min(i * 45, 600) + 'ms'); });
+      chart.querySelectorAll('.vbar, .hc-bar').forEach(function (col, i) { col.style.setProperty('--delay', Math.min(i * 45, 600) + 'ms'); });
+    });
+    if (still) return;
+    document.querySelectorAll('.stat b').forEach(function (el, i) {
+      var text = el.textContent, m = /\d[\d.,]*/.exec(text);
+      if (!m) return;
+      var raw = m[0], sep = raw.indexOf('.') >= 0 ? '.' : (raw.indexOf(',') >= 0 ? ',' : ''), parts = sep ? raw.split(sep) : [raw];
+      var whole = parseInt(parts[0].replace(/\D/g, ''), 10);
+      if (isNaN(whole)) return;
+      var tail = sep ? sep + parts.slice(1).join(sep) : '', before = text.slice(0, m.index), after = text.slice(m.index + raw.length);
+      var start = null, wait = Math.min(i * 80, 320), length = 800;
+      function tick(now) {
+        if (start === null) start = now;
+        var t = Math.min(1, (now - start) / length), eased = 1 - Math.pow(1 - t, 3);
+        el.textContent = before + Math.round(whole * eased) + (t < 1 ? '' : tail) + after;
+        if (t < 1) requestAnimationFrame(tick); else el.textContent = text;
+      }
+      el.style.fontVariantNumeric = 'tabular-nums';
+      setTimeout(function () { requestAnimationFrame(tick); }, wait);
+    });
+  })();
+  /* Painéis que abrem por botão (.popmenu): tocar fora fecha */
+  document.addEventListener('click', function (e) {
+    document.querySelectorAll('.popmenu[open]').forEach(function (menu) { if (!menu.contains(e.target)) menu.removeAttribute('open'); });
+  });
+  /* Confirmação: um formulário com data-confirm só segue depois do "Sim" na janelinha (ou no confirm do navegador) */
+  (function () {
+    var box = document.getElementById('confirm-box'), text = document.getElementById('confirm-text');
+    var native = !box || typeof box.showModal !== 'function';
+    document.addEventListener('submit', function (e) {
+      var form = e.target, button = e.submitter;
+      if (!form.matches) return;
+      var message = form.getAttribute('data-confirm') || (button && button.getAttribute('data-confirm'));
+      if (!message) return;
+      if (form.getAttribute('data-confirmed') === '1') { form.removeAttribute('data-confirmed'); return; }
+      if (native) { if (!window.confirm(message)) e.preventDefault(); return; }
+      e.preventDefault();
+      text.textContent = message;
+      box.returnValue = 'cancel';
+      box.onclose = function () {
+        if (box.returnValue !== 'ok') return;
+        form.setAttribute('data-confirmed', '1');
+        if (form.requestSubmit) form.requestSubmit(button || undefined); else form.submit();
+      };
+      box.showModal();
+    }, true);
+    if (box) {
+      box.querySelectorAll('[data-answer]').forEach(function (b) { b.addEventListener('click', function () { box.close(b.getAttribute('data-answer')); }); });
+      box.addEventListener('click', function (e) { if (e.target === box) box.close('cancel'); });  /* tocar fora fecha */
+    }
+  })();
+  /* Lembrete pro cliente na linha do trabalho: tocou no WhatsApp ou no SMS, o celular abre a mensagem e aqui fica anotado */
+  document.addEventListener('click', function (e) {
+    var link = e.target.closest('a[data-remind]');
+    if (!link) return;
+    var csrf = document.querySelector('input[name="_csrf"]');
+    if (!csrf || !window.fetch) return;
+    var body = new FormData();
+    body.append('_csrf', csrf.value);
+    body.append('channel', link.getAttribute('data-remind'));
+    var side = link.closest('.job-side');
+    fetch(link.getAttribute('data-done-url'), { method: 'POST', body: body, credentials: 'same-origin', keepalive: true,
+                                                headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !side) return;
+        side.innerHTML = '';
+        var pill = document.createElement('span');
+        pill.className = 'pill pill-done remind-done';
+        pill.textContent = '✓ ' + d.label + ' ' + d.time;
+        side.appendChild(pill);
+      }, function () {});
+  });
+  /* Conversa de um serviço: abre já rolada no fim, na mensagem mais nova. */
+  document.querySelectorAll('.thread').forEach(function (box) { box.scrollTop = box.scrollHeight; });
+</script>
+</body>
+</html>

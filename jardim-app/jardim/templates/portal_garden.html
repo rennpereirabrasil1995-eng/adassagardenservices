@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_portal.html" import portal_top, service_card with context %}
+{% block title %}{{ garden.name }} – {% endblock %}
+{% block content %}
+{{ portal_top(company, links, preview, 'gardens') }}
+
+<p class="crumb"><a href="{{ links('gardens') }}">‹ {{ t('portal.nav_gardens') }}</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ garden.name }}</h1>
+    {% set where = place(garden.name, garden.address, garden.postcode) %}{% if where %}<p class="sub">{{ where }}</p>{% endif %}
+  </div>
+</div>
+
+{% for s in services %}{{ service_card(s, links, strip_limit, show_date=true) }}
+{% else %}
+<div class="sheet"><p class="empty">{{ t('portal.garden_empty') }}</p></div>
+{% endfor %}
+
+{% if page or more %}
+<div class="actions pager">
+  {% if page %}<a class="btn small" href="{{ links('garden', client_id=garden.id, page=page - 1) if page > 1 else links('garden', client_id=garden.id) }}">{{ t('portal.newer') }}</a>{% endif %}
+  {% if more %}<a class="btn small" href="{{ links('garden', client_id=garden.id, page=page + 1) }}">{{ t('portal.older') }}</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

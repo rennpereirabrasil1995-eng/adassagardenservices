@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ t('clients.page_title') }} – {% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ t('clients.title_archived') if archived else t('clients.title') }}</h1>
+  <div class="head-buttons">
+    {% if current_user.role == 'owner' %}<a class="btn" href="{{ url_for('companies.list_companies') }}">{{ t('companies.title') }}</a>{% endif %}
+    <a class="btn primary" href="{{ url_for('clients.new_client') }}">{{ t('clients.new') }}</a>
+  </div>
+</div>
+
+<form method="get" class="search">
+  <input type="search" name="q" value="{{ q }}" placeholder="{{ t('clients.search_placeholder') }}" aria-label="{{ t('clients.search_aria') }}">
+  {% if archived %}<input type="hidden" name="arquivados" value="1">{% endif %}
+  <button class="btn" type="submit">{{ t('clients.search_submit') }}</button>
+</form>
+
+<div class="sheet">
+  {% for c in clients %}
+  <a class="member" href="{{ url_for('clients.client_detail', client_id=c.id) }}">
+    <span class="member-name">{{ c.name }}{% if c.tier %} <span class="pill pill-tier-{{ c.tier }}">{{ c.tier|tier_label }}</span>{% endif %}{% if c.company_name %} <span class="pill pill-company"{% if c.company_color %} style="--co: {{ c.company_color }}"{% endif %}>{{ c.company_name }}</span>{% endif %}</span>
+    <span class="member-meta">{{ c.address }}{% if c.address and c.postcode %}, {% endif %}{{ c.postcode }}</span>
+    <span class="member-jobs">{{ c.jobs_count }} {{ t('clients.jobs_count_one') if c.jobs_count == 1 else t('clients.jobs_count_many') }}</span>
+  </a>
+  {% else %}
+  <p class="empty">
+    {% if q %}{{ t('clients.empty_search') }}
+    {% elif archived %}{{ t('clients.empty_archived') }}
+    {% else %}{{ t('clients.empty_none') }} <a href="{{ url_for('clients.new_client') }}">{{ t('clients.register_first') }}</a>{% endif %}
+  </p>
+  {% endfor %}
+</div>
+
+<p class="hint"><a href="{{ url_for('clients.list_clients', arquivados=(0 if archived else 1)) }}">{{ t('clients.view_active') if archived else t('clients.view_archived') }}</a></p>
+{% endblock %}

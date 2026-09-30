@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import company_tag with context %}
+{% from "_portal.html" import portal_top with context %}
+{% block title %}{{ t('portal.nav_gardens') }} – {% endblock %}
+{% block content %}
+{{ portal_top(company, links, preview, 'gardens') }}
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('portal.nav_gardens') }}</h1>
+    <p class="sub">{{ company_tag(company) }} · {{ t('portal.gardens_one') if gardens|length == 1 else t('portal.gardens_many', n=gardens|length) }}</p>
+  </div>
+</div>
+
+<div class="sheet">
+  {% for c in gardens %}
+  <a class="member" href="{{ links('garden', client_id=c.id) }}">
+    <span class="member-name">{{ c.name }}</span>
+    {% set where = place(c.name, c.address, c.postcode) %}{% if where %}<span class="member-meta">{{ where }}</span>{% endif %}
+    <span class="member-jobs">{% if c.last_day %}{{ t('portal.last_service', date=c.last_day|date_long) }} · {{ t('portal.services_one') if c.services == 1 else t('portal.services_many', n=c.services) }}{% else %}{{ t('portal.no_service_yet') }}{% endif %}</span>
+  </a>
+  {% else %}
+  <p class="empty">{{ t('portal.gardens_empty') }}</p>
+  {% endfor %}
+</div>
+{% endblock %}

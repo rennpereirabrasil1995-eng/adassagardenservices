@@ -1,0 +1,6 @@
+{# Cores, ícone da aba e cor da barra do celular, conforme Conta → Aparência. Incluído no <head>. #}
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="{{ brand.theme_light }}">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="{{ brand.theme_dark }}">
+{% if brand.logo %}<link rel="icon" type="image/png" href="{{ brand.logo.favicon }}">
+{% else %}<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C7 6 5 10 5 14a7 7 0 0 0 14 0c0-4-2-8-7-12z' fill='{{ brand.theme_light|replace('#', '%23') }}'/%3E%3C/svg%3E">{% endif %}
+{% if brand.css %}<style>{{ brand.css|safe }}</style>{% endif %}

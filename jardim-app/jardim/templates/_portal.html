@@ -1,0 +1,136 @@
+{# Peças da área da empresa (portal.py), usadas também na prévia do dono e na página do trabalho (conversa).
+   Importe com:  {% from "_portal.html" import portal_top, service_card, time_range, thread with context %}
+   links('days' | 'gardens' | 'garden' | 'service' | 'report' | 'report_pdf', ...) monta o endereço certo (área da empresa ou prévia). #}
+
+{% macro portal_top(company, links, preview, active) -%}
+{% if preview %}
+<div class="callout preview-note">
+  <b>{{ t('companies.preview_title', company=company.name) }}</b>
+  <p>{{ t('companies.preview_text') }} <a href="{{ url_for('companies.company_detail', company_id=company.id) }}">{{ t('companies.preview_back') }}</a></p>
+</div>
+{% endif %}
+<nav class="seg portal-nav" aria-label="{{ t('portal.nav_label') }}"{% if company.color %} style="--co: {{ company.color }}"{% endif %}>
+  <a href="{{ links('days') }}"{% if active == 'days' %} class="on" aria-current="page"{% endif %}>{{ t('portal.nav_services') }}</a>
+  <a href="{{ links('gardens') }}"{% if active == 'gardens' %} class="on" aria-current="page"{% endif %}>{{ t('portal.nav_gardens') }}</a>
+  <a href="{{ links('report') }}"{% if active == 'report' %} class="on" aria-current="page"{% endif %}>{{ t('portal.nav_report') }}</a>
+</nav>
+{%- endmacro %}
+
+{# "10:20–11:20 · 1h00": do Iniciar ao Concluir. Sem Iniciar, só a hora em que foi concluído. #}
+{% macro time_range(s) -%}
+{% if s.start and s.finish %}{{ s.start }}–{{ s.finish }}{% if s.minutes is not none %} · {{ s.minutes|format_minutes }}{% endif %}
+{%- elif s.finish %}{{ t('portal.finished_at', time=s.finish) }}
+{%- elif s.start_time %}{{ s.start_time }}{% endif %}
+{%- endmacro %}
+
+{# Fileira de miniaturas (Antes ou Depois). Com mais fotos que cabem, a última vira "+N" e leva ao serviço. #}
+{% macro strip(items, label, garden, more_url, limit) -%}
+{% if items %}
+<div class="strip">
+  <span class="strip-label">{{ label }} <span class="count">{{ items|length }}</span></span>
+  <div class="strip-row">
+    {%- for p in items[:limit] %}
+    {%- if loop.last and items|length > limit %}
+    {% set rest = items|length - limit + 1 %}
+    <a class="strip-more" href="{{ more_url }}" aria-label="{{ t('portal.more_photos', n=rest) }}"><img src="{{ p.mini }}" alt="" loading="lazy"><span aria-hidden="true">+{{ rest }}</span></a>
+    {%- else %}
+    <a href="{{ p.full }}" target="_blank" rel="noopener"><img src="{{ p.mini }}" alt="{{ label }} – {{ garden }}" loading="lazy"></a>
+    {%- endif %}
+    {%- endfor %}
+  </div>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{# Um serviço no dia (ou no histórico do jardim, com show_date). #}
+{% macro service_card(s, links, limit, show_date=false, number=none, total=none) -%}
+{% set url = links('service', job_id=s.id) %}
+<article class="svc sheet">
+  <div class="svc-head">
+    <div class="svc-title">
+      <h2><a href="{{ url }}">{{ s.garden }}</a></h2>
+      {% set where = place(s.garden, s.address, s.postcode) %}{% if where %}<p class="svc-where">{{ where }}</p>{% endif %}
+    </div>
+    {% if s.new_replies %}<span class="pill pill-new">{{ t('portal.new_reply') }}</span>{% endif %}
+  </div>
+  <p class="svc-when">{% if show_date %}{{ s.job_date|date_long }} · {% endif %}{{ time_range(s) }}</p>
+  <p class="svc-what">{{ s.title|job_title }}{% if number and total and total > 1 %} · {{ t('portal.job_n_of', n=number, total=total) }}{% endif %}</p>
+  {% if s.done or s.not_done or s.people > 1 %}
+  <ul class="svc-facts">
+    {% if s.done %}<li class="svc-done"><span aria-hidden="true">✓</span> {{ t('portal.tasks_done_one') if s.done|length == 1 else t('portal.tasks_done_many', n=s.done|length) }}</li>{% endif %}
+    {% if s.not_done %}<li class="svc-skip"><span aria-hidden="true">✗</span> {{ t('portal.not_done_one') if s.not_done|length == 1 else t('portal.not_done_many', n=s.not_done|length) }}</li>{% endif %}
+    {% if s.people > 1 %}<li>{{ t('portal.people', n=s.people) }}</li>{% endif %}
+  </ul>
+  {% endif %}
+  {% if s.materials %}<p class="svc-materials"><b>{{ t('portal.materials') }}:</b> {{ s.materials }}</p>{% endif %}
+  {{ strip(s.before_photos, t('photos.before'), s.garden, url ~ '#photos', limit) }}
+  {{ strip(s.after_photos, t('photos.after'), s.garden, url ~ '#photos', limit) }}
+  <div class="svc-foot">
+    <a class="svc-link" href="{{ url }}">{{ t('portal.see_service') }} <span aria-hidden="true">›</span></a>
+    {% if s.comments %}<a class="svc-comments" href="{{ url }}#comments">{{ t('portal.comments_one') if s.comments == 1 else t('portal.comments_many', n=s.comments) }}</a>{% endif %}
+  </div>
+</article>
+{%- endmacro %}
+
+{# A conversa de um serviço. side = quem está olhando ('company' na área da empresa, 'staff' na página do trabalho):
+   as mensagens desse lado ficam à direita. fresh = ids das novas (destacadas). delete_job = id do trabalho, se pode apagar. #}
+{#  Conversa da equipe (página do trabalho): me = id de quem está olhando (as mensagens dele à direita),
+    delete_endpoint = rota de apagar, delete_own = quem escreveu apaga a própria (o dono apaga qualquer uma). #}
+{% macro thread(comments, side, fresh, company_name, delete_job=none, me=none, delete_endpoint='companies.delete_comment', delete_own=false) -%}
+<ol class="thread">
+  {% for m in comments %}
+  {% set mine = (m.user_id == me) if me is not none else ((m.from_company and side == 'company') or (not m.from_company and side == 'staff')) %}
+  <li class="msg {{ 'msg-mine' if mine else 'msg-theirs' }}{% if m.id in fresh %} msg-new{% endif %}">
+    <p class="msg-meta"><b>{{ m.author_name }}</b>{% if me is none %} · {{ (m.company_name or t('companies.company_gone')) if m.from_company else app_name }}{% endif %} · {{ m.created_at|dt_local }}
+      {%- if m.id in fresh %} <span class="pill pill-new">{{ t('portal.new') }}</span>{% endif %}</p>
+    {% if m.body %}<p class="msg-body pre">{{ m.body }}</p>{% endif %}
+    {% if m.files %}
+    <div class="msg-files">
+      {%- for f in m.files %}
+      {%- if f.kind == 'photo' %}
+      <a class="msg-photo" href="{{ f.url }}" target="_blank" rel="noopener"><img src="{{ f.mini }}" alt="{{ f.original }}" loading="lazy"></a>
+      {%- else %}
+      <a class="msg-doc" href="{{ f.url }}" target="_blank" rel="noopener"><span class="msg-doc-icon doc-{{ f.label|lower }}" aria-hidden="true">{{ f.label }}</span><span class="msg-doc-name">{{ f.original }}</span><small>{{ f.size_text }}</small></a>
+      {%- endif %}
+      {%- endfor %}
+    </div>
+    {% endif %}
+    {% if delete_job and (not delete_own or m.user_id == me or current_user.role == 'owner') %}
+    <form method="post" action="{{ url_for(delete_endpoint, job_id=delete_job, comment_id=m.id) }}" data-confirm="{{ t('jobdetail.team_delete_confirm') if delete_own else t('companies.comment_delete_confirm') }}">
+      {{ csrf_field() }}
+      <button class="linkbtn danger-link" type="submit">{{ t('companies.comment_delete') }}</button>
+    </form>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ol>
+{%- endmacro %}
+
+{# Caixa de comentário com anexos (fotos e documentos), dos dois lados. O comments.js mostra o que foi escolhido
+   antes de enviar (dá pra tirar), reduz as fotos no celular e manda tudo junto; sem ele, o formulário funciona normal. #}
+{% macro composer(action, done, label, send_label, max_files, max_doc_mb, placeholder='') -%}
+<form method="post" action="{{ action }}" enctype="multipart/form-data" class="stack comment-form" data-comment-form data-done="{{ done }}" data-max="{{ max_files }}">
+  {{ csrf_field() }}
+  <label>{{ label }}
+    <textarea name="body" rows="3" maxlength="1000"{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}></textarea>
+  </label>
+  <div class="attach">
+    <label class="btn small photo-pick attach-pick">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11.6l-8.2 8.2a5 5 0 0 1-7.1-7.1l8.6-8.6a3.4 3.4 0 0 1 4.8 4.8l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>{{ t('portal.attach') }}</span>
+      <input type="file" name="files" multiple accept="image/*,.heic,.heif,.pdf,.doc,.docx,.xls,.xlsx">
+    </label>
+    <span class="hint">{{ t('portal.attach_hint', n=max_files, mb=max_doc_mb) }}</span>
+  </div>
+  <ul class="attach-list" data-attach-list hidden></ul>
+  <p class="hint attach-status" data-attach-status role="status" aria-live="polite" hidden></p>
+  <div class="actions"><button class="btn primary" type="submit">{{ send_label }}</button></div>
+</form>
+{%- endmacro %}
+
+{% macro composer_assets() -%}
+<script type="application/json" id="comment-text">{{ {'sending': t('portal.sending'), 'failed': t('portal.send_failed'),
+  'too_big': t('portal.too_big'), 'remove': t('portal.attach_remove'), 'empty': t('portal.comment_empty'),
+  'too_many': t('portal.files_too_many', n='{n}')}|tojson }}</script>
+<script src="{{ url_for('static', filename='comments.js') }}" defer></script>
+{%- endmacro %}

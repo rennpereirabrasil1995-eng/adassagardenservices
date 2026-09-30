@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "_account.html" import sub_head with context %}
+{% block title %}{{ t('account.notices_title') }} – {% endblock %}
+{% block content %}
+{{ sub_head(t('account.notices_title'), t('prefs.notif_intro')) }}
+<section class="block">
+  <form method="post" class="sheet pad stack">
+    {{ csrf_field() }}
+    <label class="check plain">
+      <input type="checkbox" name="notify_email" value="1"{% if form.notify_email %} checked{% endif %}>
+      <span>{{ t('prefs.notify_email_checkbox') }}</span>
+    </label>
+    <div class="grid-2">
+      <label>{{ t('prefs.mail_address_label') }}
+        <input type="email" name="mail_address" value="{{ form.mail_address }}" autocomplete="off" placeholder="{{ t('prefs.mail_placeholder') }}">
+      </label>
+      <label>{{ t('prefs.mail_password_label') }}
+        <input type="password" name="mail_password" value="" autocomplete="new-password" placeholder="{{ t('prefs.mail_password_saved') if has_mail_password else 'abcd efgh ijkl mnop' }}">
+      </label>
+    </div>
+    <p class="hint">{{ t('prefs.mail_help') }} <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">myaccount.google.com/apppasswords</a></p>
+    <div class="actions"><button class="btn primary" type="submit">{{ t('common.save_changes') }}</button></div>
+  </form>
+</section>
+
+<section class="block">
+  <h2>{{ t('prefs.test_title') }}</h2>
+  <form method="post" action="{{ url_for('preferences.send_test_email') }}" class="sheet pad stack">
+    {{ csrf_field() }}
+    <p class="hint">{{ t('prefs.test_hint', to=current_user.email) }}</p>
+    <div class="actions"><button class="btn small" type="submit">{{ t('prefs.send_test') }}</button></div>
+  </form>
+</section>
+
+<section class="block">
+  <h2>{{ t('prefs.daily_link_title') }}</h2>
+  <div class="sheet pad stack">
+    <p class="hint">{{ t('prefs.daily_link_hint') }}</p>
+    <input readonly value="{{ daily_url }}" aria-label="{{ t('prefs.daily_link_title') }}" onclick="this.select()">
+  </div>
+</section>
+{% endblock %}

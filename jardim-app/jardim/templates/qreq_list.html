@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import show_more with context %}
+{% block title %}{{ t('qreq.title') }} – {% endblock %}
+{% block content %}
+{% macro request_row(r, reviewer=false) -%}
+<a class="qrow qreq-row" href="{{ url_for('quote_requests.detail', request_id=r.id) }}">
+  {% set photo = (r.files|selectattr('kind', 'equalto', 'photo')|list)|first %}
+  {% if photo %}<img class="qreq-thumb" src="{{ photo.mini }}" alt="" loading="lazy">{% else %}<span class="qreq-thumb qreq-thumb-none" aria-hidden="true">{{ '▶' if r.files else '✎' }}</span>{% endif %}
+  <span class="qrow-main">
+    <b>{{ r.client_name }}</b>
+    <span>{{ r.request|replace('\n', ' · ')|truncate(80) }}</span>
+    <span class="hint">{{ r.created_at|dt_local }}{% if reviewer %} · {{ t('extras.by', name=r.user_name) }}{% endif %}{% if r.files %} · {{ t('qreq.files_one') if r.files|length == 1 else t('qreq.files_many', n=r.files|length) }}{% endif %}</span>
+  </span>
+  <span class="qrow-side">
+    {% if r.price_pence %}<b>{{ r.price_pence|money }}</b>{% endif %}
+    {% if r.status == 'pending' %}<span class="pill pill-pending">{{ t('qreq.pending') }}</span>
+    {% elif r.status == 'quoted' %}<span class="pill pill-done">✓ {{ t('qreq.quoted') }}</span>
+    {% else %}<span class="pill pill-failed">{{ t('qreq.declined') }}</span>{% endif %}
+  </span>
+</a>
+{%- endmacro %}
+
+<p class="crumb"><a href="{{ url_for('quotes.list_quotes') if own is none else url_for('jobs.my_jobs') }}">‹ {{ t('nav.quotes') if own is none else t('nav.my_jobs') }}</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ t('qreq.title') }}</h1>
+    <p class="sub">{{ t('qreq.reviewer_hint') if own is none else t('qreq.form_hint') }}</p>
+  </div>
+  <a class="btn primary" href="{{ url_for('quote_requests.new_request') }}">{{ t('qreq.new_button') }}</a>
+</div>
+
+{% if own is none %}
+<section class="block">
+  <h2>{{ t('qreq.pending_title') }}{% if pending %} <span class="count">{{ pending|length }}</span>{% endif %}</h2>
+  <div class="sheet" {{ show_more(5, 5) }}>
+    {% for r in pending %}{{ request_row(r, reviewer=true) }}{% else %}
+    <p class="empty">{{ t('extras.none_pending') }}</p>
+    {% endfor %}
+  </div>
+</section>
+{% if decided %}
+<section class="block">
+  <h2>{{ t('extras.decided_title') }}</h2>
+  <div class="sheet" {{ show_more(3, 5) }}>{% for r in decided %}{{ request_row(r, reviewer=true) }}{% endfor %}</div>
+</section>
+{% endif %}
+{% else %}
+<section class="block">
+  <h2>{{ t('qreq.mine_title') }}</h2>
+  <div class="sheet" {{ show_more(5, 5) }}>
+    {% for r in own %}{{ request_row(r) }}{% else %}
+    <p class="empty">{{ t('qreq.none') }}</p>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

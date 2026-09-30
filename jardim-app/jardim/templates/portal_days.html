@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% from "_macros.html" import company_tag with context %}
+{% from "_portal.html" import portal_top, service_card with context %}
+{% block title %}{{ t('portal.nav_services') }} · {{ day|date_long }} – {% endblock %}
+{% block content %}
+{{ portal_top(company, links, preview, 'days') }}
+
+<div class="page-head">
+  <div>
+    <h1>{{ day|date_long }}</h1>
+    <p class="sub">{{ company_tag(company) }}{% if day == today %} · {{ t('portal.today') }}{% elif day == yesterday %} · {{ t('portal.yesterday') }}{% endif %}</p>
+  </div>
+</div>
+
+{% if has_any %}
+<div class="report-nav">
+  <div class="stepper">
+    {% if prev_day %}<a class="btn small arrow" href="{{ links('days', day=prev_day) }}" aria-label="{{ t('portal.prev_day') }}" title="{{ t('portal.prev_day') }}">‹</a>{% endif %}
+    {% if latest and day != latest %}<a class="btn small" href="{{ links('days', day=latest) }}">{{ t('portal.latest') }}</a>{% endif %}
+    {% if next_day %}<a class="btn small arrow" href="{{ links('days', day=next_day) }}" aria-label="{{ t('portal.next_day') }}" title="{{ t('portal.next_day') }}">›</a>{% endif %}
+  </div>
+  <form method="get" action="{{ links('days') }}" class="day-jump">
+    <label class="sr-only" for="day-pick">{{ t('portal.go_to_day') }}</label>
+    <input type="date" id="day-pick" name="day" value="{{ day }}" max="{{ today }}">
+    <button class="btn small" type="submit">{{ t('portal.go') }}</button>
+  </form>
+</div>
+{% endif %}
+
+{% if replies %}
+<div class="callout replies">
+  <b>{{ t('portal.replies_title', company=app_name) }}</b>
+  <ul class="plain-list">
+    {% for r in replies %}<li><a href="{{ links('service', job_id=r.id) }}#comments">{{ r.garden }}</a> · {{ r.job_date|date_long }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if services %}
+<section class="block">
+  <h2 class="sr-only">{{ t('portal.nav_services') }}</h2>
+  <div class="stats portal-stats">
+    <div class="stat"><b>{{ services|length }}</b><span>{{ t('portal.stat_services_one') if services|length == 1 else t('portal.stat_services') }}</span></div>
+    <div class="stat"><b>{{ total_minutes|format_minutes if total_minutes else '—' }}</b><span>{{ t('portal.stat_time') }}</span></div>
+  </div>
+</section>
+{% for s in services %}{{ service_card(s, links, strip_limit, number=loop.index, total=services|length) }}{% endfor %}
+{% elif has_any %}
+<div class="sheet"><p class="empty">{{ t('portal.day_empty') }}{% if latest and day != latest %} <a href="{{ links('days', day=latest) }}">{{ t('portal.see_latest') }}</a>{% endif %}</p></div>
+{% else %}
+<div class="sheet"><p class="empty">{{ t('portal.none_yet') }}</p></div>
+{% endif %}
+{% endblock %}

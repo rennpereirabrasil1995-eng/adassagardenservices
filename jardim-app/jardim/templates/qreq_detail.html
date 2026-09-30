@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{{ t('qreq.detail_title', client=r.client_name) }} – {% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('quote_requests.list_requests') }}">‹ {{ t('qreq.title') }}</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ r.client_name }}</h1>
+    <p class="sub">{{ t('qreq.sent_by', name=r.user_name, when=r.created_at|dt_local) }}</p>
+  </div>
+  <div class="head-side">
+    {% if r.status == 'pending' %}<span class="pill pill-pending">{{ t('qreq.pending') }}</span>
+    {% elif r.status == 'quoted' %}<span class="pill pill-done">✓ {{ t('qreq.quoted') }}</span>
+    {% else %}<span class="pill pill-failed">{{ t('qreq.declined') }}</span>{% endif %}
+  </div>
+</div>
+
+{% if r.status == 'quoted' and quote %}
+<a class="callout callout-ok extras-card" href="{{ url_for('quotes.quote_detail', quote_id=quote.id) }}">
+  <b>{{ t('qreq.quote_made', ref=quote.ref) }}</b><span>{{ t('qreq.open_quote') }} ›</span>
+</a>
+{% elif r.status == 'declined' %}
+<div class="callout callout-late">
+  <b>{{ t('qreq.declined') }}</b>
+  {% if r.decision_note %}<p>{{ t('extras.declined_reason', note=r.decision_note) }}</p>{% endif %}
+</div>
+{% endif %}
+
+{# Em cima, as fotos e o vídeo, do jeito da conversa do trabalho #}
+{% if files %}
+<section class="block">
+  <div class="sheet pad qreq-files">
+    {% for f in files %}
+      {% if f.kind == 'photo' %}
+      <a class="msg-photo qreq-photo" href="{{ f.url }}" target="_blank" rel="noopener"><img src="{{ f.mini }}" alt="{{ f.original }}" loading="lazy"></a>
+      {% elif f.kind == 'video' %}
+      <video class="qreq-video" controls preload="metadata" playsinline src="{{ f.url }}" type="{{ f.mimetype }}"></video>
+      {% else %}
+      <a class="msg-doc" href="{{ f.url }}" target="_blank" rel="noopener"><span class="msg-doc-icon doc-{{ f.label|lower }}" aria-hidden="true">{{ f.label }}</span><span class="msg-doc-name">{{ f.original }}</span><small>{{ f.size_text }}</small></a>
+      {% endif %}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="block">
+  <div class="sheet pad stack qreq-facts">
+    <dl class="facts qreq-dl">
+      <div><dt>{{ t('extras.client_label') }}</dt><dd>{{ r.client_name }}{% if r.client_id and 'clients' in user_permissions %} · <a href="{{ url_for('clients.client_detail', client_id=r.client_id) }}">{{ t('qreq.in_list') }}</a>{% endif %}</dd></div>
+      {% if r.phone %}<div><dt>{{ t('qreq.phone_label') }}</dt><dd><a href="tel:{{ r.phone|replace(' ', '') }}">{{ r.phone }}</a></dd></div>{% endif %}
+      {% if r.address or r.postcode %}<div><dt>{{ t('clientform.address_label') }}</dt><dd>{{ [r.address, r.postcode]|select|join(', ') }}</dd></div>{% endif %}
+      <div><dt>{{ t('qreq.request_label') }}</dt><dd class="pre">{{ r.request }}</dd></div>
+      {% if r.notes %}<div><dt>{{ t('qreq.notes_label') }}</dt><dd class="pre">{{ r.notes }}</dd></div>{% endif %}
+      {% if time_label %}<div><dt>{{ t('qreq.time_label') }}</dt><dd>{{ time_label }}</dd></div>{% endif %}
+      {% if r.price_pence %}<div><dt>{{ t('qreq.price_label') }}</dt><dd><b>{{ r.price_pence|money }}</b></dd></div>{% endif %}
+    </dl>
+  </div>
+</section>
+
+{% if reviewer and r.status == 'pending' %}
+<section class="block">
+  <h2>{{ t('qreq.review_title') }}</h2>
+  <p class="hint block-hint">{{ t('qreq.review_hint') }}</p>
+  <div class="sheet pad report-actions">
+    <form method="post" action="{{ url_for('quote_requests.make_quote', request_id=r.id) }}">
+      {{ csrf_field() }}<button class="btn primary" type="submit">{{ t('qreq.make_quote') }}</button>
+    </form>
+    <form method="post" action="{{ url_for('quote_requests.decline', request_id=r.id) }}" class="report-reject" data-confirm="{{ t('qreq.decline_confirm', client=r.client_name) }}">
+      {{ csrf_field() }}
+      <input name="note" maxlength="300" placeholder="{{ t('extras.reject_note') }}" aria-label="{{ t('extras.reject_note') }}">
+      <button class="btn danger" type="submit">{{ t('extras.reject') }}</button>
+    </form>
+  </div>
+</section>
+{% endif %}
+
+{% if reviewer or (r.user_id == current_user.id and r.status == 'pending') %}
+<form method="post" action="{{ url_for('quote_requests.delete', request_id=r.id) }}" class="qreq-delete" data-confirm="{{ t('qreq.delete_confirm') }}">
+  {{ csrf_field() }}<button class="linkbtn danger-link" type="submit">{{ t('qreq.delete') }}</button>
+</form>
+{% endif %}
+{% endblock %}

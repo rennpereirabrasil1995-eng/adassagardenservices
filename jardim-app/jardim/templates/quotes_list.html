@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_macros.html" import quote_pill with context %}
+{% block title %}{{ t('nav.quotes') }} – {% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ t('nav.quotes') }}</h1>
+    <p class="sub">{{ t('quotes.list_sub') }}</p>
+  </div>
+  <div class="head-side">
+    <a class="btn" href="{{ url_for('quote_requests.list_requests') }}">{{ t('qreq.title') }}{% if requests_pending %} <span class="count">{{ requests_pending }}</span>{% endif %}</a>
+    <a class="btn primary" href="{{ url_for('quotes.new_quote') }}">{{ t('quotes.new') }}</a>
+  </div>
+</div>
+{% if requests_pending %}
+<a class="callout extras-card" href="{{ url_for('quote_requests.list_requests') }}">
+  <b>{{ t('qreq.dashboard_pending_one') if requests_pending == 1 else t('qreq.dashboard_pending_many', n=requests_pending) }}</b>
+  <span>{{ t('extras.review') }} ›</span>
+</a>
+{% endif %}
+
+<div class="filters">
+  <nav class="seg" aria-label="{{ t('quotes.filter_label') }}">
+    {% for key, label, n in views %}
+    <a href="{{ url_for('quotes.list_quotes', ver=key) }}"{% if key == view %} class="on" aria-current="true"{% endif %}>{{ label }}{% if n %} ({{ n }}){% endif %}</a>
+    {% endfor %}
+  </nav>
+</div>
+
+<div class="sheet">
+  {% for q in quotes %}
+  <a class="qrow" href="{{ url_for('quotes.quote_detail', quote_id=q.id) }}">
+    <span class="qrow-main">
+      <b>{{ q.to_name }}</b>
+      <span>{{ q.title }}</span>
+      <span class="hint">{{ q.ref }} · {{ q.created_at[:10]|date_long }}</span>
+    </span>
+    <span class="qrow-side"><b>{{ q.total_pence|money or '£0' }}</b>{{ quote_pill(q.state) }}</span>
+  </a>
+  {% else %}
+  <p class="empty">{{ t('quotes.none_' ~ view) }}</p>
+  {% endfor %}
+</div>
+{% endblock %}

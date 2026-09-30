@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_account.html" import sub_head with context %}
+{% block title %}{{ t('account.report_title') }} – {% endblock %}
+{% block content %}
+{{ sub_head(t('account.report_title'), t('prefs.pdf_hint')) }}
+<form method="get" action="{{ url_for('reports.company_report_pdf') }}" class="sheet pad stack">
+  <div class="grid-2">
+    <label>{{ t('prefs.pdf_period') }}
+      <select name="periodo">
+        <option value="semana">{{ t('history.period_week') }}</option>
+        <option value="mes">{{ t('history.period_month') }}</option>
+        <option value="ano">{{ t('history.period_year') }}</option>
+      </select>
+    </label>
+    <label>{{ t('prefs.pdf_date') }}
+      <input type="date" name="data" value="{{ today }}">
+    </label>
+  </div>
+  <p class="hint">{{ t('prefs.pdf_date_hint') }}</p>
+  <div class="actions"><button class="btn primary" type="submit">{{ t('prefs.pdf_download') }}</button></div>
+</form>
+<p class="hint">{{ t('account.report_see_screen') }} <a href="{{ url_for('reports.company_report') }}">{{ t('nav.report') }}</a></p>
+{% endblock %}

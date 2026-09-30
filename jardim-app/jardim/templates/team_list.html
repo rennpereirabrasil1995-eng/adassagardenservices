@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ t('team.page_title') }} – {% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ t('team.title') }}</h1>
+    <p class="sub">{{ t('team.subtitle') }}</p>
+  </div>
+  <a class="btn primary" href="{{ url_for('team.new_member') }}">{{ t('team.add_person') }}</a>
+</div>
+
+<div class="sheet">
+  {% for m in members %}
+  <a class="member{% if not m.active %} off{% endif %}" href="{{ url_for('team.edit_member', member_id=m.id) }}">
+    <span class="member-name">{{ m.name }}</span>
+    <span class="member-meta">{{ roles[m.role] }}{% if m.role == 'manager' %}: {% for p in (m.permissions or '').split(',') if p in perm_short %}{{ perm_short[p] }}{% if not loop.last %}, {% endif %}{% else %}{{ t('team.no_permissions') }}{% endfor %}{% endif %}{% if not m.active %}{{ t('team.deactivated_suffix') }}{% endif %}</span>
+    <span class="member-meta">{{ m.email }}{% if m.phone %}, {{ m.phone }}{% endif %}</span>
+    {% if m.address %}<span class="member-meta">{{ m.address }}</span>{% endif %}
+    {% if m.open_jobs %}<span class="member-jobs">{{ m.open_jobs }} {{ t('team.open_job_one') if m.open_jobs == 1 else t('team.open_job_many') }}</span>{% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

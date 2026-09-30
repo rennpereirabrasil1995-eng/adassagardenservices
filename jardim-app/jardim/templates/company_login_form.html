@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ t('companies.login_form_title') }} – {% endblock %}
+{% from "_macros.html" import company_style_fields with context %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('companies.company_detail', company_id=company.id, _anchor='acessos') }}">‹ {{ company.name }}</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ t('companies.login_form_title') }}</h1>
+    <p class="sub">{{ company.name }}</p>
+  </div>
+</div>
+<form method="post" class="sheet pad stack">
+  {{ csrf_field() }}
+  <label>{{ t('companies.login_name') }}
+    <input name="name" value="{{ form.name }}" maxlength="120" required autofocus>
+  </label>
+  <label>{{ t('companies.login_email') }}
+    <input type="email" name="email" value="{{ form.email }}" maxlength="200" autocomplete="off" required>
+  </label>
+  <label>{{ t('companies.login_language') }}
+    <select name="language">
+      {% for code, label in languages.items() %}<option value="{{ code }}"{% if form.language == code %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <span class="hint">{{ t('companies.login_language_hint') }}</span>
+  </label>
+  <label>{{ t('companies.login_password') }}
+    <input name="password" value="{{ form.password }}" minlength="8" maxlength="200" autocomplete="off" spellcheck="false" required>
+    <span class="hint">{{ t('companies.login_password_hint') }}</span>
+  </label>
+  {{ company_style_fields(none, form.color, with_tier=false) }}
+  <div class="actions">
+    <button class="btn primary" type="submit">{{ t('companies.add_login') }}</button>
+    <a class="btn" href="{{ url_for('companies.company_detail', company_id=company.id, _anchor='acessos') }}">{{ t('common.cancel') }}</a>
+  </div>
+</form>
+{% endblock %}

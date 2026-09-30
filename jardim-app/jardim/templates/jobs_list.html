@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import job_row, show_more with context %}
+{% block title %}{{ t('jobs.page_title') }} – {% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ t('jobs.title') }}</h1>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('jobs.week_view') }}">{{ t('week.button') }}</a>
+    <a class="btn primary" href="{{ url_for('jobs.new_job') }}">{{ t('jobs.new') }}</a>
+  </div>
+</div>
+
+<div class="filters">
+  <nav class="seg" aria-label="{{ t('jobs.filter_period_label') }}">
+    {% for key, label in views %}
+    <a href="{{ url_for('jobs.list_jobs', ver=key, func=employee or None, cliente=q or None) }}"{% if key == view %} class="on" aria-current="true"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+  <form method="get" class="who-filter">
+    <input type="hidden" name="ver" value="{{ view }}">
+    {% if q %}<input type="hidden" name="cliente" value="{{ q }}">{% endif %}
+    <label class="inline">{{ t('jobs.employee_label') }}
+      <select name="func" onchange="this.form.submit()">
+        <option value="">{{ t('jobs.all') }}</option>
+        <option value="none"{% if employee == 'none' %} selected{% endif %}>{{ t('jobs.no_employee_option') }}</option>
+        {% for e in employees %}
+        <option value="{{ e.id }}"{% if employee == e.id|string %} selected{% endif %}>{{ e.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <noscript><button class="btn small" type="submit">{{ t('jobs.filter_submit') }}</button></noscript>
+  </form>
+  {# A lupa: busca só pelo nome do cliente, mantendo a aba e o funcionário escolhidos #}
+  <form method="get" class="search client-search" role="search">
+    <input type="hidden" name="ver" value="{{ view }}">
+    {% if employee %}<input type="hidden" name="func" value="{{ employee }}">{% endif %}
+    <input type="search" name="cliente" value="{{ q }}" placeholder="{{ t('jobs.search_placeholder') }}" aria-label="{{ t('jobs.search_aria') }}" autocomplete="off">
+    <button class="btn search-btn" type="submit" aria-label="{{ t('jobs.search_submit') }}" title="{{ t('jobs.search_submit') }}">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </form>
+  {% if q %}<p class="hint search-note">{{ t('jobs.search_results', q=q, n=jobs|length) }} <a href="{{ url_for('jobs.list_jobs', ver=view, func=employee or None) }}">{{ t('jobs.search_clear') }}</a></p>{% endif %}
+</div>
+
+{# A lista abre com 4 e o botão "Mostrar mais 4" vai abrindo o resto (script do base.html) #}
+<div class="sheet" {{ show_more(4, 4) }}>
+  {% for j in jobs %}{{ job_row(j) }}{% else %}
+  <p class="empty">{{ t('jobs.empty_search', q=q) if q else t('jobs.empty') }}</p>
+  {% endfor %}
+</div>
+{% endblock %}

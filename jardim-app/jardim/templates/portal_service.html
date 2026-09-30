@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% from "_portal.html" import portal_top, time_range, thread, composer, composer_assets with context %}
+{% from "_macros.html" import pill, photo_tile with context %}
+{% block title %}{{ s.garden }} · {{ s.job_date|date_long }} – {% endblock %}
+{% block content %}
+{{ portal_top(company, links, preview, 'days') }}
+
+<p class="crumb"><a href="{{ links('days', day=s.job_date) }}">‹ {{ s.job_date|date_long }}</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ s.garden }}</h1>
+    <p class="sub">{{ s.title|job_title }}</p>
+  </div>
+  <div>{{ pill('done') }}</div>
+</div>
+
+<dl class="facts sheet pad">
+  <div><dt>{{ t('portal.date_label') }}</dt><dd>{{ s.job_date|date_long }}</dd></div>
+  {% if s.start or s.finish %}<div><dt>{{ t('portal.time_label') }}</dt><dd>{{ time_range(s) }}</dd></div>{% endif %}
+  {% if s.people > 1 %}<div><dt>{{ t('portal.team_label') }}</dt><dd>{{ t('portal.people', n=s.people) }}</dd></div>{% endif %}
+  {% if s.address or s.postcode %}
+  <div><dt>{{ t('portal.address_label') }}</dt><dd><a href="{{ s.address|maps_link(s.postcode) }}" target="_blank" rel="noopener">{{ s.address }}{% if s.address and s.postcode %}, {% endif %}<span class="nowrap">{{ s.postcode }}</span></a></dd></div>
+  {% endif %}
+</dl>
+
+<section class="block">
+  <h2>{{ t('portal.work_title') }}{% if s.done %} <span class="count">{{ s.done|length }}</span>{% endif %}</h2>
+  <div class="sheet pad stack">
+    {% if s.done or s.not_done %}
+    <ul class="task-results">
+      {% for x in s.done %}
+      <li class="res-done"><span class="res-mark" aria-hidden="true">✓</span><span><span class="sr-only">{{ t('tasks.status_done') }}: </span>{{ x }}</span></li>
+      {% endfor %}
+      {% for x in s.not_done %}
+      <li class="res-skip"><span class="res-mark" aria-hidden="true">✗</span><span><span class="sr-only">{{ t('tasks.status_not_done') }}: </span>{{ x.text }}
+        <span class="res-note">{{ t('tasks.status_not_done') }}{% if x.note %} · {{ t('tasks.reason_prefix') }} {{ x.note }}{% endif %}</span></span></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="hint">{{ t('portal.no_tasks') }}</p>
+    {% endif %}
+    {% if s.materials %}<div><b>{{ t('portal.materials') }}</b><p class="pre">{{ s.materials }}</p></div>{% endif %}
+  </div>
+</section>
+
+<section class="block" id="photos">
+  <h2>{{ t('portal.photos_title') }}</h2>
+  <div class="sheet pad photo-sets">
+    {% for key, items in (('before', s.before_photos), ('after', s.after_photos)) %}
+    <div class="photo-set">
+      <h3>{{ t('photos.' ~ key) }}{% if items %}<span class="count">{{ items|length }}</span>{% endif %}</h3>
+      {% if items %}
+      <div class="photos">{% for p in items %}{{ photo_tile(p, t('photos.' ~ key) ~ ' – ' ~ s.garden) }}{% endfor %}</div>
+      {% else %}
+      <p class="photos-empty">{{ t('portal.no_photos') }}</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="block" id="comments">
+  <h2>{{ t('portal.comments_title') }}{% if comments %} <span class="count">{{ comments|length }}</span>{% endif %}</h2>
+  <div class="sheet pad stack">
+    {% if comments %}
+    {{ thread(comments, 'company', fresh, company.name) }}
+    {% else %}
+    <p class="hint">{{ t('portal.comments_empty', company=app_name) }}</p>
+    {% endif %}
+    {% if preview %}
+    <p class="hint preview-off">{{ t('portal.preview_no_comment') }} <a href="{{ url_for('jobs.job_detail', job_id=s.id, _anchor='comentarios') }}">{{ t('portal.open_job') }}</a></p>
+    {% else %}
+    {{ composer(url_for('portal.comment', job_id=s.id), url_for('portal.service', job_id=s.id) ~ '#comments',
+                t('portal.comment_label'), t('portal.comment_send'), max_files, max_doc_mb, t('portal.comment_placeholder')) }}
+    {% endif %}
+  </div>
+</section>
+{% if not preview %}{{ composer_assets() }}{% endif %}
+{% endblock %}

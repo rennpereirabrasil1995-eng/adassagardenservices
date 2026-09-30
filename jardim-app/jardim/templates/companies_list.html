@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ t('companies.title') }} – {% endblock %}
+{% from "_macros.html" import company_tag with context %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('clients.list_clients') }}">‹ {{ t('nav.clients') }}</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ t('companies.title') }}</h1>
+    <p class="sub">{{ t('companies.hint') }}</p>
+  </div>
+  <a class="btn primary" href="{{ url_for('companies.new_company') }}">{{ t('companies.create') }}</a>
+</div>
+
+<div class="sheet">
+  {% for co in companies %}
+  <a class="member" href="{{ url_for('companies.company_detail', company_id=co.id) }}">
+    <span class="member-name">{{ company_tag(co) }}{% if co.fresh %} <span class="pill pill-new">{{ t('companies.fresh_one') if co.fresh == 1 else t('companies.fresh_many', n=co.fresh) }}</span>{% endif %}</span>
+    <span class="member-meta">{{ t('companies.gardens_one') if co.gardens == 1 else t('companies.gardens_many', n=co.gardens) }} · {% if co.logins %}{{ t('companies.logins_one') if co.logins == 1 else t('companies.logins_many', n=co.logins) }}{% else %}{{ t('companies.logins_none') }}{% endif %}</span>
+  </a>
+  {% else %}
+  <p class="empty">{{ t('companies.empty') }}</p>
+  {% endfor %}
+</div>
+{% endblock %}

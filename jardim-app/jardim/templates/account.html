@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_account.html" import icon, menu_row with context %}
+{% block title %}{{ t('account.page_title') }} – {% endblock %}
+{% block content %}
+{# Minha conta: um assunto por linha; cada um abre a sua página. #}
+<div class="page-head">
+  <div class="me">
+    <span class="me-avatar" aria-hidden="true">{{ current_user.name[:1]|upper }}</span>
+    <div>
+      <h1>{{ current_user.name }}</h1>
+      <p class="sub">{{ current_user.email }} · {{ role_label }}</p>
+    </div>
+  </div>
+</div>
+
+<section class="block">
+  <h2>{{ t('account.group_you') }}</h2>
+  <nav class="sheet menu" aria-label="{{ t('account.group_you') }}">
+    {% if current_user.role == 'owner' %}{{ menu_row('user', t('account.profile_title'), current_user.name ~ (' · ' ~ current_user.phone if current_user.phone else ''), url_for('preferences.profile')) }}{% endif %}
+    {{ menu_row('lock', t('account.password_title'), t('account.password_value'), url_for('auth.password')) }}
+    {{ menu_row('globe', t('account.language_section'), language_value, url_for('auth.language')) }}
+  </nav>
+</section>
+
+{% if company %}
+<section class="block">
+  <h2>{{ t('account.group_company') }}</h2>
+  <p class="hint block-hint">{{ t('account.group_company_hint') }}</p>
+  <nav class="sheet menu" aria-label="{{ t('account.group_company') }}">
+    {% for item in company %}{{ menu_row(item.icon, item.title, item.value, item.url) }}{% endfor %}
+  </nav>
+</section>
+{% endif %}
+
+<form method="post" action="{{ url_for('auth.logout') }}" class="block account-logout" data-confirm="{{ t('nav.logout_confirm') }}">
+  {{ csrf_field() }}
+  <button class="btn block" type="submit">{{ icon('logout') }}<span>{{ t('nav.logout') }}</span></button>
+</form>
+{% endblock %}

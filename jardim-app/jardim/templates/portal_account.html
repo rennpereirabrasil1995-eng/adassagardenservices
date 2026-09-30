@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ t('portal.account_title') }} – {% endblock %}
+{% block content %}
+<nav class="seg portal-nav" aria-label="{{ t('portal.nav_label') }}"{% if portal_user.company_color %} style="--co: {{ portal_user.company_color }}"{% endif %}>
+  <a href="{{ url_for('portal.days') }}">{{ t('portal.nav_services') }}</a>
+  <a href="{{ url_for('portal.gardens') }}">{{ t('portal.nav_gardens') }}</a>
+  <a href="{{ url_for('portal.report') }}">{{ t('portal.nav_report') }}</a>
+</nav>
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('portal.account_title') }}</h1>
+    <p class="sub">{{ portal_user.name }} · {{ portal_user.email }} · {{ portal_user.company_name }}</p>
+  </div>
+</div>
+
+<section class="block">
+  <h2>{{ t('portal.password_title') }}</h2>
+  <form method="post" class="sheet pad stack">
+    {{ csrf_field() }}
+    <input type="hidden" name="action" value="password">
+    <label>{{ t('account.current_password') }}
+      <input type="password" name="current_password" autocomplete="current-password" required>
+    </label>
+    <label>{{ t('account.new_password') }}
+      <input type="password" name="new_password" autocomplete="new-password" minlength="8" required>
+      <span class="hint">{{ t('setup.password_hint') }}</span>
+    </label>
+    <label>{{ t('account.confirm_password') }}
+      <input type="password" name="confirm_password" autocomplete="new-password" minlength="8" required>
+    </label>
+    <div class="actions"><button class="btn primary" type="submit">{{ t('account.submit') }}</button></div>
+  </form>
+</section>
+
+<section class="block">
+  <h2>{{ t('portal.daily_title') }}</h2>
+  <form method="post" class="sheet pad stack">
+    {{ csrf_field() }}
+    <input type="hidden" name="action" value="daily">
+    <label class="check plain">
+      <input type="checkbox" name="daily_mail" value="1"{% if portal_user.daily_mail %} checked{% endif %}>
+      <span>{{ t('portal.daily_label', email=portal_user.email) }}</span>
+    </label>
+    <div class="actions"><button class="btn primary" type="submit">{{ t('portal.daily_save') }}</button></div>
+  </form>
+</section>
+
+<section class="block">
+  <h2>{{ t('portal.language_title') }}</h2>
+  <form method="post" class="sheet pad stack">
+    {{ csrf_field() }}
+    <input type="hidden" name="action" value="language">
+    <label>{{ t('account.language_label') }}
+      <select name="language">
+        {% for code, label in languages.items() %}<option value="{{ code }}"{% if portal_user.language == code %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <div class="actions"><button class="btn primary" type="submit">{{ t('account.language_save') }}</button></div>
+  </form>
+</section>
+
+<form method="post" action="{{ url_for('auth.logout') }}" class="account-logout" data-confirm="{{ t('nav.logout_confirm') }}">
+  {{ csrf_field() }}
+  <button class="btn" type="submit">{{ t('nav.logout') }}</button>
+</form>
+{% endblock %}

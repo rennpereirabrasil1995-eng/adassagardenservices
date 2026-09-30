@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}{{ t('quotes.edit_title', ref=quote.ref) if quote else t('quotes.new') }} – {% endblock %}
+{% from "_macros.html" import phone_input with context %}
+{% block content %}
+{% if quote %}<p class="crumb"><a href="{{ url_for('quotes.quote_detail', quote_id=quote.id) }}">{{ t('quotes.back_to_quote', ref=quote.ref) }}</a></p>
+{% else %}<p class="crumb"><a href="{{ url_for('quotes.list_quotes') }}">{{ t('quotes.back_to_list') }}</a></p>{% endif %}
+<div class="page-head">
+  <h1>{{ t('quotes.edit_title', ref=quote.ref) if quote else t('quotes.new') }}</h1>
+</div>
+
+<form method="post" class="sheet pad stack" id="quote-form">
+  {{ csrf_field() }}
+
+  <h2 class="form-section">{{ t('quotes.to_section') }}</h2>
+  <label><span class="label-line">{{ t('quotes.client_label') }} <span class="hint">{{ t('quotes.client_hint') }}</span></span>
+    <select name="client_id" id="quote-client">
+      <option value="">{{ t('quotes.new_person') }}</option>
+      {% if companies %}
+      <optgroup label="{{ t('quotes.group_companies') }}">
+        {% for co in companies %}
+        <option value="company:{{ co.id }}"{% if form.client_id|string == 'company:' ~ co.id %} selected{% endif %}>{{ co.name }}</option>
+        {% endfor %}
+      </optgroup>
+      <optgroup label="{{ t('quotes.group_clients') }}">
+      {% endif %}
+      {% for c in clients %}
+      <option value="{{ c.id }}"{% if form.client_id|string == c.id|string %} selected{% endif %}>{{ c.name }}{% if c.address %}, {{ c.address }}{% endif %}</option>
+      {% endfor %}
+      {% if companies %}</optgroup>{% endif %}
+    </select>
+  </label>
+  <label>{{ t('quotes.to_name') }}
+    <input name="to_name" value="{{ form.to_name }}" maxlength="120" required autocomplete="off">
+  </label>
+  <div class="grid-2">
+    <label><span class="label-line">{{ t('clientform.phone_label') }} <span class="hint">{{ t('quotes.phone_hint') }}</span></span>
+      {{ phone_input('to_phone', form.to_phone, autocomplete='off') }}
+    </label>
+    <label>{{ t('clientform.email_label') }}
+      <input type="email" name="to_email" value="{{ form.to_email }}" maxlength="200" autocomplete="off">
+    </label>
+  </div>
+  <div class="grid-2">
+    <label>{{ t('clientform.address_label') }}
+      <input name="to_address" value="{{ form.to_address }}" maxlength="300" autocomplete="off">
+    </label>
+    <label>{{ t('quotes.postcode') }}
+      <input name="to_postcode" value="{{ form.to_postcode }}" maxlength="20" autocomplete="off">
+    </label>
+  </div>
+
+  <h2 class="form-section">{{ t('quotes.work_section') }}</h2>
+  <label>{{ t('quotes.title_label') }}
+    <input name="title" value="{{ form.title }}" maxlength="160" required placeholder="{{ t('quotes.title_placeholder') }}">
+  </label>
+  <label><span class="label-line">{{ t('quotes.intro_label') }} <span class="hint">{{ t('common.optional') }}</span></span>
+    <textarea name="intro" rows="3" maxlength="3000" placeholder="{{ t('quotes.intro_placeholder') }}">{{ form.intro }}</textarea>
+  </label>
+
+  <fieldset class="qitems">
+    <legend>{{ t('quotes.items_label') }}</legend>
+    <p class="hint">{{ t('quotes.items_hint') }}</p>
+    <div id="qitems">
+      {% for it in items %}
+      <div class="qitem">
+        <input name="item_desc" value="{{ it.description }}" maxlength="300" aria-label="{{ t('quotes.item_desc') }}" placeholder="{{ t('quotes.item_placeholder') }}">
+        <div class="qitem-nums">
+          <label>{{ t('quotes.item_qty') }}<input name="item_qty" value="{{ it.qty }}" inputmode="decimal" autocomplete="off"></label>
+          <label>{{ t('quotes.item_price') }}<span class="money-input"><span aria-hidden="true">£</span><input name="item_price" value="{{ it.price }}" inputmode="decimal" autocomplete="off" placeholder="0.00"></span></label>
+          <button type="button" class="linkbtn danger-link" data-remove>{{ t('quotes.item_remove') }}</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="qitems-foot">
+      <button type="button" class="btn small" id="qitem-add">{{ t('quotes.item_add') }}</button>
+      <span class="qitems-total" id="qitems-total" aria-live="polite"></span>
+    </p>
+  </fieldset>
+
+  <div class="grid-2">
+    <label>{{ t('quotes.frequency_label') }}
+      <select name="frequency">
+        {% for key, label in frequencies %}<option value="{{ key }}"{% if form.frequency == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>{{ t('quotes.valid_until') }}
+      <input type="date" name="valid_until" value="{{ form.valid_until }}" required>
+    </label>
+  </div>
+  <label><span class="label-line">{{ t('quotes.language_label') }} <span class="hint">{{ t('quotes.language_hint') }}</span></span>
+    <select name="language">
+      <option value="en"{% if form.language == 'en' %} selected{% endif %}>English</option>
+      <option value="pt_BR"{% if form.language == 'pt_BR' %} selected{% endif %}>Português</option>
+    </select>
+  </label>
+  <label><span class="label-line">{{ t('quotes.notes_label') }} <span class="hint">{{ t('quotes.notes_hint') }}</span></span>
+    <textarea name="notes" rows="3" maxlength="3000" placeholder="{{ t('quotes.notes_placeholder') }}">{{ form.notes }}</textarea>
+  </label>
+
+  <div class="actions">
+    <button class="btn primary" type="submit">{{ t('common.save_changes') if quote else t('quotes.save_and_photos') }}</button>
+    <a class="btn" href="{{ url_for('quotes.quote_detail', quote_id=quote.id) if quote else url_for('quotes.list_quotes') }}">{{ t('common.cancel') }}</a>
+  </div>
+</form>
+<template id="qitem-template">
+  <div class="qitem">
+    <input name="item_desc" maxlength="300" aria-label="{{ t('quotes.item_desc') }}" placeholder="{{ t('quotes.item_placeholder') }}">
+    <div class="qitem-nums">
+      <label>{{ t('quotes.item_qty') }}<input name="item_qty" value="1" inputmode="decimal" autocomplete="off"></label>
+      <label>{{ t('quotes.item_price') }}<span class="money-input"><span aria-hidden="true">£</span><input name="item_price" inputmode="decimal" autocomplete="off" placeholder="0.00"></span></label>
+      <button type="button" class="linkbtn danger-link" data-remove>{{ t('quotes.item_remove') }}</button>
+    </div>
+  </div>
+</template>
+<script type="application/json" id="quote-clients">{{ client_data|tojson }}</script>
+<script type="application/json" id="quote-text">{{ {'total': t('quotes.total_label')}|tojson }}</script>
+<script>
+  /* Cotação: escolher um cliente cadastrado preenche os dados dele; itens entram e saem; o total
+     vai sendo somado enquanto a pessoa digita (a conta que vale é a do servidor, ao salvar). */
+  (function () {
+    var clients = JSON.parse(document.getElementById('quote-clients').textContent);
+    var text = JSON.parse(document.getElementById('quote-text').textContent);
+    var form = document.getElementById('quote-form'), list = document.getElementById('qitems');
+    var totalEl = document.getElementById('qitems-total');
+    document.getElementById('quote-client').addEventListener('change', function () {
+      var c = clients[this.value];
+      if (!c) return;
+      [['to_name', 'name'], ['to_phone', 'phone'], ['to_email', 'email'], ['to_address', 'address'], ['to_postcode', 'postcode']]
+        .forEach(function (pair) { form.elements[pair[0]].value = c[pair[1]] || ''; });
+    });
+    function num(value) {
+      var v = String(value || '').replace(/[£\s]/g, '').replace(',', '.');
+      return /^\d+(\.\d{1,2})?$/.test(v) ? parseFloat(v) : null;
+    }
+    function total() {
+      var sum = 0;
+      list.querySelectorAll('.qitem').forEach(function (row) {
+        var qty = num(row.querySelector('[name=item_qty]').value), price = num(row.querySelector('[name=item_price]').value);
+        if (price !== null) sum += Math.round((qty === null ? 1 : qty) * price * 100) / 100;
+      });
+      var pounds = Math.round(sum * 100) / 100;
+      totalEl.textContent = text.total + ': £' + (pounds % 1 ? pounds.toFixed(2) : pounds.toFixed(0)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+    document.getElementById('qitem-add').addEventListener('click', function () {
+      var row = document.getElementById('qitem-template').content.firstElementChild.cloneNode(true);
+      list.appendChild(row);
+      row.querySelector('input').focus();
+      total();
+    });
+    list.addEventListener('click', function (e) {
+      if (!e.target.matches('[data-remove]')) return;
+      var rows = list.querySelectorAll('.qitem');
+      var row = e.target.closest('.qitem');
+      if (rows.length > 1) row.parentNode.removeChild(row);
+      else row.querySelectorAll('input').forEach(function (i) { i.value = i.name === 'item_qty' ? '1' : ''; });
+      total();
+    });
+    list.addEventListener('input', total);
+    total();
+  })();
+</script>
+{% endblock %}

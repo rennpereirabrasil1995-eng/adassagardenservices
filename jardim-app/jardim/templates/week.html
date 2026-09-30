@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}{{ t('week.title') }} · {{ start|day_num }} {{ start|month_abbr }} – {% endblock %}
+{% block main_class %} wide{% endblock %}
+{% from "_macros.html" import show_more with context %}
+{% block content %}
+<div class="page-head no-print">
+  <div>
+    <h1>{{ t('week.title') }}</h1>
+    <p class="sub">{{ t('week.range', a=start|day_num ~ ' ' ~ start|month_abbr, b=end|day_num ~ ' ' ~ end|month_abbr ~ ' ' ~ end[:4]) }} · {{ t('week.jobs_one') if jobs_count == 1 else t('week.jobs_many', n=jobs_count) }}</p>
+  </div>
+  <div class="actions head-side">
+    <a class="btn" href="{{ url_for('jobs.list_jobs') }}">{{ t('nav.agenda') }}</a>
+    <button class="btn" type="button" onclick="window.print()">{{ t('week.print') }}</button>
+    <a class="btn primary" href="{{ url_for('jobs.new_job') }}">{{ t('dashboard.new_job') }}</a>
+  </div>
+</div>
+
+<div class="report-nav no-print">
+  <div class="stepper">
+    <a class="btn small arrow" href="{{ url_for('jobs.week_view', data=prev_ref, func=employee or None) }}" aria-label="{{ t('week.prev') }}">‹</a>
+    {% if not is_current %}<a class="btn small" href="{{ url_for('jobs.week_view', func=employee or None) }}">{{ t('week.this_week') }}</a>{% endif %}
+    <a class="btn small arrow" href="{{ url_for('jobs.week_view', data=next_ref, func=employee or None) }}" aria-label="{{ t('week.next') }}">›</a>
+  </div>
+  <form method="get" class="who-filter">
+    <input type="hidden" name="data" value="{{ start }}">
+    <label class="inline">{{ t('jobs.employee_label') }}
+      <select name="func" onchange="this.form.submit()">
+        <option value="">{{ t('jobs.all') }}</option>
+        {% for e in employees %}<option value="{{ e.id }}"{% if employee == e.id|string %} selected{% endif %}>{{ e.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <noscript><button class="btn small" type="submit">{{ t('jobs.filter_submit') }}</button></noscript>
+  </form>
+</div>
+
+<div class="week-print-head"><b>{{ t('week.title') }}</b> · {{ t('week.wc', date=start|date_long) }}</div>
+
+<p class="hint no-print week-drag-hint">{{ t('week.drag_hint') }}</p>
+<p class="callout callout-late week-status" id="week-status" role="status" aria-live="polite" hidden></p>
+{{ csrf_field() }}
+{% if moves %}
+{# Histórico dos arrastos, com o Desfazer. Abre sozinho quando o último foi há pouco. #}
+<details class="fold week-moves no-print"{% if moves[0].fresh %} open{% endif %}>
+  <summary><span class="fold-open">{{ t('week.moves_show', n=moves|length) }}</span><span class="fold-close">{{ t('week.moves_hide') }}</span></summary>
+  <ul class="plain-list week-moves-list" {{ show_more(3, 5) }}>
+    {% for m in moves %}
+    <li class="week-move{% if m.undone_at %} undone{% endif %}">
+      <span class="week-move-text">
+        {% if m.client_name %}<a href="{{ url_for('jobs.job_detail', job_id=m.job_id) }}">{{ m.client_name }}</a>{% else %}<s>{{ t('week.move_job_gone') }}</s>{% endif %}
+        · {{ m.old_date|weekday }} {{ m.old_date|day_num }} {{ m.old_date|month_abbr }}{% if m.old_time %}, {{ m.old_time }}{% endif %}
+        → <b>{{ m.new_date|weekday }} {{ m.new_date|day_num }} {{ m.new_date|month_abbr }}, {{ m.new_time }}</b>
+        <span class="hint">· {{ m.created_at|dt_local }}{% if m.user_name %} · {{ t('extras.by', name=m.user_name) }}{% endif %}</span>
+        {% if m.undone_at %}<span class="pill">{{ t('week.undone_pill') }}</span>{% elif m.changed_since %}<span class="pill">{{ t('week.changed_since') }}</span>{% endif %}
+      </span>
+      {% if m.can_undo %}
+      <form method="post" action="{{ url_for('jobs.undo_move', move_id=m.id) }}" data-confirm="{{ t('week.undo_confirm', client=m.client_name) }}">
+        {{ csrf_field() }}<button class="btn small" type="submit">{{ t('week.undo') }}</button>
+      </form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</details>
+{% endif %}
+<div class="week-wrap">
+<div class="week" id="week-grid" style="--rows: {{ rows }}" data-rows="{{ rows }}" data-first="{{ times[0] if times else '08:00' }}">
+  <div class="week-corner"></div>
+  {% for d in days %}
+  <div class="week-day{% if d.today %} today{% endif %}"><b>{{ d.date|weekday }}</b><span>{{ d.date|day_num }} {{ d.date|month_abbr }}</span></div>
+  {% endfor %}
+  <div class="week-times">{% for tm in times %}<span{% if loop.index0 % 2 %} class="half"{% endif %}>{{ tm }}</span>{% endfor %}</div>
+  {% for d in days %}
+  <div class="week-col{% if d.today %} today{% endif %}" style="--lanes: {{ d.lanes }}" data-date="{{ d.date }}">
+    {% for i in range(rows) %}<span class="week-slot{% if i % 2 %} half{% endif %}" style="--row: {{ i + 1 }}"></span>{% endfor %}
+    {% for b in d.blocks %}{% set j = b.job %}
+    <a class="week-block{% if j.status == 'done' %} done{% elif j.status == 'in_progress' %} running{% elif j.status == 'scheduled' %} movable{% endif %}" href="{{ url_for('jobs.job_detail', job_id=j.id) }}"
+       {% if j.status == 'scheduled' %}data-move="{{ url_for('jobs.move_job', job_id=j.id) }}" data-span="{{ b.span }}" data-start="{{ j.start_time }}" draggable="false"{% endif %}
+       style="--row: {{ b.row }}; --span: {{ b.span }}; --lane: {{ b.lane }};{% if b.color %} --co: {{ b.color }};{% endif %}"
+       title="{{ j.client_name }} · {{ j.start_time }} · {{ j.employee_name or t('common.no_employee') }}">
+      <b>{{ j.client_name }}</b>
+      <span>{{ j.start_time }}{% if j.planned_label %} · {{ j.planned_label }}{% endif %}{% if j.people|length > 1 %} ×{{ j.people|length }}{% endif %}</span>
+      {% if j.employee_name %}<small>{{ j.employee_name }}</small>{% endif %}
+      {% if b.colors|length > 1 %}<i class="week-dots">{% for c in b.colors %}<i style="--co: {{ c }}"></i>{% endfor %}</i>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% if days|selectattr('unscheduled')|list %}
+<div class="week-unscheduled">
+  <b>{{ t('week.no_time') }}</b>
+  <ul class="plain-list">
+    {% for d in days %}{% for j in d.unscheduled %}
+    <li>{{ d.date|weekday }} {{ d.date|day_num }} · <a href="{{ url_for('jobs.job_detail', job_id=j.id) }}">{{ j.client_name }}</a>{% if j.employee_name %} · {{ j.employee_name }}{% endif %}</li>
+    {% endfor %}{% endfor %}
+  </ul>
+</div>
+{% endif %}
+</div>
+
+<script type="application/json" id="week-text">{{ {'failed': t('week.move_failed'), 'moving': t('week.moving')}|tojson }}</script>
+<script src="{{ url_for('static', filename='week.js') }}" defer></script>
+{% if legend %}
+<p class="legend week-legend">{% for p in legend %}<span><i style="background: {{ p.color }}"></i>{{ p.name }}</span>{% endfor %}<span><i class="week-legend-none"></i>{{ t('common.no_employee') }}</span></p>
+{% endif %}
+{% endblock %}

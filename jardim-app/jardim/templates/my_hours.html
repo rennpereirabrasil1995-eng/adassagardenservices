@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% from "_charts.html" import hours_bars, hours_chart, day_timeline with context %}
+{% block title %}{{ t('hours.page_title') }} – {% endblock %}
+{% block content %}
+{# Só consulta: nenhuma hora é digitada ou trocada aqui (a página não tem formulário). #}
+{% macro hours_or_dash(minutes) %}{{ minutes|format_minutes if minutes else '—' }}{% endmacro %}
+{% macro job_links(rows, since=false) %}
+<ul class="plain-list">
+  {% for j in rows %}<li><a href="{{ url_for('jobs.job_detail', job_id=j.id) }}">{{ j.client_name }}</a> · {{ j.job_date|date_long }}{% if since %} · {{ t('hours.since', time=j.since) }}{% endif %}</li>{% endfor %}
+</ul>
+{% endmacro %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('hours.page_title') }}</h1>
+    <p class="sub">{{ period_label }}</p>
+  </div>
+</div>
+
+<div class="report-nav">
+  <nav class="seg" aria-label="{{ t('jobs.filter_period_label') }}">
+    {% for key, label in periods %}<a href="{{ url_for('hours.my_hours', periodo=key, data=ref) }}"{% if key == period %} class="on" aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}
+  </nav>
+  <div class="stepper">
+    <a class="btn small arrow" href="{{ url_for('hours.my_hours', periodo=period, data=prev_ref) }}" aria-label="{{ t('company.prev') }}">‹</a>
+    {% if not is_current %}<a class="btn small" href="{{ url_for('hours.my_hours', periodo=period) }}">{{ t('company.back_to_now') }}</a>{% endif %}
+    <a class="btn small arrow" href="{{ url_for('hours.my_hours', periodo=period, data=next_ref) }}" aria-label="{{ t('company.next') }}">›</a>
+  </div>
+</div>
+
+<p class="hint hours-note">{{ t('hours.readonly_note') }}{% if owner_name %} {{ t('hours.fix_note', name=owner_name) }}{% endif %}</p>
+
+{% if pending_reports %}
+<div class="callout hours-callout">
+  <b>{{ t('extras.hours_pending_title') }}</b>
+  <p>{{ t('extras.hours_pending_hint') }}</p>
+  <ul class="plain-list">
+    {% for r in pending_reports %}<li>{{ r.client_name }} · {{ r.job_date|date_long }} · {{ r.minutes|format_minutes }}</li>{% endfor %}
+  </ul>
+  <p><a href="{{ url_for('extras.list_reports') }}">{{ t('extras.see_all') }}</a></p>
+</div>
+{% endif %}
+{% if running %}
+<div class="callout hours-callout">
+  <b>{{ t('hours.running_title') }}</b>
+  <p>{{ t('hours.running_hint') }}</p>
+  {{ job_links(running, since=true) }}
+</div>
+{% endif %}
+{% if no_start %}
+<div class="callout internal hours-callout">
+  <b>{{ t('hours.no_start_title') }}</b>
+  <p>{{ t('hours.no_start_hint') }}</p>
+  {{ job_links(no_start) }}
+</div>
+{% endif %}
+
+<section class="block">
+  <h2 class="sr-only">{{ t('company.summary') }}</h2>
+  <div class="stats">
+    <div class="stat"><b>{{ total_minutes|format_minutes if total_minutes else '0h' }}</b><span>{{ t('hours.stat_hours') }}</span>
+      {% if period != 'dia' and days_worked %}<small>{{ t('hours.in_days_one') if days_worked == 1 else t('hours.in_days', n=days_worked) }}</small>{% endif %}</div>
+    <div class="stat"><b>{{ done_count }}</b><span>{{ t('hours.stat_jobs') }}</span></div>
+    {% if period == 'dia' %}
+    <div class="stat"><b>{{ first_start or '—' }}</b><span>{{ t('hours.stat_first') }}</span></div>
+    <div class="stat"><b>{{ last_finish or '—' }}</b><span>{{ t('hours.stat_last') }}</span></div>
+    {% else %}
+    <div class="stat"><b>{{ hours_or_dash(average) }}</b><span>{{ t('hours.stat_avg') }}</span><small>{{ t('hours.stat_avg_hint') }}</small></div>
+    <div class="stat"><b>{{ clients_served }}</b><span>{{ t('hours.stat_clients') }}</span></div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="block">
+  {% if period == 'dia' %}
+    {% if timeline %}{{ day_timeline(timeline, t('hours.chart_day')) }}
+    {% else %}<div class="sheet"><p class="empty">{{ t('hours.empty_day') }}</p></div>{% endif %}
+  {% elif chart.empty %}
+    <div class="sheet"><p class="empty">{{ t('hours.empty_period') }}</p></div>
+  {% else %}
+    {{ hours_bars(chart, t('hours.chart_months') if period == 'ano' else t('hours.chart_days'),
+                  t('hours.tap_month') if period == 'ano' else t('hours.tap_day')) }}
+  {% endif %}
+</section>
+
+{% if period != 'dia' and by_client %}
+<section class="block">
+  {{ hours_chart(by_client, client_peak, t('hours.by_client')) }}
+</section>
+{% endif %}
+
+{% set table = weeks if period == 'mes' else months %}
+{% if table and total_minutes %}
+<section class="block">
+  <h2>{{ t('hours.by_week') if period == 'mes' else t('hours.by_month') }}</h2>
+  <div class="sheet table-wrap">
+    <table class="report-table hours-table">
+      <thead><tr><th scope="col">{{ t('hours.col_week') if period == 'mes' else t('hours.col_month') }}</th><th scope="col" class="num">{{ t('hours.col_jobs') }}</th><th scope="col" class="num">{{ t('hours.col_hours') }}</th></tr></thead>
+      <tbody>
+        {% for row in table %}<tr{% if row.current %} class="current"{% endif %}><th scope="row"><a href="{{ row.link }}">{{ row.label }}</a></th><td class="num">{{ row.jobs or '—' }}</td><td class="num">{{ hours_or_dash(row.minutes) }}</td></tr>{% endfor %}
+      </tbody>
+      <tfoot><tr><th scope="row">{{ t('hours.total') }}</th><td class="num">{{ done_count }}</td><td class="num">{{ total_minutes|format_minutes }}</td></tr></tfoot>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% if period in ('semana', 'mes') and jobs %}
+<section class="block">
+  <h2>{{ t('hours.jobs_title') }} <span class="count">{{ jobs|length }}</span></h2>
+  {% if period == 'mes' %}<details class="hours-more"><summary>{{ t('hours.show_jobs', n=jobs|length) }}</summary>{% endif %}
+  <div class="sheet">
+    {% for j in jobs %}
+    <a class="hrow" href="{{ url_for('jobs.job_detail', job_id=j.id) }}">
+      <span class="hrow-main">
+        <span class="hrow-client">{{ j.client_name }}{% if j.is_share %} <span class="pill pill-share">{{ t('common.share') }}</span>{% endif %}</span>
+        <span class="hrow-when">{{ j.job_date|date_long }} · {% if j.minutes is not none %}{{ j.started_at|time_local }} – {{ j.finished_at|time_local }}{% else %}{{ t('hours.no_start_tag') }}{% endif %}</span>
+      </span>
+      <b class="hrow-dur">{{ j.minutes|format_minutes if j.minutes is not none else '—' }}</b>
+    </a>
+    {% endfor %}
+  </div>
+  {% if period == 'mes' %}</details>{% endif %}
+</section>
+{% endif %}
+{% if has_share %}<p class="hint">{{ t('hours.share_note') }}</p>{% endif %}
+
+<script>
+  /* Gráfico de horas: com o mouse (ou o teclado) em cima de uma coluna, mostra o valor dela.
+     No celular, tocar na coluna já abre o dia (ou o mês), onde está tudo detalhado. */
+  document.querySelectorAll('.hchart').forEach(function (fig) {
+    var tip = document.createElement('div'), value = document.createElement('b'), label = document.createElement('span');
+    tip.className = 'hc-tip';
+    tip.hidden = true;
+    tip.setAttribute('aria-hidden', 'true');
+    tip.appendChild(value);
+    tip.appendChild(label);
+    fig.appendChild(tip);
+    function show(bar) {
+      value.textContent = bar.getAttribute('data-value');
+      label.textContent = bar.getAttribute('data-label');
+      tip.hidden = false;
+      var f = fig.getBoundingClientRect(), b = bar.getBoundingClientRect();
+      var top = bar.querySelector('.hc-fill').getBoundingClientRect().top;
+      var half = tip.offsetWidth / 2;
+      var x = Math.max(half + 6, Math.min(f.width - half - 6, b.left + b.width / 2 - f.left));
+      tip.style.left = x + 'px';
+      tip.style.top = (top - f.top - 8) + 'px';
+    }
+    function hide() { tip.hidden = true; }
+    fig.querySelectorAll('.hc-bar').forEach(function (bar) {
+      bar.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') show(bar); });
+      bar.addEventListener('pointerleave', hide);
+      bar.addEventListener('focus', function () { show(bar); });
+      bar.addEventListener('blur', hide);
+    });
+  });
+</script>
+{% endblock %}
