@@ -290,7 +290,9 @@ def preparar_jpeg(imagem, lado: int = LADO_IMAGEM, qualidade: int = 90) -> bytes
     if GIRO == 90:
         im = im.transpose(_ROT270)  # 270 anti-horario = 90 no horario
     buf = io.BytesIO()
-    im.save(buf, format="JPEG", quality=qualidade)
+    # optimize monta a tabela de Huffman sob medida: uns 25% a menos,
+    # sem perder nada da imagem
+    im.save(buf, format="JPEG", quality=qualidade, optimize=True)
     return buf.getvalue()
 
 

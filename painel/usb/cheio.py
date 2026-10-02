@@ -74,7 +74,7 @@ def _tentar(im, larg, alt, max_bytes):
     for _ in range(10):
         q = (baixo + alto) // 2
         buf = io.BytesIO()
-        quadro.save(buf, format="JPEG", quality=q)
+        quadro.save(buf, format="JPEG", quality=q, optimize=True)
         dados = buf.getvalue()
         if len(dados) <= max_bytes:
             melhor, melhor_q = dados, q

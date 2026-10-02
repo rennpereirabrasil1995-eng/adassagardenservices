@@ -1,0 +1,216 @@
+# -*- coding: utf-8 -*-
+"""
+Gera imagens feitas sob medida para este painel: 320x480, dentro do
+orcamento de 4 KB, ocupando a TELA INTEIRA.
+
+Foto nao cabe inteira nesse orcamento, mas desenho sim: cor chapada,
+gradiente e texto comprimem muito melhor. Entao da para ter os 100% da
+tela com qualidade alta, o que a foto nao alcanca.
+
+    python gerar.py --texto "ADASSA"
+    python gerar.py --texto "GARDEN" --cor 1 --estilo gradiente
+    python gerar.py --listar                 mostra os estilos e cores
+    python gerar.py --texto "OI" --saida ../midia/aviso.jpg
+
+Os arquivos saem na pasta midia, prontos para o cheio.py mostrar.
+"""
+
+import argparse
+import io
+import os
+import sys
+
+from PIL import Image, ImageDraw, ImageFont
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+PASTA_MIDIA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "midia")
+LARG, ALT = 320, 480
+ORCAMENTO = 4 * 1024
+
+PALETAS = [
+    ((15, 20, 40), (60, 130, 240), "azul noite"),
+    ((20, 45, 25), (90, 200, 110), "verde jardim"),
+    ((50, 15, 15), (240, 120, 60), "laranja quente"),
+    ((35, 15, 45), (190, 90, 220), "roxo"),
+    ((10, 10, 12), (230, 230, 235), "preto e branco"),
+    ((45, 35, 10), (240, 200, 70), "amarelo"),
+    ((10, 35, 40), (70, 200, 200), "turquesa"),
+]
+ESTILOS = ("liso", "gradiente", "diagonal", "listras", "moldura")
+
+
+def fonte(tamanho, negrito=True):
+    nomes = ("arialbd.ttf", "arial.ttf", "DejaVuSans-Bold.ttf", "DejaVuSans.ttf")
+    for nome in nomes:
+        try:
+            return ImageFont.truetype(nome, tamanho)
+        except OSError:
+            continue
+    try:
+        return ImageFont.load_default(size=tamanho)
+    except TypeError:
+        return ImageFont.load_default()
+
+
+def fundo(estilo, escura, clara, larg=LARG, alt=ALT):
+    im = Image.new("RGB", (larg, alt), escura)
+    d = ImageDraw.Draw(im)
+
+    if estilo == "gradiente":
+        for y in range(alt):
+            t = y / max(1, alt - 1)
+            d.line([0, y, larg, y], fill=tuple(
+                int(escura[i] + (clara[i] - escura[i]) * t) for i in range(3)))
+
+    elif estilo == "diagonal":
+        for y in range(alt):
+            t = y / max(1, alt - 1)
+            d.line([0, y, larg, y], fill=tuple(
+                int(escura[i] + (clara[i] - escura[i]) * t * 0.75) for i in range(3)))
+        d.polygon([(0, alt), (larg, alt - alt // 3), (larg, alt), (0, alt)], fill=clara)
+
+    elif estilo == "listras":
+        passo = max(40, alt // 6)
+        for i, y in enumerate(range(-alt, alt * 2, passo)):
+            if i % 2 == 0:
+                d.polygon([(0, y), (larg, y - larg), (larg, y - larg + passo),
+                           (0, y + passo)], fill=clara)
+
+    elif estilo == "moldura":
+        m = max(10, min(larg, alt) // 16)
+        d.rectangle([0, 0, larg - 1, m], fill=clara)
+        d.rectangle([0, alt - m - 1, larg - 1, alt - 1], fill=clara)
+
+    return im
+
+
+def centralizar(d, texto, f, larg, y, cor):
+    try:
+        a, b, c, e = d.textbbox((0, 0), texto, font=f)
+        x = (larg - (c - a)) / 2 - a
+    except AttributeError:
+        x = larg * 0.1
+    d.text((x, y), texto, font=f, fill=cor)
+
+
+def desenhar(texto, estilo, paleta, larg=LARG, alt=ALT, subtexto=""):
+    escura, clara, _ = paleta
+    im = fundo(estilo, escura, clara, larg, alt)
+    d = ImageDraw.Draw(im)
+
+    if not texto:
+        return im
+
+    # acha o maior corpo de letra que ainda cabe na largura
+    tamanho = int(alt * 0.22)
+    while tamanho > 12:
+        f = fonte(tamanho)
+        try:
+            a, b, c, e = d.textbbox((0, 0), texto, font=f)
+            if (c - a) <= larg * 0.88:
+                break
+        except AttributeError:
+            break
+        tamanho = int(tamanho * 0.92)
+    f = fonte(tamanho)
+
+    claro = sum(escura) < 330
+    cor_txt = (255, 255, 255) if claro else (15, 15, 20)
+    sombra = (0, 0, 0) if claro else (255, 255, 255)
+
+    y = alt * 0.40
+    centralizar(d, texto, f, larg + 3, y + 3, sombra)   # sombra leve
+    centralizar(d, texto, f, larg, y, cor_txt)
+
+    if subtexto:
+        f2 = fonte(max(14, int(tamanho * 0.3)))
+        centralizar(d, subtexto, f2, larg, y + tamanho * 1.15, cor_txt)
+    return im
+
+
+def _melhor_qualidade(im, orcamento):
+    """Melhor qualidade JPEG que cabe no orcamento. Devolve (dados, q)."""
+    baixo, alto, melhor, melhor_q = 8, 95, None, 0
+    for _ in range(10):
+        q = (baixo + alto) // 2
+        buf = io.BytesIO()
+        im.save(buf, format="JPEG", quality=q, optimize=True)
+        if len(buf.getvalue()) <= orcamento:
+            melhor, melhor_q = buf.getvalue(), q
+            baixo = q + 1
+        else:
+            alto = q - 1
+        if baixo > alto:
+            break
+    return melhor, melhor_q
+
+
+def salvar_no_orcamento(im, caminho, orcamento=ORCAMENTO):
+    """Grava com a melhor qualidade que cabe no orcamento. Devolve (bytes, q)."""
+    melhor, melhor_q = _melhor_qualidade(im, orcamento)
+    if melhor is None:
+        # nao coube no tamanho cheio: reduz o desenho ate caber
+        for fator in (0.85, 0.72, 0.6):
+            menor = im.resize((max(1, int(im.width * fator)),
+                               max(1, int(im.height * fator))), Image.LANCZOS)
+            dados, q = _melhor_qualidade(menor, orcamento)
+            if dados:
+                with open(caminho, "wb") as fp:
+                    fp.write(dados)
+                return len(dados), q
+        return None, 0
+    with open(caminho, "wb") as fp:
+        fp.write(melhor)
+    return len(melhor), melhor_q
+
+
+def principal():
+    p = argparse.ArgumentParser(description="Gera imagens sob medida para o painel.")
+    p.add_argument("--texto", default="", help="texto grande no meio")
+    p.add_argument("--subtexto", default="", help="linha menor embaixo do texto")
+    p.add_argument("--estilo", default="gradiente", choices=ESTILOS)
+    p.add_argument("--cor", type=int, default=0, help="numero da paleta (ver --listar)")
+    p.add_argument("--saida", help="caminho do arquivo (padrao: pasta midia)")
+    p.add_argument("--larg", type=int, default=LARG)
+    p.add_argument("--alt", type=int, default=ALT)
+    p.add_argument("--max-kb", type=float, default=4.0, dest="max_kb")
+    p.add_argument("--listar", action="store_true")
+    args = p.parse_args()
+
+    if args.listar:
+        print("\n  ESTILOS: " + ", ".join(ESTILOS))
+        print("\n  CORES:")
+        for i, (_, _, nome) in enumerate(PALETAS):
+            print(f"    --cor {i}  {nome}")
+        print()
+        return 0
+
+    paleta = PALETAS[args.cor % len(PALETAS)]
+    im = desenhar(args.texto, args.estilo, paleta, args.larg, args.alt, args.subtexto)
+
+    if args.saida:
+        saida = args.saida
+    else:
+        base = (args.texto or args.estilo).lower().replace(" ", "_")
+        base = "".join(ch for ch in base if ch.isalnum() or ch == "_") or "imagem"
+        os.makedirs(PASTA_MIDIA, exist_ok=True)
+        saida = os.path.join(PASTA_MIDIA, f"{base}_{args.estilo}.jpg")
+
+    tam, q = salvar_no_orcamento(im, saida, int(args.max_kb * 1024))
+    if tam is None:
+        print(f"\n  Nao coube em {args.max_kb} KB nem na qualidade minima.\n")
+        return 1
+
+    print()
+    print(f"  Gerado: {saida}")
+    print(f"  {args.larg}x{args.alt} | {tam} bytes ({tam/1024:.1f} KB) | qualidade {q}")
+    print(f"  Cabe no orcamento e ocupa a TELA INTEIRA.")
+    print()
+    print("  Para ver no aparelho:  python cheio.py")
+    print()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(principal())

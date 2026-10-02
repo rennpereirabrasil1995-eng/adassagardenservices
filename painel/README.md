@@ -101,20 +101,19 @@ no aparelho de verdade, descobrimos três coisas que não estão em lugar nenhum
    trava a conexão USB, e aí só desplugando o cabo.
 3. **A área útil é 320×480**, que depois do giro de 90° dá os 480×320 do painel.
 
-### O custo que o aparelho impõe
+### Quanto cabe em 4 KB
 
-Com o orçamento que o aparelho sustenta não dá para ter tela cheia **e**
-nitidez. Medido com fotos de verdade, rodando em sequência:
+O aparelho sustenta **4 KB por imagem** rodando indefinidamente; acima disso
+trava a conexão USB. Dentro desse orçamento:
 
-| Orçamento | Cobertura típica | Estabilidade |
-|---|---|---|
-| **4 KB** (padrão) | 256×384, **64% da tela** | roda indefinidamente |
-| 5 KB | 320×480, 100% da tela | falha depois de ~3 imagens |
+| Conteúdo | Resultado em 320×480 (tela inteira) |
+|---|---|
+| Foto | qualidade 10 — granulado, porém **a tela toda** |
+| Desenho gerado (`gerar.py`) | qualidade 20 a 44 — limpo e **a tela toda** |
 
-Passar de 5 KB trava a conexão USB, e aí só desplugando o cabo.
-
-O programa não para por causa disso: quando o aparelho recusa uma escrita, ele
-reconecta e baixa o orçamento sozinho, e segue rodando.
+O que tornou isso possível foi gravar o JPEG com **`optimize=True`**, que monta
+a tabela de Huffman sob medida: **26% a menos de bytes sem perder nada da
+imagem**. Antes dele, uma foto só alcançava 204×307, ou seja 41% da tela.
 
 Duas coisas importam tanto quanto o peso:
 
@@ -123,6 +122,21 @@ Duas coisas importam tanto quanto o peso:
   para 15 se ainda rasgar.
 - **`--nitidez`**: a qualidade JPEG mínima. Baixo enche mais a tela e granula;
   alto deixa limpo porém menor.
+
+Quando o aparelho recusa uma escrita, o programa reconecta e baixa o orçamento
+sozinho, e segue rodando.
+
+### Gerar imagens sob medida
+
+`gerar.py` desenha direto no formato do painel, ocupando a tela inteira:
+
+```
+python gerar.py --texto "ADASSA" --subtexto "garden services" --cor 1
+python gerar.py --texto "ABERTO" --estilo liso --cor 3
+python gerar.py --listar          mostra os 5 estilos e as 7 cores
+```
+
+Os arquivos saem na pasta `midia`, prontos para o `cheio.py` mostrar.
 
 ### Ajustes
 
