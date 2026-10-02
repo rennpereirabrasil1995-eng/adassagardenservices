@@ -168,14 +168,14 @@ def principal():
     p.add_argument("--lado", type=int, help="tamanho quadrado (atalho para --larg e --alt)")
     p.add_argument("--larg", type=int, default=320, help="largura (padrao 320)")
     p.add_argument("--alt", type=int, default=480, help="altura (padrao 480)")
-    p.add_argument("--max-kb", type=float, default=5.5,
-                   dest="max_kb", help="orcamento por imagem (padrao 5.5 KB)")
+    p.add_argument("--max-kb", type=float, default=4.2,
+                   dest="max_kb", help="orcamento por imagem (padrao 4.2 KB: foi o peso que aguentou 10 trocas seguidas sem travar)")
     p.add_argument("--fps", type=int, default=5)
     p.add_argument("--nitidez", type=int, default=12,
                    help="qualidade JPEG minima (padrao 12: enche a tela). "
                         "Subir deixa mais nitido porem menor")
     p.add_argument("--segundos", type=float, default=6, help="tempo de cada imagem parada")
-    p.add_argument("--pausa", type=float, default=0.2,
+    p.add_argument("--pausa", type=float, default=0.3,
                    help="descanso entre envios, em segundos (padrao 0.2)")
     p.add_argument("--reconectar", action="store_true",
                    help="fecha e reabre o aparelho antes de cada imagem; "
