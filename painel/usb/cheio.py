@@ -67,30 +67,56 @@ def quadrar(im, lado):
     return im.crop((x, y, x + lado, y + lado))
 
 
-def jpeg_no_orcamento(im, lado, max_bytes):
+def _tentar(im, lado, max_bytes):
+    """Melhor qualidade que cabe no orcamento, para um tamanho fixo."""
+    quadro = quadrar(im, lado).transpose(deck._ROT270)
+    baixo, alto, melhor, melhor_q = 8, 95, None, 0
+    for _ in range(10):
+        q = (baixo + alto) // 2
+        buf = io.BytesIO()
+        quadro.save(buf, format="JPEG", quality=q)
+        dados = buf.getvalue()
+        if len(dados) <= max_bytes:
+            melhor, melhor_q = dados, q
+            baixo = q + 1
+        else:
+            alto = q - 1
+        if baixo > alto:
+            break
+    return melhor, melhor_q
+
+
+def jpeg_no_orcamento(im, lado, max_bytes, nitidez=35):
     """
-    JPEG que cabe no orcamento. Primeiro tenta baixando a qualidade;
-    se nem na minima couber, reduz o tamanho da imagem.
-    Devolve (dados, lado_usado, qualidade) ou (None, 0, 0).
+    Escolhe o MAIOR tamanho que ainda cabe no orcamento com qualidade
+    razoavel. Numa tela pequena, uma imagem de 256 com qualidade 40 fica
+    melhor que uma de 384 com qualidade 13, toda esfarelada.
+
+    `nitidez` e a qualidade JPEG minima aceitavel. Se nenhum tamanho
+    alcancar isso, fica com o maior que couber, seja la com que qualidade.
+
+    Devolve (dados, lado_usado, qualidade).
     """
-    for tentativa_lado in (lado, int(lado * 0.85), int(lado * 0.7), int(lado * 0.55)):
-        quadro = quadrar(im, tentativa_lado).transpose(deck._ROT270)
-        baixo, alto, melhor, melhor_q = 10, 95, None, 0
-        for _ in range(10):
-            q = (baixo + alto) // 2
-            buf = io.BytesIO()
-            quadro.save(buf, format="JPEG", quality=q)
-            dados = buf.getvalue()
-            if len(dados) <= max_bytes:
-                melhor, melhor_q = dados, q
-                baixo = q + 1
-            else:
-                alto = q - 1
-            if baixo > alto:
-                break
-        if melhor is not None:
-            return melhor, tentativa_lado, melhor_q
-    return None, 0, 0
+    escada = [lado]
+    passo = lado
+    while passo > 96:
+        passo = int(passo * 0.8)
+        escada.append(passo)
+
+    reserva = None
+    for tentativa in escada:
+        dados, q = _tentar(im, tentativa, max_bytes)
+        if dados is None:
+            continue
+        if reserva is None:
+            reserva = (dados, tentativa, q)   # o maior que coube, de todo jeito
+        if q >= nitidez:
+            return dados, tentativa, q
+    if reserva:
+        return reserva
+    # ultimo recurso: bem pequeno, qualidade minima
+    dados, q = _tentar(im, 96, max_bytes)
+    return dados, 96, q
 
 
 def carregar_quadros(caminho, fps):
@@ -142,9 +168,11 @@ def principal():
     p.add_argument("--arquivo", help="um arquivo so (senao passa a pasta inteira)")
     p.add_argument("--midia", default=PASTA_PADRAO)
     p.add_argument("--lado", type=int, default=384)
-    p.add_argument("--max-kb", type=float, default=10.0,
-                   dest="max_kb", help="orcamento por imagem (padrao 10 KB)")
+    p.add_argument("--max-kb", type=float, default=6.0,
+                   dest="max_kb", help="orcamento por imagem (padrao 6 KB)")
     p.add_argument("--fps", type=int, default=5)
+    p.add_argument("--nitidez", type=int, default=35,
+                   help="qualidade JPEG minima aceitavel (padrao 35)")
     p.add_argument("--segundos", type=float, default=6, help="tempo de cada imagem parada")
     p.add_argument("--brilho", type=int, default=100)
     p.add_argument("--tecla", type=int, default=1)
@@ -176,7 +204,7 @@ def principal():
     print()
     print("  TELA CHEIA")
     print("  ==========")
-    print(f"  Imagem:    {args.lado}x{args.lado}")
+    print(f"  Imagem:    ate {args.lado}x{args.lado}")
     print(f"  Orcamento: {args.max_kb:.1f} KB por quadro")
     print(f"  Arquivos:  {len(caminhos)}")
     print()
@@ -204,7 +232,8 @@ def principal():
 
                 pacote = []
                 for q in quadros:
-                    dados, lado_usado, qual = jpeg_no_orcamento(q, args.lado, max_bytes)
+                    dados, lado_usado, qual = jpeg_no_orcamento(q, args.lado, max_bytes,
+                                                           args.nitidez)
                     if dados is None:
                         print(f"  ! {nome}: nao consegui caber no orcamento")
                         break
