@@ -171,6 +171,27 @@ python gerar.py --listar          mostra os 5 estilos e as 7 cores
 
 Os arquivos saem na pasta `midia`, prontos para o `cheio.py` mostrar.
 
+### Mandar fotos pelo celular
+
+A página de envio é servida pelo **`server.py`**, que é um programa separado do
+que desenha no aparelho. Os dois precisam estar rodando:
+
+| Programa | Para quê |
+|---|---|
+| `iniciar.bat` | serve a página `/painel` para o celular |
+| `usb-cheio.bat` | desenha no aparelho |
+
+Com o `instalar-inicio.bat` os dois sobem juntos quando o Windows inicia.
+
+**Se o celular não abre a página:**
+
+1. Dois cliques em **`diagnostico-rede.bat`**. Ele diz se o servidor está no ar,
+   mostra os endereços certos deste computador e confere o firewall.
+2. Se o firewall estiver bloqueando: botão direito em **`liberar-firewall.bat`**
+   → *Executar como administrador*. É o motivo mais comum: a página abre no
+   próprio PC e não abre no celular.
+3. O celular precisa estar no **mesmo wi-fi** que o computador.
+
 ### Ligar sozinho com o Windows
 
 Dois cliques em **`instalar-inicio.bat`**, uma vez só. A partir daí o painel

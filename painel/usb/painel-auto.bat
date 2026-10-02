@@ -1,6 +1,6 @@
 @echo off
-rem Roda o painel. Chamado pelo atalho da inicializacao do Windows.
-rem Para mudar o que aparece, edite a ultima linha deste arquivo.
+rem Liga o painel inteiro: o servidor (para mandar fotos pelo celular)
+rem e o desenho no aparelho.
 setlocal
 cd /d "%~dp0"
 
@@ -19,8 +19,12 @@ if not defined PY (
 %PY% -c "import hid, PIL" 2>nul
 if errorlevel 1 %PY% -m pip install --quiet hidapi pillow
 
-rem O aparelho demora um pouco para aparecer depois que o Windows sobe.
-rem Tenta cinco vezes, esperando 10 segundos entre elas.
+rem 1) o servidor, numa janela propria minimizada.
+rem    E ele que serve a pagina /painel para o celular.
+start "Servidor do Painel" /min %PY% "%~dp0..\server.py"
+
+rem 2) o desenho no aparelho. O aparelho demora a aparecer depois que o
+rem    Windows sobe, entao tenta cinco vezes com 10 segundos de intervalo.
 set TENTATIVA=0
 :tentar
 set /a TENTATIVA+=1
