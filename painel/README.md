@@ -103,15 +103,26 @@ no aparelho de verdade, descobrimos três coisas que não estão em lugar nenhum
 
 ### O custo que o aparelho impõe
 
-Com 5 KB por imagem não dá para ter tela cheia **e** nitidez. O `--nitidez`
-escolhe o lado:
+Com o orçamento que o aparelho sustenta não dá para ter tela cheia **e**
+nitidez. Medido com fotos de verdade, rodando em sequência:
 
-| Comando | Cobertura | Qualidade JPEG |
+| Orçamento | Cobertura típica | Estabilidade |
 |---|---|---|
-| `cheio.py` (padrão) | **100% da tela** | 8 (granulado) |
-| `cheio.py --nitidez 15` | 64% | 15 |
-| `cheio.py --nitidez 25` | 41% | 26 |
-| `cheio.py --nitidez 40` | 26% | 45 (bem limpo) |
+| **4 KB** (padrão) | 256×384, **64% da tela** | roda indefinidamente |
+| 5 KB | 320×480, 100% da tela | falha depois de ~3 imagens |
+
+Passar de 5 KB trava a conexão USB, e aí só desplugando o cabo.
+
+O programa não para por causa disso: quando o aparelho recusa uma escrita, ele
+reconecta e baixa o orçamento sozinho, e segue rodando.
+
+Duas coisas importam tanto quanto o peso:
+
+- **`--atraso`**: milissegundos entre os blocos de 1 KB do envio. Sem isso a
+  imagem chega rasgada, com faixas trocadas de lugar. O padrão é 5 ms; suba
+  para 15 se ainda rasgar.
+- **`--nitidez`**: a qualidade JPEG mínima. Baixo enche mais a tela e granula;
+  alto deixa limpo porém menor.
 
 ### Ajustes
 

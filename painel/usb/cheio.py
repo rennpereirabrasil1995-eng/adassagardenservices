@@ -168,16 +168,16 @@ def principal():
     p.add_argument("--lado", type=int, help="tamanho quadrado (atalho para --larg e --alt)")
     p.add_argument("--larg", type=int, default=320, help="largura (padrao 320)")
     p.add_argument("--alt", type=int, default=480, help="altura (padrao 480)")
-    p.add_argument("--max-kb", type=float, default=5.0,
-                   dest="max_kb", help="orcamento por imagem (padrao 5 KB: aguentou 10 trocas seguidas sem travar)")
+    p.add_argument("--max-kb", type=float, default=4.0,
+                   dest="max_kb", help="orcamento por imagem (padrao 4 KB: e o peso que roda indefinidamente com fotos de verdade)")
     p.add_argument("--fps", type=int, default=5)
     p.add_argument("--nitidez", type=int, default=1,
                    help="qualidade JPEG minima (padrao 1: enche a tela). "
                         "Subir deixa mais nitido porem menor")
     p.add_argument("--segundos", type=float, default=6, help="tempo de cada imagem parada")
-    p.add_argument("--atraso", type=float, default=0,
-                   help="milissegundos entre os pedacos da imagem; "
-                        "suba para 3 ou 5 se a imagem chegar rasgada")
+    p.add_argument("--atraso", type=float, default=5,
+                   help="milissegundos entre os pedacos da imagem (padrao 5); "
+                        "suba para 15 se a imagem chegar rasgada")
     p.add_argument("--pausa", type=float, default=0.3,
                    help="descanso entre envios, em segundos (padrao 0.2)")
     p.add_argument("--reconectar", action="store_true",
