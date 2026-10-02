@@ -121,6 +121,20 @@ class Deck:
         self._aberto = True
         return self
 
+    def reconectar(self, espera=1.5):
+        """
+        Fecha e abre de novo. Serve para quando o aparelho para de aceitar
+        escrita depois de receber uma imagem grande demais.
+        """
+        import time as _t
+        self.fechar()
+        _t.sleep(espera)
+        self._iniciado = False
+        self._cache.clear()
+        self.abrir()
+        self.iniciar()
+        return self
+
     def fechar(self):
         if self.dev is not None:
             try:

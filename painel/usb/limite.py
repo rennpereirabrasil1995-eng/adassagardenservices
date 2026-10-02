@@ -107,8 +107,9 @@ def principal():
     p.add_argument("--tecla", type=int, default=1)
     args = p.parse_args()
 
-    # alvos de peso em bytes, do mais pesado ao mais leve
-    alvos = [30000, 24000, 20000, 17000, 15000, 13000, 11000, 9000]
+    # alvos de peso em bytes, do mais LEVE para o mais PESADO:
+    # mandar um pesado demais derruba a conexao, entao so no fim
+    alvos = [7000, 9000, 11000, 13000, 15000, 17000, 20000, 24000]
     cores = [(200, 50, 50), (210, 120, 30), (200, 180, 40), (60, 180, 80),
              (40, 150, 180), (60, 100, 220), (140, 70, 200), (110, 110, 110)]
 
@@ -125,11 +126,11 @@ def principal():
     for dig, dados in tentativas:
         print(f"    digito {dig}  ->  {len(dados):6d} bytes  ({len(dados)/1024:5.1f} KB)")
     print()
-    print(f"  Vou mandar as 8, {args.segundos}s cada, do mais PESADO ao mais LEVE.")
+    print(f"  Vou mandar as 8, {args.segundos}s cada, do mais LEVE ao mais PESADO.")
     print()
-    print("  >>> ANOTE QUAIS DIGITOS APARECERAM NA TELA. <<<")
-    print("  Provavelmente os primeiros nao aparecem e, a partir de certo")
-    print("  ponto, comecam a aparecer. Esse ponto e o limite do aparelho.")
+    print("  >>> ANOTE O ULTIMO DIGITO QUE APARECEU NA TELA. <<<")
+    print("  Os primeiros devem aparecer. A partir de certo peso o")
+    print("  aparelho para de desenhar: esse e o limite dele.")
     print()
     try:
         input("  Enter para comecar... ")
@@ -145,19 +146,35 @@ def principal():
     try:
         d.iniciar()
         d.brilho(100)
+        ultimo_ok = None
         for dig, dados in tentativas:
             print(f"    mandando o {dig} ({len(dados)} bytes)...")
             try:
                 d.limpar_tudo()
                 d.definir_jpeg(args.tecla - 1, dados)
                 d.aplicar()
+                ultimo_ok = (dig, len(dados))
             except Exception as e:
-                print(f"      recusou: {e}")
+                print(f"      o aparelho parou de aceitar: {e}")
+                print(f"      -> {len(dados)} bytes passou do limite dele")
+                print("      tentando reconectar...")
+                try:
+                    d.reconectar()
+                    print("      reconectado.")
+                except Exception as e2:
+                    print(f"      nao voltou: {e2}")
+                    print("      Despluga e pluga o cabo. O teste acaba aqui.")
+                    break
+                continue
             time.sleep(args.segundos)
 
         print()
+        if ultimo_ok:
+            print(f"  Maior peso ENVIADO sem erro: {ultimo_ok[1]} bytes (digito {ultimo_ok[0]})")
+
+        print()
         print("  Fim.")
-        print("  >>> Quais digitos voce viu? (ex: 'do 5 em diante') <<<")
+        print("  >>> Qual foi o ULTIMO digito que voce VIU na tela? <<<")
         print()
         input("  Enter para sair... ")
     except KeyboardInterrupt:
