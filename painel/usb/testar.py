@@ -22,7 +22,20 @@ except ImportError:
     print("\n  Falta a biblioteca Pillow. Rode:\n    pip install hidapi pillow\n")
     sys.exit(1)
 
-import deck
+try:
+    import deck
+except ImportError:
+    import os as _os
+    print()
+    print("  Nao achei o arquivo deck.py (o driver do aparelho).")
+    print()
+    print("  Este programa precisa rodar NA MESMA PASTA que o deck.py,")
+    print("  ou seja, dentro de  painel/usb  do projeto. Faca assim:")
+    print()
+    print('    cd "%USERPROFILE%/adassagardenservices-ccr-c658d0db-inlhu7/painel/usb"')
+    print("    python " + _os.path.basename(__file__))
+    print()
+    raise SystemExit(1)
 
 CORES = [
     (220, 50, 50), (235, 140, 30), (225, 200, 40),
