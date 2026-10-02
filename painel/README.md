@@ -56,8 +56,12 @@ Ele diz em qual dos dois casos você está:
   DisplayLink). É o caso que este programa atende: siga para o item 1.
 - **Caso 2 — a tela é desenhada pelo próprio aparelho via USB HID** (estilo
   Stream Deck). O navegador **não** alcança essa tela: o PC manda as imagens
-  de cada tecla pelo cabo USB. Precisa de um programa HID — mande a saída do
-  detector (o VID:PID) para seguir por esse caminho.
+  de cada tecla pelo cabo USB, e é preciso um programa que fale HID.
+
+  Para descobrir qual dispositivo USB é o pad, rode **`achar-aparelho.bat`**:
+  ele compara a lista de dispositivos com o cabo conectado e desconectado — o
+  que sumir é o aparelho. O resultado (o `VID:PID`) fica salvo em
+  `Área de Trabalho\aparelho.txt`.
 
 ## 1. Ligar
 
