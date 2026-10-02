@@ -30,13 +30,18 @@ try:
     import deck
 except ImportError:
     import os as _os
+    _alvo = _os.path.join(_os.path.expanduser("~"),
+                          "adassagardenservices-ccr-c658d0db-inlhu7", "painel", "usb")
     print()
-    print("  Nao achei o arquivo deck.py (o driver do aparelho).")
+    print("  Nao achei o deck.py (o driver do aparelho).")
     print()
-    print("  Este programa precisa rodar NA MESMA PASTA que o deck.py,")
-    print("  ou seja, dentro de  painel/usb  do projeto. Faca assim:")
+    print("  Voce esta rodando em:")
+    print("    " + _os.path.dirname(_os.path.abspath(__file__)))
     print()
-    print('    cd "%USERPROFILE%/adassagardenservices-ccr-c658d0db-inlhu7/painel/usb"')
+    print("  Mas precisa rodar na pasta do projeto onde esta o deck.py.")
+    print("  Cole as duas linhas:")
+    print()
+    print('    cd "' + _alvo + '"')
     print("    python " + _os.path.basename(__file__))
     print()
     raise SystemExit(1)
