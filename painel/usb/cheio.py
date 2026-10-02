@@ -55,21 +55,21 @@ EXT_VIDEO = {".mp4", ".webm", ".m4v", ".ogv", ".mov", ".mkv", ".avi"}
 
 # --------------------------------------------------------------------------- #
 
-def quadrar(im, lado):
-    """Corta no centro e redimensiona para um quadrado de `lado`."""
+def enquadrar(im, larg_alvo, alt_alvo):
+    """Corta no centro e redimensiona para larg_alvo x alt_alvo."""
     im = im.convert("RGB")
     larg, alt = im.size
-    escala = max(lado / larg, lado / alt)
+    escala = max(larg_alvo / larg, alt_alvo / alt)
     nova = (max(1, int(larg * escala)), max(1, int(alt * escala)))
     im = im.resize(nova, deck._LANCZOS)
-    x = (nova[0] - lado) // 2
-    y = (nova[1] - lado) // 2
-    return im.crop((x, y, x + lado, y + lado))
+    x = (nova[0] - larg_alvo) // 2
+    y = (nova[1] - alt_alvo) // 2
+    return im.crop((x, y, x + larg_alvo, y + alt_alvo))
 
 
-def _tentar(im, lado, max_bytes):
+def _tentar(im, larg, alt, max_bytes):
     """Melhor qualidade que cabe no orcamento, para um tamanho fixo."""
-    quadro = quadrar(im, lado).transpose(deck._ROT270)
+    quadro = enquadrar(im, larg, alt).transpose(deck._ROT270)
     baixo, alto, melhor, melhor_q = 8, 95, None, 0
     for _ in range(10):
         q = (baixo + alto) // 2
@@ -86,37 +86,35 @@ def _tentar(im, lado, max_bytes):
     return melhor, melhor_q
 
 
-def jpeg_no_orcamento(im, lado, max_bytes, nitidez=35):
+def jpeg_no_orcamento(im, larg, alt, max_bytes, nitidez=35):
     """
     Escolhe o MAIOR tamanho que ainda cabe no orcamento com qualidade
-    razoavel. Numa tela pequena, uma imagem de 256 com qualidade 40 fica
-    melhor que uma de 384 com qualidade 13, toda esfarelada.
+    razoavel, mantendo a proporcao pedida. Numa tela pequena, 256 com
+    qualidade 40 fica melhor que 384 toda esfarelada em qualidade 13.
 
-    `nitidez` e a qualidade JPEG minima aceitavel. Se nenhum tamanho
-    alcancar isso, fica com o maior que couber, seja la com que qualidade.
-
-    Devolve (dados, lado_usado, qualidade).
+    Devolve (dados, larg_usada, alt_usada, qualidade).
     """
-    escada = [lado]
-    passo = lado
-    while passo > 96:
-        passo = int(passo * 0.8)
-        escada.append(passo)
+    escada = [(larg, alt)]
+    fator = 1.0
+    while min(larg * fator, alt * fator) > 96:
+        fator *= 0.8
+        escada.append((max(1, int(larg * fator)), max(1, int(alt * fator))))
 
     reserva = None
-    for tentativa in escada:
-        dados, q = _tentar(im, tentativa, max_bytes)
+    for w, h in escada:
+        dados, q = _tentar(im, w, h, max_bytes)
         if dados is None:
             continue
         if reserva is None:
-            reserva = (dados, tentativa, q)   # o maior que coube, de todo jeito
+            reserva = (dados, w, h, q)
         if q >= nitidez:
-            return dados, tentativa, q
+            return dados, w, h, q
     if reserva:
         return reserva
-    # ultimo recurso: bem pequeno, qualidade minima
-    dados, q = _tentar(im, 96, max_bytes)
-    return dados, 96, q
+    w = max(64, int(larg * 0.25))
+    h = max(64, int(alt * 0.25))
+    dados, q = _tentar(im, w, h, max_bytes)
+    return dados, w, h, q
 
 
 def carregar_quadros(caminho, fps):
@@ -167,7 +165,10 @@ def principal():
     p = argparse.ArgumentParser(description="Imagem e video em tela cheia no aparelho.")
     p.add_argument("--arquivo", help="um arquivo so (senao passa a pasta inteira)")
     p.add_argument("--midia", default=PASTA_PADRAO)
-    p.add_argument("--lado", type=int, default=384)
+    p.add_argument("--lado", type=int, default=384,
+                   help="tamanho quadrado (atalho para --larg e --alt)")
+    p.add_argument("--larg", type=int, help="largura, se o painel nao for quadrado")
+    p.add_argument("--alt", type=int, help="altura, se o painel nao for quadrado")
     p.add_argument("--max-kb", type=float, default=6.0,
                    dest="max_kb", help="orcamento por imagem (padrao 6 KB)")
     p.add_argument("--fps", type=int, default=5)
@@ -179,6 +180,8 @@ def principal():
     args = p.parse_args()
 
     max_bytes = int(args.max_kb * 1024)
+    larg_alvo = args.larg or args.lado
+    alt_alvo = args.alt or args.lado
     pasta = os.path.abspath(args.midia)
 
     if args.arquivo:
@@ -204,7 +207,7 @@ def principal():
     print()
     print("  TELA CHEIA")
     print("  ==========")
-    print(f"  Imagem:    ate {args.lado}x{args.lado}")
+    print(f"  Imagem:    ate {larg_alvo}x{alt_alvo}")
     print(f"  Orcamento: {args.max_kb:.1f} KB por quadro")
     print(f"  Arquivos:  {len(caminhos)}")
     print()
@@ -232,8 +235,8 @@ def principal():
 
                 pacote = []
                 for q in quadros:
-                    dados, lado_usado, qual = jpeg_no_orcamento(q, args.lado, max_bytes,
-                                                           args.nitidez)
+                    dados, w_us, h_us, qual = jpeg_no_orcamento(
+                        q, larg_alvo, alt_alvo, max_bytes, args.nitidez)
                     if dados is None:
                         print(f"  ! {nome}: nao consegui caber no orcamento")
                         break
@@ -243,7 +246,7 @@ def principal():
 
                 media = sum(len(x) for x in pacote) / len(pacote)
                 print(f"  {nome}: {len(pacote)} quadro(s), "
-                      f"{media/1024:.1f} KB cada, {lado_usado}x{lado_usado} q{qual}")
+                      f"{media/1024:.1f} KB cada, {w_us}x{h_us} q{qual}")
 
                 inicio = time.time()
                 i = 0
