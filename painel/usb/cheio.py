@@ -223,8 +223,8 @@ def principal():
           f"(baixo = enche a tela, alto = mais nitido porem menor)")
     print(f"  Arquivos:  {len(caminhos)}")
     print()
-    print("  Se o aparelho travar, despluga e pluga, e rode de novo com")
-    print("  um orcamento menor:  --max-kb 8")
+    print("  Se travar ou a imagem chegar rasgada, aumente o atraso entre os")
+    print("  pedacos e baixe o orcamento:  --atraso 15 --max-kb 4")
     print()
 
     try:
@@ -237,6 +237,7 @@ def principal():
     d.atraso_pacote = args.atraso / 1000.0
     print(f"  Atraso entre pedacos: {args.atraso} ms")
     print("  Conectado. Ctrl+C para parar.\n")
+    preparados = {}   # caminho+orcamento -> lista de jpegs ja prontos
     try:
         d.reiniciar(args.brilho)
         while True:
@@ -246,6 +247,45 @@ def principal():
                 if not quadros:
                     continue
                 animada = len(quadros) > 1
+
+                chave = (caminho, max_bytes, larg_alvo, alt_alvo, args.nitidez)
+                if chave in preparados:
+                    pacote, w_us, h_us, qual = preparados[chave]
+                    print(f"  {nome}: {len(pacote)} quadro(s) (ja preparado), "
+                          f"{w_us}x{h_us} q{qual}")
+                    inicio = time.time()
+                    i = 0
+                    while True:
+                        try:
+                            if args.reconectar and i > 0:
+                                d.reconectar(espera=1.2)
+                            if not args.sem_limpar:
+                                d.limpar_tudo()
+                            d.definir_jpeg(args.tecla - 1, pacote[i % len(pacote)])
+                            d.aplicar()
+                            if args.pausa > 0:
+                                time.sleep(args.pausa)
+                        except Exception as e:
+                            print(f"    o aparelho recusou: {e}")
+                            try:
+                                d.reconectar(espera=3.0)
+                                max_bytes = int(max_bytes * 0.8)
+                                preparados.clear()
+                                print(f"    reconectado; baixando o orcamento para "
+                                      f"{max_bytes/1024:.1f} KB")
+                            except Exception:
+                                print("    nao voltou. Despluga e pluga o cabo.\n")
+                                return 1
+                            break
+                        i += 1
+                        if animada:
+                            if i >= len(pacote) and len(caminhos) > 1:
+                                break
+                            time.sleep(1.0 / args.fps)
+                        else:
+                            time.sleep(args.segundos)
+                            break
+                    continue
 
                 pacote = []
                 for q in quadros:
@@ -258,6 +298,7 @@ def principal():
                 if not pacote:
                     continue
 
+                preparados[chave] = (pacote, w_us, h_us, qual)
                 media = sum(len(x) for x in pacote) / len(pacote)
                 print(f"  {nome}: {len(pacote)} quadro(s), "
                       f"{media/1024:.1f} KB cada, {w_us}x{h_us} q{qual}")
