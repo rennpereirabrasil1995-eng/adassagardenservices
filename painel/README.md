@@ -13,6 +13,23 @@ no Windows, baixe em python.org marcando "Add Python to PATH").
 
 ---
 
+## 0. Primeiro: descobrir como a tela está ligada
+
+Rode isto **com o aparelho conectado**:
+
+```bash
+python3 detectar.py      # Windows: dois cliques em detectar.bat
+```
+
+Ele diz em qual dos dois casos você está:
+
+- **Caso 1 — a tela entra como monitor** (USB-C DP Alt Mode ou adaptador tipo
+  DisplayLink). É o caso que este programa atende: siga para o item 1.
+- **Caso 2 — a tela é desenhada pelo próprio aparelho via USB HID** (estilo
+  Stream Deck). O navegador **não** alcança essa tela: o PC manda as imagens
+  de cada tecla pelo cabo USB. Precisa de um programa HID — mande a saída do
+  detector (o VID:PID) para seguir por esse caminho.
+
 ## 1. Ligar
 
 **Linux / Raspberry Pi / macOS**
