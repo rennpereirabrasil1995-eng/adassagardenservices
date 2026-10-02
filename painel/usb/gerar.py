@@ -146,7 +146,15 @@ def desenhar(texto, estilo, paleta, larg=LARG, alt=ALT, subtexto="", textura=5):
     # bytes em borda e derruba a qualidade do JPEG, e qualidade baixa e o
     # que faz o aparelho marcar as fronteiras de bloco. Medido em 256x384
     # dentro de 4 KB: letra de 80px da qualidade 38, de 44px da 64.
-    tamanho = int(alt * 0.13) if estilo in ("chapado", "solido") else int(alt * 0.22)
+    # No solido a letra e GRANDE de proposito: o aparelho despedaca
+    # borda fina, e letra grande tem borda grossa, que resiste. O custo
+    # em qualidade e pequeno: 49px da 67 e 92px da 57.
+    if estilo == "solido":
+        tamanho = int(alt * 0.24)
+    elif estilo == "chapado":
+        tamanho = int(alt * 0.13)
+    else:
+        tamanho = int(alt * 0.22)
     while tamanho > 12:
         f = fonte(tamanho)
         try:
@@ -163,7 +171,8 @@ def desenhar(texto, estilo, paleta, larg=LARG, alt=ALT, subtexto="", textura=5):
     cor_txt = (255, 255, 255) if claro else (15, 15, 20)
     sombra = (0, 0, 0) if claro else (255, 255, 255)
 
-    y = alt * 0.68 if estilo in ("chapado", "solido") else alt * 0.40
+    y = alt * 0.55 if estilo == "solido" else (
+        alt * 0.68 if estilo == "chapado" else alt * 0.40)
 
     # a sombra custa caro: no cartao de 256x384 dentro de 4 KB ela derruba a
     # qualidade de 73 para 47, e qualidade baixa e justamente o que faz o
