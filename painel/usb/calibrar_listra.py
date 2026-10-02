@@ -63,9 +63,12 @@ def cartao(valores, larg=LARG, alt=ALT, base=(110, 150, 110)):
         y1 = min(alt, y0 + altura)
         if y0 >= alt:
             break
-        # separador fino entre as faixas
-        d.line([0, y0, larg, y0], fill=(30, 30, 30))
-        d.text((8, y0 + 6), str(v), font=f, fill=(255, 255, 255))
+        # o separador NAO pode cair na fronteira de bloco, senao se mistura
+        # com o efeito que estamos medindo: desenha duas linhas abaixo
+        if i:
+            d.line([0, y0 + 2, larg, y0 + 2], fill=(25, 25, 25))
+            d.line([0, y0 + 3, larg, y0 + 3], fill=(25, 25, 25))
+        d.text((8, y0 + 8), str(v), font=f, fill=(255, 255, 255))
 
     return im, altura
 
@@ -89,7 +92,7 @@ def aplicar(im, valores, altura):
 
 def principal():
     p = argparse.ArgumentParser(description="Acha a compensacao que apaga as listras.")
-    p.add_argument("--valores", type=int, nargs="+", default=[0, 15, 30, 45, 60])
+    p.add_argument("--valores", type=int, nargs="+", default=[0, 6, 12, 18, 24])
     p.add_argument("--negativo", action="store_true", help="clareia em vez de escurecer")
     p.add_argument("--max-kb", type=float, default=4.0, dest="max_kb")
     p.add_argument("--atraso", type=float, default=5)
