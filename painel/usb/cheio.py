@@ -171,8 +171,8 @@ def principal():
     p.add_argument("--max-kb", type=float, default=4.2,
                    dest="max_kb", help="orcamento por imagem (padrao 4.2 KB: foi o peso que aguentou 10 trocas seguidas sem travar)")
     p.add_argument("--fps", type=int, default=5)
-    p.add_argument("--nitidez", type=int, default=12,
-                   help="qualidade JPEG minima (padrao 12: enche a tela). "
+    p.add_argument("--nitidez", type=int, default=1,
+                   help="qualidade JPEG minima (padrao 1: enche a tela). "
                         "Subir deixa mais nitido porem menor")
     p.add_argument("--segundos", type=float, default=6, help="tempo de cada imagem parada")
     p.add_argument("--pausa", type=float, default=0.3,
