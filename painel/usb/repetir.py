@@ -91,6 +91,8 @@ def principal():
     p.add_argument("--larg", type=int, default=320)
     p.add_argument("--alt", type=int, default=480)
     p.add_argument("--pausa", type=float, default=0.3)
+    p.add_argument("--atraso", type=float, default=0,
+                   help="milissegundos entre os pedacos da imagem")
     p.add_argument("--sem-limpar", action="store_true", dest="sem_limpar")
     p.add_argument("--reconectar", action="store_true",
                    help="fecha e reabre o aparelho antes de cada envio")
@@ -114,6 +116,7 @@ def principal():
 
     aguentou = 0
     try:
+        d.atraso_pacote = args.atraso / 1000.0
         d.iniciar(); d.brilho(100)
         for i in range(args.vezes):
             dados, q = mirar(i, args.larg, args.alt, max_bytes)

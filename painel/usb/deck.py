@@ -78,6 +78,8 @@ class Deck:
         self._aberto = False
         self._iniciado = False
         self._cache = {}       # tecla -> jpeg, enviado no flush()
+        self.atraso_pacote = 0.0   # segundos entre os pedacos da imagem;
+                                   # sem isso a imagem grande chega rasgada
 
     # ----------------------------------------------------------- conexao
 
@@ -219,7 +221,12 @@ class Deck:
             (tamanho >> 8) & 0xFF, tamanho & 0xFF, tecla + 1,
         )
         enviado = 0
+        primeiro = True
         while enviado < tamanho:
+            if not primeiro and self.atraso_pacote > 0:
+                import time as _t
+                _t.sleep(self.atraso_pacote)
+            primeiro = False
             pedaco = jpeg[enviado:enviado + TAM_PACOTE]
             buf = bytearray([0x00])
             buf.extend(pedaco)

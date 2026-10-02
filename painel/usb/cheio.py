@@ -175,6 +175,9 @@ def principal():
                    help="qualidade JPEG minima (padrao 1: enche a tela). "
                         "Subir deixa mais nitido porem menor")
     p.add_argument("--segundos", type=float, default=6, help="tempo de cada imagem parada")
+    p.add_argument("--atraso", type=float, default=0,
+                   help="milissegundos entre os pedacos da imagem; "
+                        "suba para 3 ou 5 se a imagem chegar rasgada")
     p.add_argument("--pausa", type=float, default=0.3,
                    help="descanso entre envios, em segundos (padrao 0.2)")
     p.add_argument("--reconectar", action="store_true",
@@ -231,6 +234,8 @@ def principal():
         print("  Feche o programa do fabricante e tente de novo.\n")
         return 1
 
+    d.atraso_pacote = args.atraso / 1000.0
+    print(f"  Atraso entre pedacos: {args.atraso} ms")
     print("  Conectado. Ctrl+C para parar.\n")
     try:
         d.reiniciar(args.brilho)
