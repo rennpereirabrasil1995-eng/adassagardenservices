@@ -126,6 +126,23 @@ Duas coisas importam tanto quanto o tamanho:
 Quando o aparelho recusa uma escrita, o programa reconecta e baixa o orçamento
 sozinho, e segue rodando.
 
+### As listras horizontais
+
+O decodificador do aparelho deixa uma emenda clara a cada linha de blocos do
+JPEG, que aparece como listras regulares, mais visíveis em fundo liso ou em
+gradiente.
+
+Isso foi comprovado mandando o mesmo cartão com blocos de 16 e de 8: o número
+de listras dobrou junto com o número de fronteiras, cerca de 15 contra cerca
+de 30. Não é a câmera nem o cabo do painel.
+
+`--compensar` escurece de propósito a linha de cada fronteira antes de
+codificar, para cancelar o clareamento do aparelho. O padrão é 12, achado com
+`calibrar_listra.py`, que mostra várias intensidades lado a lado numa imagem
+só. Valores altos demais invertem o defeito: 40 ficou pior que 20.
+
+`--blocos 16`, o padrão, já dá metade das listras de `--blocos 8`.
+
 ### Gerar imagens sob medida
 
 `gerar.py` desenha direto no formato do painel, ocupando a tela inteira:

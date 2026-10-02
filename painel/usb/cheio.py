@@ -228,9 +228,9 @@ def principal():
     p.add_argument("--reconectar", action="store_true",
                    help="fecha e reabre o aparelho antes de cada imagem; "
                         "mais lento, porem e o que aguenta trocar imagem grande")
-    p.add_argument("--compensar", type=int, default=0,
+    p.add_argument("--compensar", type=int, default=12,
                    help="escurece a linha de cada fronteira de bloco para "
-                        "cancelar a listra. Tente 20, 40, 60. Negativo clareia")
+                        "cancelar a listra (padrao 12). Negativo clareia")
     p.add_argument("--blocos", type=int, default=16, choices=[8, 16],
                    help="tamanho do bloco do JPEG: 16 (padrao) ou 8. "
                         "Se as listras mudarem de espacamento, sao de bloco")
