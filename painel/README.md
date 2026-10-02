@@ -89,20 +89,31 @@ Para mudar a porta: `./iniciar.sh 9000`.
 Depende de como esse LCD está ligado. Os três casos:
 
 ### a) A tela aparece como **segundo monitor** do PC
-É o caso mais comum nesses pads com LCD interno (e é o que a foto sugere, já que
-dá pra ver ícones de programas nela).
+É o caso mais comum nesses pads com LCD interno. Confira em
+**Win + P** ou em Configurações → Sistema → Tela: se aparecer um monitor a mais
+quando o pad está ligado, é este o caso.
 
-1. Abra `http://localhost:8080/` no Chrome.
-2. Arraste a janela pra tela do aparelho.
-3. Aperte **F11** (ou dê dois cliques na página) pra ficar tela cheia, sem barras.
+**Windows — jeito automático:**
 
-Pra abrir já em tela cheia direto no monitor certo:
+1. Dois cliques em `iniciar.bat` (deixe essa janela aberta).
+2. Dois cliques em `abrir-tela.bat`.
+
+Ele lista os monitores com resolução e posição, pergunta em qual abrir e já
+sobe a tela em modo kiosk lá. O monitor do aparelho costuma ser **o de menor
+resolução**. Errou? Rode de novo e escolha outro número.
+
+Para abrir direto, sem perguntar: `abrir-tela.bat 2` (monitor 2).
+
+**Na mão:** abra `http://localhost:8080/` no Chrome, arraste a janela pra tela
+do aparelho e aperte **F11**.
+
+**Linux:**
 
 ```bash
 ./deploy/kiosk.sh http://localhost:8080/ 1920,0
 ```
 
-Troque `1920,0` pela posição do segundo monitor (1920 = largura do monitor principal).
+Troque `1920,0` pela posição do segundo monitor (1920 = largura do principal).
 
 ### b) O painel roda **Android**
 Abra o navegador do aparelho em `http://IP_DO_PC:8080/` e mande "adicionar à tela
