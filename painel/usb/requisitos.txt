@@ -1,0 +1,5 @@
+# pip install -r requisitos.txt
+hidapi>=0.14
+Pillow>=9.0
+# opcional, so para tocar video MP4 nas teclas:
+# opencv-python>=4.8
