@@ -53,6 +53,28 @@ def fonte(tamanho, negrito=True):
         return ImageFont.load_default()
 
 
+def texturar(im, forca=5):
+    """
+    Ruido leve no fundo. A emenda que o aparelho deixa nas fronteiras de
+    bloco so salta aos olhos em superficie lisa; com uma textura fraca ela
+    se mistura e deixa de ser uma linha visivel.
+    """
+    if forca <= 0:
+        return im
+    import random as _r
+    rnd = _r.Random(42)
+    px = im.load()
+    larg, alt = im.size
+    for y in range(alt):
+        for x in range(larg):
+            r, g, b = px[x, y]
+            d = rnd.randint(-forca, forca)
+            px[x, y] = (max(0, min(255, r + d)),
+                        max(0, min(255, g + d)),
+                        max(0, min(255, b + d)))
+    return im
+
+
 def fundo(estilo, escura, clara, larg=LARG, alt=ALT):
     im = Image.new("RGB", (larg, alt), escura)
     d = ImageDraw.Draw(im)
@@ -94,9 +116,10 @@ def centralizar(d, texto, f, larg, y, cor):
     d.text((x, y), texto, font=f, fill=cor)
 
 
-def desenhar(texto, estilo, paleta, larg=LARG, alt=ALT, subtexto=""):
+def desenhar(texto, estilo, paleta, larg=LARG, alt=ALT, subtexto="", textura=5):
     escura, clara, _ = paleta
     im = fundo(estilo, escura, clara, larg, alt)
+    im = texturar(im, textura)
     d = ImageDraw.Draw(im)
 
     if not texto:
@@ -175,6 +198,9 @@ def principal():
     p.add_argument("--larg", type=int, default=LARG)
     p.add_argument("--alt", type=int, default=ALT)
     p.add_argument("--max-kb", type=float, default=4.0, dest="max_kb")
+    p.add_argument("--textura", type=int, default=5,
+                   help="ruido no fundo, que esconde as listras do aparelho "
+                        "(padrao 5). 0 deixa o fundo liso")
     p.add_argument("--listar", action="store_true")
     args = p.parse_args()
 
@@ -187,7 +213,8 @@ def principal():
         return 0
 
     paleta = PALETAS[args.cor % len(PALETAS)]
-    im = desenhar(args.texto, args.estilo, paleta, args.larg, args.alt, args.subtexto)
+    im = desenhar(args.texto, args.estilo, paleta, args.larg, args.alt,
+                  args.subtexto, args.textura)
 
     if args.saida:
         saida = args.saida
