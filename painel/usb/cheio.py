@@ -229,10 +229,10 @@ def principal():
     p.add_argument("--reconectar", action="store_true",
                    help="fecha e reabre o aparelho antes de cada imagem; "
                         "mais lento, porem e o que aguenta trocar imagem grande")
-    p.add_argument("--compensar", type=int, default=6,
+    p.add_argument("--compensar", type=int, default=0,
                    help="escurece a linha de cada fronteira de bloco para "
-                        "cancelar a listra (padrao 6; valores altos viram "
-                        "uma linha escura propria). Negativo clareia")
+                        "cancelar a listra (padrao 0: nos testes nao ajudou "
+                        "e valores altos criavam listra propria)")
     p.add_argument("--linha-bloco", type=int, default=0, dest="linha_bloco",
                    help="qual linha dentro do bloco compensar, de 0 a 15")
     p.add_argument("--blocos", type=int, default=16, choices=[8, 16],
