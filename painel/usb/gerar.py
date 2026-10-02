@@ -171,8 +171,15 @@ def desenhar(texto, estilo, paleta, larg=LARG, alt=ALT, subtexto="", textura=5):
     cor_txt = (255, 255, 255) if claro else (15, 15, 20)
     sombra = (0, 0, 0) if claro else (255, 255, 255)
 
-    y = alt * 0.55 if estilo == "solido" else (
-        alt * 0.68 if estilo == "chapado" else alt * 0.40)
+    # No solido o texto vai no CENTRO vertical: na tela do aparelho a
+    # imagem aparece esticada, e texto perto da borda sai cortado.
+    if estilo == "solido":
+        altura_bloco = tamanho * (1.5 if subtexto else 1.0)
+        y = (alt - altura_bloco) / 2
+    elif estilo == "chapado":
+        y = alt * 0.68
+    else:
+        y = alt * 0.40
 
     # a sombra custa caro: no cartao de 256x384 dentro de 4 KB ela derruba a
     # qualidade de 73 para 47, e qualidade baixa e justamente o que faz o
