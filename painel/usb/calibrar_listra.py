@@ -73,13 +73,28 @@ def cartao(valores, larg=LARG, alt=ALT, base=(110, 150, 110)):
     return im, altura
 
 
-def aplicar(im, valores, altura):
-    """Escurece a linha de cada fronteira de bloco, com a forca da faixa."""
+def aplicar(im, valores, altura, linhas=None, forca=25):
+    """
+    Escurece uma linha dentro de cada bloco.
+
+    Sem `linhas`, cada faixa usa uma INTENSIDADE diferente, sempre na
+    primeira linha do bloco. Com `linhas`, todas usam a mesma intensidade
+    e cada faixa escurece uma LINHA diferente dentro do bloco - serve para
+    descobrir em qual delas o aparelho deixa a emenda.
+    """
     px = im.load()
     larg, alt = im.size
-    for y in range(0, alt, BLOCO):
-        faixa = min(len(valores) - 1, y // altura)
-        v = valores[faixa]
+    n = len(linhas if linhas else valores)
+    for y in range(alt):
+        faixa = min(n - 1, y // altura)
+        if linhas:
+            if y % BLOCO != linhas[faixa] % BLOCO:
+                continue
+            v = forca
+        else:
+            if y % BLOCO != 0:
+                continue
+            v = valores[faixa]
         if not v:
             continue
         for x in range(larg):
@@ -92,17 +107,26 @@ def aplicar(im, valores, altura):
 
 def principal():
     p = argparse.ArgumentParser(description="Acha a compensacao que apaga as listras.")
-    p.add_argument("--valores", type=int, nargs="+", default=[0, 6, 12, 18, 24])
+    p.add_argument("--valores", type=int, nargs="+", default=[0, 6, 12, 18, 24],
+                   help="intensidades a testar (modo padrao)")
+    p.add_argument("--linhas", action="store_true",
+                   help="em vez das intensidades, varre QUAL linha do bloco "
+                        "compensar: 0, 4, 8, 12 e 15")
+    p.add_argument("--forca", type=int, default=25,
+                   help="intensidade usada no modo --linhas")
     p.add_argument("--negativo", action="store_true", help="clareia em vez de escurecer")
     p.add_argument("--max-kb", type=float, default=4.0, dest="max_kb")
     p.add_argument("--atraso", type=float, default=5)
     p.add_argument("--tecla", type=int, default=1)
     args = p.parse_args()
 
-    valores = [-v for v in args.valores] if args.negativo else args.valores
+    linhas = [0, 4, 8, 12, 15] if args.linhas else None
+    rotulos = linhas if linhas else (
+        [-v for v in args.valores] if args.negativo else args.valores)
+    valores = rotulos
 
-    im, altura = cartao(valores)
-    im = aplicar(im, valores, altura)
+    im, altura = cartao(rotulos)
+    im = aplicar(im, valores, altura, linhas, args.forca)
     girada = im.transpose(deck._ROT270)
 
     dados = None
@@ -119,7 +143,12 @@ def principal():
     print()
     print("  CALIBRACAO DA LISTRA")
     print("  ====================")
-    print(f"  Faixas, de cima para baixo: {valores}")
+    if linhas:
+        print(f"  Modo LINHA: cada faixa escurece uma linha diferente do bloco")
+        print(f"  Linhas testadas, de cima para baixo: {linhas}")
+        print(f"  Intensidade fixa: {args.forca}")
+    else:
+        print(f"  Faixas, de cima para baixo: {valores}")
     print(f"  Cada faixa tem {altura} pixels de altura")
     print(f"  {len(dados)} bytes, qualidade {qual}")
     print()

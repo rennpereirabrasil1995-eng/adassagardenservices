@@ -71,6 +71,7 @@ OTIMIZAR = True   # trocado pelo --sem-otimizar
 MARCADORES = 0    # trocado pelo --marcadores; 0 = nenhum
 SUBAMOSTRAGEM = 2 # 2 = 4:2:0 (blocos de 16x16), 0 = 4:4:4 (blocos de 8x8)
 COMPENSAR = 0     # trocado pelo --compensar
+LINHA_BLOCO = 0   # qual linha dentro do bloco recebe a compensacao
 #
 # A subamostragem muda o TAMANHO do bloco do JPEG. Se as listras mudarem
 # de espacamento ao trocar isso, elas estao mesmo nas fronteiras de bloco.
@@ -81,7 +82,7 @@ COMPENSAR = 0     # trocado pelo --compensar
 # pelo resto da imagem - que e a cara das listras horizontais.
 
 
-def compensar_blocos(im, bloco, intensidade):
+def compensar_blocos(im, bloco, intensidade, linha=0):
     """
     O decodificador do aparelho clareia uma linha a cada linha de blocos,
     o que aparece como listras regulares. Aqui a mesma linha e escurecida
@@ -94,7 +95,7 @@ def compensar_blocos(im, bloco, intensidade):
         return im
     px = im.load()
     larg, alt = im.size
-    for y in range(0, alt, bloco):
+    for y in range(linha % bloco, alt, bloco):
         for x in range(larg):
             r, g, b = px[x, y]
             px[x, y] = (max(0, min(255, r - intensidade)),
@@ -108,7 +109,7 @@ def _tentar(im, larg, alt, max_bytes):
     quadro = enquadrar(im, larg, alt).transpose(deck._ROT270)
     if COMPENSAR:
         quadro = compensar_blocos(quadro.copy(), 16 if SUBAMOSTRAGEM else 8,
-                                  COMPENSAR)
+                                  COMPENSAR, LINHA_BLOCO)
     # desce ate 1: numa tela deste tamanho, encher o painel costuma
     # valer mais que a nitidez, e o --nitidez existe para quem discordar
     baixo, alto, melhor, melhor_q = 1, 95, None, 0
@@ -231,6 +232,8 @@ def principal():
     p.add_argument("--compensar", type=int, default=12,
                    help="escurece a linha de cada fronteira de bloco para "
                         "cancelar a listra (padrao 12). Negativo clareia")
+    p.add_argument("--linha-bloco", type=int, default=0, dest="linha_bloco",
+                   help="qual linha dentro do bloco compensar, de 0 a 15")
     p.add_argument("--blocos", type=int, default=16, choices=[8, 16],
                    help="tamanho do bloco do JPEG: 16 (padrao) ou 8. "
                         "Se as listras mudarem de espacamento, sao de bloco")
@@ -252,8 +255,9 @@ def principal():
     MARCADORES = max(0, args.marcadores)
     global SUBAMOSTRAGEM
     SUBAMOSTRAGEM = 2 if args.blocos == 16 else 0
-    global COMPENSAR
+    global COMPENSAR, LINHA_BLOCO
     COMPENSAR = args.compensar
+    LINHA_BLOCO = args.linha_bloco
     max_bytes = int(args.max_kb * 1024)
     larg_alvo = args.lado or args.larg
     alt_alvo = args.lado or args.alt
@@ -304,7 +308,8 @@ def principal():
     print(f"  Tabela JPEG: {'padrao' if args.sem_otimizar else 'otimizada'}")
     print(f"  Marcadores de reinicio: {args.marcadores or 'nenhum'}")
     print(f"  Bloco do JPEG: {args.blocos}x{args.blocos}")
-    print(f"  Compensacao de listra: {args.compensar or 'nenhuma'}")
+    print(f"  Compensacao de listra: {args.compensar or 'nenhuma'}"
+          f"{f' na linha {args.linha_bloco}' if args.compensar else ''}")
     print("  Conectado. Ctrl+C para parar.\n")
     preparados = {}   # caminho+orcamento -> lista de jpegs ja prontos
     try:
