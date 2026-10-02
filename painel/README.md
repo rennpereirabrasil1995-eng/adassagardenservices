@@ -13,6 +13,35 @@ no Windows, baixe em python.org marcando "Add Python to PATH").
 
 ---
 
+## Baixar no seu computador
+
+Os arquivos ficam no GitHub — antes de qualquer coisa, traga-os pro PC.
+
+**Windows (PowerShell — tecle Win, digite "PowerShell", abra e cole):**
+
+```powershell
+cd $env:USERPROFILE\Desktop
+iwr https://github.com/rennpereirabrasil1995-eng/adassagardenservices/archive/refs/heads/ccr-c658d0db-inlhu7.zip -OutFile painel.zip
+Expand-Archive painel.zip -DestinationPath . -Force
+explorer .\adassagardenservices-ccr-c658d0db-inlhu7\painel
+```
+
+Vai abrir a pasta `painel` na sua Área de Trabalho. É ali que ficam o
+`iniciar.bat` e o `detectar.bat`.
+
+**Ou pelo navegador:** baixe o ZIP [deste link](https://github.com/rennpereirabrasil1995-eng/adassagardenservices/archive/refs/heads/ccr-c658d0db-inlhu7.zip)
+e extraia.
+
+**Linux / macOS:**
+
+```bash
+git clone -b ccr-c658d0db-inlhu7 https://github.com/rennpereirabrasil1995-eng/adassagardenservices.git
+cd adassagardenservices/painel
+```
+
+> No Windows use `iniciar.bat` e `detectar.bat` (dois cliques).
+> O `.sh` é só para Linux e macOS.
+
 ## 0. Primeiro: descobrir como a tela está ligada
 
 Rode isto **com o aparelho conectado**:
