@@ -266,6 +266,8 @@ def principal():
                    help="qualidade JPEG minima (padrao 1: enche a tela). "
                         "Subir deixa mais nitido porem menor")
     p.add_argument("--segundos", type=float, default=6, help="tempo de cada imagem parada")
+    p.add_argument("--embaralhar", action="store_true",
+                   help="ordem aleatoria, reembaralhada a cada volta completa")
     p.add_argument("--atraso", type=float, default=5,
                    help="milissegundos entre os pedacos da imagem (padrao 5); "
                         "suba para 15 se a imagem chegar rasgada")
@@ -364,6 +366,7 @@ def principal():
     try:
         d.reiniciar(args.brilho)
         assinatura_atual = assinatura_pasta(pasta) if not args.arquivo else None
+        embaralhar_config = False
         while True:
             # Reler a pasta a cada volta: e assim que a foto mandada pelo
             # celular aparece no aparelho sem precisar reiniciar nada.
@@ -376,15 +379,17 @@ def principal():
                     caminhos = listar_midia(pasta, ch.get("lista"))
                     if ch.get("duracao"):
                         args.segundos = max(1, int(ch["duracao"]))
-                    if ch.get("embaralhar"):
-                        import random as _r
-                        _r.shuffle(caminhos)
+                    embaralhar_config = bool(ch.get("embaralhar"))
                     preparados.clear()
                     print(f"  [{time.strftime('%H:%M:%S')}] a pasta mudou: "
                           f"{len(caminhos)} arquivo(s), {args.segundos}s cada")
                     if not caminhos:
                         time.sleep(2)
                         continue
+
+            if (args.embaralhar or embaralhar_config) and len(caminhos) > 1:
+                import random as _r
+                _r.shuffle(caminhos)
 
             for caminho in caminhos:
                 nome = os.path.basename(caminho)
