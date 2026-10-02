@@ -37,7 +37,7 @@ PALETAS = [
     ((45, 35, 10), (240, 200, 70), "amarelo"),
     ((10, 35, 40), (70, 200, 200), "turquesa"),
 ]
-ESTILOS = ("liso", "gradiente", "diagonal", "listras", "moldura")
+ESTILOS = ("chapado", "liso", "gradiente", "diagonal", "listras", "moldura")
 
 
 def fonte(tamanho, negrito=True):
@@ -79,7 +79,15 @@ def fundo(estilo, escura, clara, larg=LARG, alt=ALT):
     im = Image.new("RGB", (larg, alt), escura)
     d = ImageDraw.Draw(im)
 
-    if estilo == "gradiente":
+    if estilo == "chapado":
+        # duas faixas de cor solida, sem transicao: comprime muito bem e
+        # por isso sai em qualidade alta, onde o aparelho quase nao erra.
+        # A emenda que ele deixa nas fronteiras de bloco aparece muito mais
+        # em gradiente comprimido com qualidade baixa.
+        d.rectangle([0, 0, larg, int(alt * 0.62)], fill=clara)
+        d.rectangle([0, int(alt * 0.62), larg, alt], fill=escura)
+
+    elif estilo == "gradiente":
         for y in range(alt):
             t = y / max(1, alt - 1)
             d.line([0, y, larg, y], fill=tuple(
@@ -125,8 +133,11 @@ def desenhar(texto, estilo, paleta, larg=LARG, alt=ALT, subtexto="", textura=5):
     if not texto:
         return im
 
-    # acha o maior corpo de letra que ainda cabe na largura
-    tamanho = int(alt * 0.22)
+    # No estilo chapado a letra e menor de proposito. Letra grande gasta
+    # bytes em borda e derruba a qualidade do JPEG, e qualidade baixa e o
+    # que faz o aparelho marcar as fronteiras de bloco. Medido em 256x384
+    # dentro de 4 KB: letra de 80px da qualidade 38, de 44px da 64.
+    tamanho = int(alt * 0.13) if estilo == "chapado" else int(alt * 0.22)
     while tamanho > 12:
         f = fonte(tamanho)
         try:
@@ -138,12 +149,17 @@ def desenhar(texto, estilo, paleta, larg=LARG, alt=ALT, subtexto="", textura=5):
         tamanho = int(tamanho * 0.92)
     f = fonte(tamanho)
 
-    claro = sum(escura) < 330
+    claro = True if estilo == "chapado" else sum(escura) < 330
     cor_txt = (255, 255, 255) if claro else (15, 15, 20)
     sombra = (0, 0, 0) if claro else (255, 255, 255)
 
-    y = alt * 0.40
-    centralizar(d, texto, f, larg + 3, y + 3, sombra)   # sombra leve
+    y = alt * 0.68 if estilo == "chapado" else alt * 0.40
+
+    # a sombra custa caro: no cartao de 256x384 dentro de 4 KB ela derruba a
+    # qualidade de 73 para 47, e qualidade baixa e justamente o que faz o
+    # aparelho marcar as fronteiras de bloco. No estilo chapado ela sai.
+    if estilo != "chapado":
+        centralizar(d, texto, f, larg + 3, y + 3, sombra)
     centralizar(d, texto, f, larg, y, cor_txt)
 
     if subtexto:
@@ -192,7 +208,7 @@ def principal():
     p = argparse.ArgumentParser(description="Gera imagens sob medida para o painel.")
     p.add_argument("--texto", default="", help="texto grande no meio")
     p.add_argument("--subtexto", default="", help="linha menor embaixo do texto")
-    p.add_argument("--estilo", default="gradiente", choices=ESTILOS)
+    p.add_argument("--estilo", default="chapado", choices=ESTILOS)
     p.add_argument("--cor", type=int, default=0, help="numero da paleta (ver --listar)")
     p.add_argument("--saida", help="caminho do arquivo (padrao: pasta midia)")
     p.add_argument("--larg", type=int, default=LARG)
@@ -213,8 +229,9 @@ def principal():
         return 0
 
     paleta = PALETAS[args.cor % len(PALETAS)]
+    textura = 0 if args.estilo == "chapado" else args.textura
     im = desenhar(args.texto, args.estilo, paleta, args.larg, args.alt,
-                  args.subtexto, args.textura)
+                  args.subtexto, textura)
 
     if args.saida:
         saida = args.saida
