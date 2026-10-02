@@ -25,7 +25,9 @@ from PIL import Image, ImageDraw, ImageFont
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 PASTA_MIDIA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "midia")
-LARG, ALT = 320, 480
+# mesmo tamanho que o cheio.py manda ao aparelho: gerar maior e deixar
+# ele reduzir desperdica qualidade na reamostragem
+LARG, ALT = 256, 384
 ORCAMENTO = 4 * 1024
 
 PALETAS = [
