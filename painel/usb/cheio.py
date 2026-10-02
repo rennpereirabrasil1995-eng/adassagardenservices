@@ -48,6 +48,51 @@ try:
 except ImportError:
     cv2 = None
 
+NOME_CONFIG = "_config.json"
+
+
+def ler_config(pasta):
+    """Le o _config.json que o painel do celular escreve. Pode nao existir."""
+    try:
+        import json
+        with open(os.path.join(pasta, NOME_CONFIG), encoding="utf-8") as fp:
+            return json.load(fp) or {}
+    except (OSError, ValueError):
+        return {}
+
+
+def listar_midia(pasta, escolhidos=None):
+    """Arquivos de midia da pasta, na ordem, respeitando a selecao do painel."""
+    try:
+        todos = sorted(
+            n for n in os.listdir(pasta)
+            if not n.startswith((".", "_"))
+            and os.path.splitext(n)[1].lower() in (EXT_IMAGEM | EXT_VIDEO)
+            and os.path.isfile(os.path.join(pasta, n))
+        )
+    except OSError:
+        return []
+    if escolhidos:
+        marcados = [n for n in escolhidos if n in todos]
+        if marcados:
+            return [os.path.join(pasta, n) for n in marcados]
+    return [os.path.join(pasta, n) for n in todos]
+
+
+def assinatura_pasta(pasta):
+    """Muda quando a pasta ou a configuracao mudam."""
+    partes = []
+    try:
+        for nome in sorted(os.listdir(pasta)):
+            caminho = os.path.join(pasta, nome)
+            if os.path.isfile(caminho):
+                st = os.stat(caminho)
+                partes.append(f"{nome}:{st.st_size}:{int(st.st_mtime)}")
+    except OSError:
+        pass
+    return "|".join(partes)
+
+
 PASTA_PADRAO = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "midia")
 EXT_IMAGEM = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".avif", ".gif"}
 EXT_VIDEO = {".mp4", ".webm", ".m4v", ".ogv", ".mov", ".mkv", ".avi"}
@@ -279,10 +324,13 @@ def principal():
         ]
 
     caminhos = [c for c in caminhos if os.path.isfile(c)]
-    if not caminhos:
-        print(f"\n  Nenhuma imagem ou video em {pasta}\n")
-        print("  Ponha os arquivos la, ou mande pelo celular com o iniciar.bat.\n")
+    if not caminhos and args.arquivo:
+        print(f"\n  Arquivo nao encontrado: {args.arquivo}\n")
         return 1
+    if not caminhos:
+        print(f"\n  A pasta {pasta} esta vazia.")
+        print("  Fico esperando: assim que chegar uma foto, ela aparece sozinha.")
+        print("  Mande pelo celular com o iniciar.bat rodando.\n")
 
     print()
     print("  TELA CHEIA")
@@ -315,7 +363,29 @@ def principal():
     preparados = {}   # caminho+orcamento -> lista de jpegs ja prontos
     try:
         d.reiniciar(args.brilho)
+        assinatura_atual = assinatura_pasta(pasta) if not args.arquivo else None
         while True:
+            # Reler a pasta a cada volta: e assim que a foto mandada pelo
+            # celular aparece no aparelho sem precisar reiniciar nada.
+            if not args.arquivo:
+                nova = assinatura_pasta(pasta)
+                if nova != assinatura_atual:
+                    assinatura_atual = nova
+                    cfg = ler_config(pasta)
+                    ch = cfg.get("cheio") or {}
+                    caminhos = listar_midia(pasta, ch.get("lista"))
+                    if ch.get("duracao"):
+                        args.segundos = max(1, int(ch["duracao"]))
+                    if ch.get("embaralhar"):
+                        import random as _r
+                        _r.shuffle(caminhos)
+                    preparados.clear()
+                    print(f"  [{time.strftime('%H:%M:%S')}] a pasta mudou: "
+                          f"{len(caminhos)} arquivo(s), {args.segundos}s cada")
+                    if not caminhos:
+                        time.sleep(2)
+                        continue
+
             for caminho in caminhos:
                 nome = os.path.basename(caminho)
                 quadros = carregar_quadros(caminho, args.fps)
