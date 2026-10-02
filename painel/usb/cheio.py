@@ -68,6 +68,12 @@ def enquadrar(im, larg_alvo, alt_alvo):
 
 
 OTIMIZAR = True   # trocado pelo --sem-otimizar
+MARCADORES = 0    # trocado pelo --marcadores; 0 = nenhum
+#
+# Marcador de reinicio e um ponto de sincronia que o JPEG carrega de
+# tantas em tantas linhas de blocos. Decodificador simples que perca o
+# passo volta a acertar no marcador seguinte, em vez de arrastar o erro
+# pelo resto da imagem - que e a cara das listras horizontais.
 
 
 def _tentar(im, larg, alt, max_bytes):
@@ -79,7 +85,8 @@ def _tentar(im, larg, alt, max_bytes):
     for _ in range(10):
         q = (baixo + alto) // 2
         buf = io.BytesIO()
-        quadro.save(buf, format="JPEG", quality=q, optimize=OTIMIZAR)
+        extra = {"restart_marker_rows": MARCADORES} if MARCADORES else {}
+        quadro.save(buf, format="JPEG", quality=q, optimize=OTIMIZAR, **extra)
         dados = buf.getvalue()
         if len(dados) <= max_bytes:
             melhor, melhor_q = dados, q
@@ -190,6 +197,9 @@ def principal():
     p.add_argument("--reconectar", action="store_true",
                    help="fecha e reabre o aparelho antes de cada imagem; "
                         "mais lento, porem e o que aguenta trocar imagem grande")
+    p.add_argument("--marcadores", type=int, default=0,
+                   help="marcadores de reinicio a cada N linhas de blocos. "
+                        "Tente 1 ou 2 se a imagem vier com listras")
     p.add_argument("--sem-otimizar", action="store_true", dest="sem_otimizar",
                    help="grava o JPEG com a tabela de Huffman PADRAO. "
                         "Gasta mais bytes, mas firmware simples costuma "
@@ -200,8 +210,9 @@ def principal():
     p.add_argument("--tecla", type=int, default=1)
     args = p.parse_args()
 
-    global OTIMIZAR
+    global OTIMIZAR, MARCADORES
     OTIMIZAR = not args.sem_otimizar
+    MARCADORES = max(0, args.marcadores)
     max_bytes = int(args.max_kb * 1024)
     larg_alvo = args.lado or args.larg
     alt_alvo = args.lado or args.alt
@@ -250,6 +261,7 @@ def principal():
     d.atraso_pacote = args.atraso / 1000.0
     print(f"  Atraso entre pedacos: {args.atraso} ms")
     print(f"  Tabela JPEG: {'padrao' if args.sem_otimizar else 'otimizada'}")
+    print(f"  Marcadores de reinicio: {args.marcadores or 'nenhum'}")
     print("  Conectado. Ctrl+C para parar.\n")
     preparados = {}   # caminho+orcamento -> lista de jpegs ja prontos
     try:
