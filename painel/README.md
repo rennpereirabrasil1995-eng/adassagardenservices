@@ -171,6 +171,31 @@ python gerar.py --listar          mostra os 5 estilos e as 7 cores
 
 Os arquivos saem na pasta `midia`, prontos para o `cheio.py` mostrar.
 
+### Ligar sozinho com o Windows
+
+Dois cliques em **`instalar-inicio.bat`**, uma vez só. A partir daí o painel
+acende sozinho toda vez que o PC liga, com a janela minimizada.
+
+Para desfazer: **`desinstalar-inicio.bat`**.
+
+O que ele mostra é o que estiver na pasta `midia`. Para trocar, basta trocar
+os arquivos de lá — não precisa mexer em mais nada.
+
+Para mudar o modo (por exemplo, deixar um cartão fixo em vez do rodízio de
+fotos), edite a última linha de `usb/painel-auto.bat`:
+
+```
+python cheio.py                                          rodízio das fotos
+python cheio.py --arquivo adassa_solido.jpg --segundos 99999   cartão fixo
+python cheio.py --segundos 15                            troca mais devagar
+```
+
+O aparelho demora a aparecer depois que o Windows sobe, então ele tenta cinco
+vezes, esperando 10 segundos entre cada uma.
+
+> Lembre de fechar o programa da Soomfon, inclusive o ícone perto do relógio.
+> Dois programas não podem usar o aparelho ao mesmo tempo.
+
 ### Ajustes
 
 ```
