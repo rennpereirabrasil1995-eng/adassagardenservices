@@ -126,22 +126,38 @@ Duas coisas importam tanto quanto o tamanho:
 Quando o aparelho recusa uma escrita, o programa reconecta e baixa o orçamento
 sozinho, e segue rodando.
 
-### As listras horizontais
+### As listras
 
-O decodificador do aparelho deixa uma emenda clara a cada linha de blocos do
-JPEG, que aparece como listras regulares, mais visíveis em fundo liso ou em
-gradiente.
+O decodificador do aparelho marca a fronteira entre blocos do JPEG **quando os
+blocos vizinhos têm cores diferentes**. Em área de cor uniforme ele acerta e a
+tela sai limpa.
 
-Isso foi comprovado mandando o mesmo cartão com blocos de 16 e de 8: o número
-de listras dobrou junto com o número de fronteiras, cerca de 15 contra cerca
-de 30. Não é a câmera nem o cabo do painel.
+Como se chegou a isso, medindo em vez de supondo:
 
-`--compensar` escurece de propósito a linha de cada fronteira antes de
-codificar, para cancelar o clareamento do aparelho. O padrão é 12, achado com
-`calibrar_listra.py`, que mostra várias intensidades lado a lado numa imagem
-só. Valores altos demais invertem o defeito: 40 ficou pior que 20.
+- O mesmo cartão enviado com bloco de 16 e de 8 dobrou o número de listras,
+  cerca de 15 contra cerca de 30 — são fronteiras de bloco, não a câmera nem
+  o cabo do painel.
+- Decodificando aqui o arquivo que vai para o aparelho, o salto de cor na
+  fronteira ficou em 1,95 contra 1,71 fora dela: **a listra não está no
+  arquivo enviado**.
+- Uma foto de um cartão meio liso e meio com transição saiu com a metade lisa
+  perfeita e a listra só na outra: o defeito acompanha a variação de cor.
+- Quanto menor a qualidade do JPEG, mais ele marca. O cartão que cabia em
+  4 KB com qualidade 19 listrava muito; o mesmo em qualidade 48, quase nada.
 
-`--blocos 16`, o padrão, já dá metade das listras de `--blocos 8`.
+**O que fazer com isso:**
+
+| O que mostrar | Resultado |
+|---|---|
+| Cor sólida (`gerar.py --estilo solido`) | limpo |
+| Foto com bastante detalhe | a listra se perde no detalhe |
+| Imagem menor (`--larg 204 --alt 307`) | qualidade bem maior, ocupa menos tela |
+| Gradiente grande e liso | pior caso |
+
+**O que não funcionou**, tudo testado no aparelho: marcadores de reinício,
+bloco de 8 em vez de 16, intervalo maior entre os pedaços do envio,
+compensação por intensidade, compensação em cada uma das 16 linhas do bloco e
+textura no fundo. `--compensar` continua disponível, desligado por padrão.
 
 ### Gerar imagens sob medida
 
