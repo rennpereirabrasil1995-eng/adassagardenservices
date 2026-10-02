@@ -67,14 +67,19 @@ def enquadrar(im, larg_alvo, alt_alvo):
     return im.crop((x, y, x + larg_alvo, y + alt_alvo))
 
 
+OTIMIZAR = True   # trocado pelo --sem-otimizar
+
+
 def _tentar(im, larg, alt, max_bytes):
     """Melhor qualidade que cabe no orcamento, para um tamanho fixo."""
     quadro = enquadrar(im, larg, alt).transpose(deck._ROT270)
-    baixo, alto, melhor, melhor_q = 8, 95, None, 0
+    # desce ate 1: numa tela deste tamanho, encher o painel costuma
+    # valer mais que a nitidez, e o --nitidez existe para quem discordar
+    baixo, alto, melhor, melhor_q = 1, 95, None, 0
     for _ in range(10):
         q = (baixo + alto) // 2
         buf = io.BytesIO()
-        quadro.save(buf, format="JPEG", quality=q, optimize=True)
+        quadro.save(buf, format="JPEG", quality=q, optimize=OTIMIZAR)
         dados = buf.getvalue()
         if len(dados) <= max_bytes:
             melhor, melhor_q = dados, q
@@ -183,12 +188,18 @@ def principal():
     p.add_argument("--reconectar", action="store_true",
                    help="fecha e reabre o aparelho antes de cada imagem; "
                         "mais lento, porem e o que aguenta trocar imagem grande")
+    p.add_argument("--sem-otimizar", action="store_true", dest="sem_otimizar",
+                   help="grava o JPEG com a tabela de Huffman PADRAO. "
+                        "Gasta mais bytes, mas firmware simples costuma "
+                        "entender melhor")
     p.add_argument("--sem-limpar", action="store_true", dest="sem_limpar",
                    help="nao limpa a tela antes de cada imagem")
     p.add_argument("--brilho", type=int, default=100)
     p.add_argument("--tecla", type=int, default=1)
     args = p.parse_args()
 
+    global OTIMIZAR
+    OTIMIZAR = not args.sem_otimizar
     max_bytes = int(args.max_kb * 1024)
     larg_alvo = args.lado or args.larg
     alt_alvo = args.lado or args.alt
@@ -236,6 +247,7 @@ def principal():
 
     d.atraso_pacote = args.atraso / 1000.0
     print(f"  Atraso entre pedacos: {args.atraso} ms")
+    print(f"  Tabela JPEG: {'padrao' if args.sem_otimizar else 'otimizada'}")
     print("  Conectado. Ctrl+C para parar.\n")
     preparados = {}   # caminho+orcamento -> lista de jpegs ja prontos
     try:

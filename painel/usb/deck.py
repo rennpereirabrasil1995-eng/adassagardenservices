@@ -279,7 +279,8 @@ class Deck:
 
 # ------------------------------------------------------------------ imagens
 
-def preparar_jpeg(imagem, lado: int = LADO_IMAGEM, qualidade: int = 90) -> bytes:
+def preparar_jpeg(imagem, lado: int = LADO_IMAGEM, qualidade: int = 90,
+                  otimizar: bool = False) -> bytes:
     """
     Deixa a imagem no formato que o aparelho espera:
     quadrada de 64x64, girada 90 graus no sentido horario, JPEG RGB.
@@ -290,9 +291,10 @@ def preparar_jpeg(imagem, lado: int = LADO_IMAGEM, qualidade: int = 90) -> bytes
     if GIRO == 90:
         im = im.transpose(_ROT270)  # 270 anti-horario = 90 no horario
     buf = io.BytesIO()
-    # optimize monta a tabela de Huffman sob medida: uns 25% a menos,
-    # sem perder nada da imagem
-    im.save(buf, format="JPEG", quality=qualidade, optimize=True)
+    # optimize monta uma tabela de Huffman sob medida: uns 25% a menos
+    # de bytes, porem decodificador simples de firmware as vezes so
+    # entende a tabela padrao. Por isso e opcional.
+    im.save(buf, format="JPEG", quality=qualidade, optimize=otimizar)
     return buf.getvalue()
 
 
