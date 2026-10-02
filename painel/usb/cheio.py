@@ -171,8 +171,10 @@ def principal():
     p.add_argument("--arquivo", help="um arquivo so (senao passa a pasta inteira)")
     p.add_argument("--midia", default=PASTA_PADRAO)
     p.add_argument("--lado", type=int, help="tamanho quadrado (atalho para --larg e --alt)")
-    p.add_argument("--larg", type=int, default=320, help="largura (padrao 320)")
-    p.add_argument("--alt", type=int, default=480, help="altura (padrao 480)")
+    p.add_argument("--larg", type=int, default=256,
+                   help="largura (padrao 256: 320 trava ao trocar de imagem)")
+    p.add_argument("--alt", type=int, default=384,
+                   help="altura (padrao 384)")
     p.add_argument("--max-kb", type=float, default=4.0,
                    dest="max_kb", help="orcamento por imagem (padrao 4 KB: e o peso que roda indefinidamente com fotos de verdade)")
     p.add_argument("--fps", type=int, default=5)

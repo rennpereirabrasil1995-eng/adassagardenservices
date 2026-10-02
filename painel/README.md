@@ -101,27 +101,27 @@ no aparelho de verdade, descobrimos três coisas que não estão em lugar nenhum
    trava a conexão USB, e aí só desplugando o cabo.
 3. **A área útil é 320×480**, que depois do giro de 90° dá os 480×320 do painel.
 
-### Quanto cabe em 4 KB
+### O que o aparelho aguenta
 
-O aparelho sustenta **4 KB por imagem** rodando indefinidamente; acima disso
-trava a conexão USB. Dentro desse orçamento:
+Medido com fotos de verdade trocando em sequência:
 
-| Conteúdo | Resultado em 320×480 (tela inteira) |
+| Tamanho da imagem | Resultado |
 |---|---|
-| Foto | qualidade 10 — granulado, porém **a tela toda** |
-| Desenho gerado (`gerar.py`) | qualidade 20 a 44 — limpo e **a tela toda** |
+| **256×384** (padrão) | **64% do painel, roda indefinidamente** |
+| 320×480 | 100% do painel, mas trava na primeira troca |
 
-O que tornou isso possível foi gravar o JPEG com **`optimize=True`**, que monta
-a tabela de Huffman sob medida: **26% a menos de bytes sem perder nada da
-imagem**. Antes dele, uma foto só alcançava 204×307, ou seja 41% da tela.
+Ou seja, a tela 100% preenchida funciona para **uma** imagem parada; para
+passar várias, 256×384 é o teto. O peso tem de ficar em **4 KB**: acima disso
+trava a conexão USB mesmo em 256×384.
 
-Duas coisas importam tanto quanto o peso:
+Duas coisas importam tanto quanto o tamanho:
 
 - **`--atraso`**: milissegundos entre os blocos de 1 KB do envio. Sem isso a
-  imagem chega rasgada, com faixas trocadas de lugar. O padrão é 5 ms; suba
-  para 15 se ainda rasgar.
-- **`--nitidez`**: a qualidade JPEG mínima. Baixo enche mais a tela e granula;
-  alto deixa limpo porém menor.
+  imagem chega rasgada, com faixas trocadas de lugar. O padrão é 5 ms.
+- **`--nitidez`**: qualidade JPEG mínima. Baixo enche mais a tela e granula;
+  alto deixa limpo porém menor. Forçar o preenchimento máximo leva a
+  qualidade 4, que fica em blocos irreconhecíveis — por isso o padrão não
+  insiste no tamanho máximo.
 
 Quando o aparelho recusa uma escrita, o programa reconecta e baixa o orçamento
 sozinho, e segue rodando.
