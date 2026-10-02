@@ -177,6 +177,9 @@ def principal():
     p.add_argument("--segundos", type=float, default=6, help="tempo de cada imagem parada")
     p.add_argument("--pausa", type=float, default=0.2,
                    help="descanso entre envios, em segundos (padrao 0.2)")
+    p.add_argument("--reconectar", action="store_true",
+                   help="fecha e reabre o aparelho antes de cada imagem; "
+                        "mais lento, porem e o que aguenta trocar imagem grande")
     p.add_argument("--sem-limpar", action="store_true", dest="sem_limpar",
                    help="nao limpa a tela antes de cada imagem")
     p.add_argument("--brilho", type=int, default=100)
@@ -258,6 +261,8 @@ def principal():
                 i = 0
                 while True:
                     try:
+                        if args.reconectar and (i > 0 or caminho != caminhos[0]):
+                            d.reconectar(espera=1.2)
                         if not args.sem_limpar:
                             d.limpar_tudo()
                         d.definir_jpeg(args.tecla - 1, pacote[i % len(pacote)])

@@ -56,6 +56,8 @@ def principal():
     p.add_argument("--alt", type=int, default=480)
     p.add_argument("--pausa", type=float, default=0.3)
     p.add_argument("--sem-limpar", action="store_true", dest="sem_limpar")
+    p.add_argument("--reconectar", action="store_true",
+                   help="fecha e reabre o aparelho antes de cada envio")
     args = p.parse_args()
 
     max_bytes = int(args.kb * 1024)
@@ -65,6 +67,7 @@ def principal():
     print(f"  {args.vezes} envios de {args.larg}x{args.alt}, ate {args.kb} KB cada")
     print(f"  limpando antes de cada um: {'nao' if args.sem_limpar else 'sim'}")
     print(f"  pausa entre eles: {args.pausa}s")
+    print(f"  reconectando antes de cada um: {'sim' if args.reconectar else 'nao'}")
     print()
 
     try:
@@ -79,6 +82,8 @@ def principal():
         for i in range(args.vezes):
             dados = codificar(imagem(i, args.larg, args.alt), max_bytes)
             try:
+                if args.reconectar and i > 0:
+                    d.reconectar(espera=1.2)
                 if not args.sem_limpar:
                     d.limpar_tudo()
                 d.definir_jpeg(0, dados)
