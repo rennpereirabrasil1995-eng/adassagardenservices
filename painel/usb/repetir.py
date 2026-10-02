@@ -15,6 +15,7 @@ Serve para separar duas coisas que estavam confundidas:
 import argparse
 import io
 import os
+import random
 import sys
 import time
 
@@ -29,23 +30,58 @@ except ImportError:
     raise SystemExit(1)
 
 
-def imagem(n, larg, alt):
+def imagem(n, larg, alt, ruido=1):
+    """
+    Imagem de teste com DETALHE controlavel. Precisa ter ruido, senao
+    comprime demais e nunca alcanca o orcamento pedido - foi o que
+    estragou a primeira versao deste teste.
+    """
     cores = [(200,60,60),(220,140,40),(220,200,50),(70,180,90),
              (60,170,190),(70,110,220),(150,80,210),(200,70,160)]
-    im = Image.new("RGB", (larg, alt), cores[n % len(cores)])
+    base = cores[n % len(cores)]
+    im = Image.new("RGB", (larg, alt), base)
     d = ImageDraw.Draw(im)
+
+    rnd = random.Random(1000 + n)
+    for _ in range(ruido):
+        x = rnd.randrange(larg)
+        y = rnd.randrange(alt)
+        r = rnd.randrange(3, max(4, min(larg, alt) // 6))
+        d.ellipse([x, y, x + r, y + r],
+                  fill=(rnd.randrange(256), rnd.randrange(256), rnd.randrange(256)))
+
     c = max(30, min(larg, alt) // 4)
     d.rectangle([larg//2 - c, alt//2 - c, larg//2 + c, alt//2 + c], fill=(255,255,255))
     return im
 
 
-def codificar(im, max_bytes):
-    g = im.transpose(deck._ROT270)
-    for q in (92, 80, 70, 60, 50, 40, 30, 20, 10):
-        b = io.BytesIO(); g.save(b, "JPEG", quality=q)
-        if len(b.getvalue()) <= max_bytes:
-            return b.getvalue()
-    return None
+def mirar(n, larg, alt, alvo_bytes):
+    """
+    Monta uma imagem que realmente PESA perto de `alvo_bytes`, ajustando a
+    quantidade de detalhe. Devolve (dados, qualidade).
+    """
+    melhor = None
+    for ruido in (0, 40, 120, 300, 700, 1500, 3000):
+        im = imagem(n, larg, alt, ruido)
+        g = im.transpose(deck._ROT270)
+        baixo, alto = 10, 95
+        local = None
+        for _ in range(9):
+            q = (baixo + alto) // 2
+            b = io.BytesIO(); g.save(b, "JPEG", quality=q)
+            dados = b.getvalue()
+            if len(dados) <= alvo_bytes:
+                local = (dados, q)
+                baixo = q + 1
+            else:
+                alto = q - 1
+            if baixo > alto:
+                break
+        if local and (melhor is None or len(local[0]) > len(melhor[0])):
+            melhor = local
+        if melhor and len(melhor[0]) >= alvo_bytes * 0.93:
+            break
+    return melhor if melhor else (None, 0)
 
 
 def principal():
@@ -80,7 +116,10 @@ def principal():
     try:
         d.iniciar(); d.brilho(100)
         for i in range(args.vezes):
-            dados = codificar(imagem(i, args.larg, args.alt), max_bytes)
+            dados, q = mirar(i, args.larg, args.alt, max_bytes)
+            if dados is None:
+                print(f'    {i+1:2d}: nao consegui montar uma imagem desse peso')
+                continue
             try:
                 if args.reconectar and i > 0:
                     d.reconectar(espera=1.2)
@@ -89,7 +128,7 @@ def principal():
                 d.definir_jpeg(0, dados)
                 d.aplicar()
                 aguentou += 1
-                print(f"    {i+1:2d}: ok ({len(dados)} bytes)")
+                print(f"    {i+1:2d}: ok ({len(dados)} bytes, qualidade {q})")
             except Exception as e:
                 print(f"    {i+1:2d}: TRAVOU ({len(dados)} bytes) - {e}")
                 break
