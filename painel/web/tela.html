@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Painel - Tela</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body {
+    width:100%; height:100%; overflow:hidden; background:#000;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color:#fff; cursor:none;
+  }
+  #palco { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  #giro  { position:relative; transform-origin:center center; }
+
+  /* ---------- grade ---------- */
+  .celula {
+    position:absolute; overflow:hidden; background:#000;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .celula img, .celula video {
+    width:100%; height:100%; display:block; background:#000;
+  }
+  .celula .vazia {
+    width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+    color:#2d2d2d; font-size:13px; font-weight:600; letter-spacing:.5px;
+  }
+  .rotulo {
+    position:absolute; left:0; right:0; bottom:0; padding:3px 4px;
+    background:linear-gradient(to top, rgba(0,0,0,.85), transparent);
+    font-size:11px; line-height:1.1; text-align:center; text-shadow:0 1px 2px #000;
+    pointer-events:none;
+  }
+
+  /* ---------- calibracao ---------- */
+  body.calibrar .celula { outline:2px solid #00e5ff; outline-offset:-2px; background:#07131a; }
+  body.calibrar .numero {
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:34px; font-weight:800; color:#00e5ff; text-shadow:0 0 12px rgba(0,229,255,.6);
+  }
+  body.calibrar .mira { position:absolute; background:rgba(0,229,255,.35); }
+
+  /* ---------- tela cheia ---------- */
+  #cheio { position:fixed; inset:0; background:#000; }
+  #cheio .camada {
+    position:absolute; inset:0; opacity:0; transition:opacity .6s ease;
+    display:flex; align-items:center; justify-content:center; background:#000;
+  }
+  #cheio .camada.ativa { opacity:1; }
+  #cheio img, #cheio video { width:100%; height:100%; display:block; }
+
+  /* ---------- aviso ---------- */
+  #aviso {
+    position:fixed; inset:0; display:none; flex-direction:column; gap:10px;
+    align-items:center; justify-content:center; text-align:center; padding:20px;
+    background:#000; z-index:50;
+  }
+  #aviso h1 { font-size:clamp(15px,4vw,26px); font-weight:700; }
+  #aviso p  { font-size:clamp(11px,2.6vw,15px); color:#9aa0a6; max-width:60ch; line-height:1.5; }
+  #aviso code { background:#15181c; padding:2px 7px; border-radius:5px; color:#8ad7ff; }
+  #aviso.on { display:flex; }
+
+  #offline {
+    position:fixed; top:8px; right:10px; z-index:60; display:none;
+    background:#b00020; color:#fff; font-size:11px; padding:4px 9px; border-radius:20px;
+  }
+  #offline.on { display:block; }
+</style>
+</head>
+<body>
+
+<div id="palco"><div id="giro"></div></div>
+<div id="cheio" hidden><div class="camada" id="c0"></div><div class="camada" id="c1"></div></div>
+
+<div id="aviso">
+  <h1>Nenhuma mídia ainda</h1>
+  <p>Abra o controle em <code id="url-painel">/painel</code> e envie as imagens ou vídeos.</p>
+</div>
+<div id="offline">sem conexão com o servidor</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const palco   = document.getElementById("palco");
+  const giro    = document.getElementById("giro");
+  const cheio   = document.getElementById("cheio");
+  const camadas = [document.getElementById("c0"), document.getElementById("c1")];
+  const aviso   = document.getElementById("aviso");
+  const offline = document.getElementById("offline");
+
+  let assinatura = null;
+  let cfg = null;
+  let arquivos = [];
+
+  // estado do modo "tela cheia"
+  let lista = [], indice = -1, ativa = 0, timer = null;
+
+  const url = n => "/midia/" + encodeURIComponent(n);
+  const tipoDe = n => {
+    const e = (n.split(".").pop() || "").toLowerCase();
+    return ["mp4","webm","m4v","ogv","mov","mkv","avi"].includes(e) ? "video" : "imagem";
+  };
+
+  // ---------------------------------------------------------------- grade
+  function montarGrade(calibrando) {
+    giro.innerHTML = "";
+    document.body.classList.toggle("calibrar", calibrando);
+    cheio.hidden = true;
+    pararCheio();
+
+    const { colunas, linhas } = cfg.grade;
+    const c = cfg.calibragem;
+    const larguraTotal = colunas * c.largura + (colunas - 1) * c.gap_x;
+    const alturaTotal  = linhas  * c.altura  + (linhas  - 1) * c.gap_y;
+
+    giro.style.width  = larguraTotal + "px";
+    giro.style.height = alturaTotal + "px";
+    giro.style.transform =
+      `translate(${c.offset_x}px, ${c.offset_y}px) rotate(${c.rotacao}deg)` +
+      (c.espelhar ? " scaleX(-1)" : "");
+
+    let temAlgo = false;
+
+    for (let i = 0; i < colunas * linhas; i++) {
+      const col = i % colunas, lin = Math.floor(i / colunas);
+      const tecla = cfg.teclas[i] || {};
+      const cel = document.createElement("div");
+      cel.className = "celula";
+      cel.style.left   = col * (c.largura + c.gap_x) + "px";
+      cel.style.top    = lin * (c.altura  + c.gap_y) + "px";
+      cel.style.width  = c.largura + "px";
+      cel.style.height = c.altura + "px";
+      cel.style.borderRadius = c.raio + "px";
+
+      if (calibrando) {
+        const n = document.createElement("div");
+        n.className = "numero";
+        n.textContent = i + 1;
+        cel.appendChild(n);
+      } else if (tecla.midia && arquivos.some(a => a.nome === tecla.midia)) {
+        temAlgo = true;
+        const el = tipoDe(tecla.midia) === "video"
+          ? Object.assign(document.createElement("video"),
+              { src:url(tecla.midia), autoplay:true, loop:true, muted:true, playsInline:true })
+          : Object.assign(document.createElement("img"), { src:url(tecla.midia), alt:"" });
+        el.style.objectFit = tecla.ajuste === "contain" ? "contain" : "cover";
+        el.style.transform = `translate(${tecla.dx||0}px, ${tecla.dy||0}px) scale(${tecla.zoom||1})`;
+        if (el.tagName === "VIDEO") el.play().catch(()=>{});
+        cel.appendChild(el);
+      } else {
+        const v = document.createElement("div");
+        v.className = "vazia";
+        v.textContent = (i + 1);
+        cel.appendChild(v);
+      }
+
+      if (!calibrando && tecla.rotulo) {
+        const r = document.createElement("div");
+        r.className = "rotulo";
+        r.textContent = tecla.rotulo;
+        cel.appendChild(r);
+      }
+      giro.appendChild(cel);
+    }
+
+    // linhas de mira no centro, so no modo calibrar
+    if (calibrando) {
+      const h = document.createElement("div");
+      h.className = "mira";
+      h.style.cssText = `left:0;right:0;top:50%;height:1px;`;
+      const v = document.createElement("div");
+      v.className = "mira";
+      v.style.cssText = `top:0;bottom:0;left:50%;width:1px;`;
+      giro.append(h, v);
+    }
+
+    aviso.classList.toggle("on", !calibrando && !temAlgo && arquivos.length === 0);
+  }
+
+  // ----------------------------------------------------------- tela cheia
+  function pararCheio() {
+    clearTimeout(timer);
+    timer = null;
+    camadas.forEach(c => { c.innerHTML = ""; c.classList.remove("ativa"); });
+    indice = -1;
+  }
+
+  function montarCheio() {
+    document.body.classList.remove("calibrar");
+    giro.innerHTML = "";
+    cheio.hidden = false;
+
+    const escolhidos = cfg.cheio.lista.length
+      ? cfg.cheio.lista.filter(n => arquivos.some(a => a.nome === n))
+      : arquivos.map(a => a.nome);
+
+    const mudou = escolhidos.length !== lista.length ||
+                  escolhidos.some((n, i) => n !== lista[i]);
+    lista = escolhidos;
+
+    if (cfg.cheio.embaralhar) {
+      for (let i = lista.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [lista[i], lista[j]] = [lista[j], lista[i]];
+      }
+    }
+
+    aviso.classList.toggle("on", lista.length === 0);
+    if (!lista.length) { pararCheio(); return; }
+    if (mudou || indice < 0) { pararCheio(); proximo(); }
+  }
+
+  function proximo() {
+    if (!lista.length) return;
+    indice = (indice + 1) % lista.length;
+    const nome = lista[indice];
+    const destino = camadas[1 - ativa];
+    destino.innerHTML = "";
+
+    const ajuste = cfg.cheio.ajuste;
+    if (tipoDe(nome) === "video") {
+      const v = document.createElement("video");
+      v.src = url(nome);
+      v.autoplay = true; v.playsInline = true; v.loop = lista.length === 1;
+      v.muted = !cfg.cheio.som;
+      v.style.objectFit = ajuste;
+      v.addEventListener("ended", () => { if (lista.length > 1) proximo(); });
+      v.addEventListener("error", () => { timer = setTimeout(proximo, 1500); });
+      destino.appendChild(v);
+      trocar(destino);
+      v.play().catch(() => { timer = setTimeout(proximo, 1500); });
+    } else {
+      const img = new Image();
+      img.alt = "";
+      img.style.objectFit = ajuste;
+      img.onload = () => {
+        destino.appendChild(img);
+        trocar(destino);
+        timer = setTimeout(proximo, cfg.cheio.duracao * 1000);
+      };
+      img.onerror = () => { timer = setTimeout(proximo, 1500); };
+      img.src = url(nome);
+    }
+  }
+
+  function trocar(destino) {
+    camadas.forEach(c => c.classList.toggle("ativa", c === destino));
+    ativa = camadas.indexOf(destino);
+  }
+
+  // -------------------------------------------------------------- estado
+  function aplicar(estado) {
+    cfg = estado.config;
+    arquivos = estado.arquivos;
+    document.body.style.background = cfg.fundo;
+    palco.style.background = cfg.fundo;
+
+    if (cfg.modo === "cheio") montarCheio();
+    else montarGrade(cfg.modo === "calibrar");
+  }
+
+  async function consultar() {
+    try {
+      const r = await fetch("/api/estado", { cache: "no-store" });
+      if (!r.ok) throw new Error(r.status);
+      const estado = await r.json();
+      offline.classList.remove("on");
+      if (estado.assinatura !== assinatura) {
+        assinatura = estado.assinatura;
+        aplicar(estado);
+      }
+    } catch (e) {
+      offline.classList.add("on");
+    }
+  }
+
+  fetch("/api/info").then(r => r.json()).then(i => {
+    document.getElementById("url-painel").textContent = `http://${i.ip}:${i.porta}/painel`;
+  }).catch(()=>{});
+
+  consultar();
+  setInterval(consultar, 2000);
+
+  // tela cheia de verdade com duplo clique / toque duplo ou tecla F
+  const alternarCheio = () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen().catch(()=>{});
+  };
+  document.addEventListener("dblclick", alternarCheio);
+  document.addEventListener("keydown", e => {
+    if (e.key === "f" || e.key === "F") alternarCheio();
+    if (e.key === "r" || e.key === "R") location.reload();
+  });
+})();
+</script>
+</body>
+</html>

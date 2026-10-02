@@ -1,0 +1,162 @@
+# Painel de Mídia
+
+Programa para usar a tela do macro pad (soomfon e parecidos) como display:
+imagens, GIFs e vídeos — tanto **uma mídia por tecla** quanto **tela cheia**.
+
+O aparelho tem **um LCD só** por baixo e uma chapa de metal com **6 janelas
+(3 colunas × 2 linhas)**. Cada tecla transparente mostra um pedaço dessa mesma
+tela. Por isso o programa desenha uma grade 3×2 e tem um **modo de calibração**
+pra você alinhar os quadrados exatamente atrás das janelinhas.
+
+Não precisa instalar nada: só **Python 3.8+** (já vem no Raspberry Pi e no macOS;
+no Windows, baixe em python.org marcando "Add Python to PATH").
+
+---
+
+## 1. Ligar
+
+**Linux / Raspberry Pi / macOS**
+
+```bash
+cd painel
+./iniciar.sh
+```
+
+**Windows**: dê dois cliques em `iniciar.bat`.
+
+Vai aparecer algo assim:
+
+```
+TELA (abra nessa tela e dê F11):  http://localhost:8080/
+CONTROLE (celular/outro PC):      http://192.168.0.15:8080/painel
+```
+
+- **TELA** → é o que vai no display do aparelho.
+- **CONTROLE** → abre no celular (mesmo wi-fi) ou em outra aba do PC.
+
+Para mudar a porta: `./iniciar.sh 9000`.
+
+---
+
+## 2. Colocar a TELA no display do aparelho
+
+Depende de como esse LCD está ligado. Os três casos:
+
+### a) A tela aparece como **segundo monitor** do PC
+É o caso mais comum nesses pads com LCD interno (e é o que a foto sugere, já que
+dá pra ver ícones de programas nela).
+
+1. Abra `http://localhost:8080/` no Chrome.
+2. Arraste a janela pra tela do aparelho.
+3. Aperte **F11** (ou dê dois cliques na página) pra ficar tela cheia, sem barras.
+
+Pra abrir já em tela cheia direto no monitor certo:
+
+```bash
+./deploy/kiosk.sh http://localhost:8080/ 1920,0
+```
+
+Troque `1920,0` pela posição do segundo monitor (1920 = largura do monitor principal).
+
+### b) O painel roda **Android**
+Abra o navegador do aparelho em `http://IP_DO_PC:8080/` e mande "adicionar à tela
+inicial" / modo tela cheia. Vale também usar um app de kiosk (ex.: Fully Kiosk).
+
+### c) A tela está ligada por **HDMI** num Raspberry Pi
+Rode o servidor no próprio Pi e use `deploy/kiosk.sh` no autostart (item 6).
+
+---
+
+## 3. Mandar as imagens e vídeos
+
+No **controle** (`/painel`), em "Enviar imagens e vídeos": toque e escolha, ou
+arraste os arquivos. Dá pra mandar vários de uma vez, direto do celular.
+
+Formatos que o navegador toca sem dor de cabeça:
+
+| Tipo   | Use                              | Evite              |
+|--------|----------------------------------|--------------------|
+| Imagem | JPG, PNG, GIF, WEBP, AVIF        | —                  |
+| Vídeo  | **MP4 (H.264)**, WEBM            | MKV, AVI, MOV      |
+
+O painel marca com ⚠ o que o navegador provavelmente não vai conseguir tocar.
+Nesse caso, converta pra MP4.
+
+---
+
+## 4. Calibrar a máscara (faça isso uma vez)
+
+1. No controle, escolha o modo **Calibrar**. A tela do aparelho mostra 6
+   quadrados azuis numerados de 1 a 6.
+2. Em "Calibragem da máscara", mexa nos controles até cada quadrado ficar
+   exatamente atrás de uma janelinha da chapa:
+   - **Largura / Altura da janela** — tamanho de cada quadrado
+   - **Espaço entre colunas / linhas** — distância entre eles
+   - **Mover tudo ↔ / ↕** — desloca o bloco inteiro
+   - **Girar a tela** — se o LCD está montado de lado (90° / 180° / 270°)
+   - **Espelhar** — se a imagem aparece invertida
+3. Volte pro modo **Grade**. Pronto, fica salvo.
+
+> Os valores que já vêm (150×150 px, 24 px de espaço) são só um chute inicial —
+> o certo depende da resolução do seu LCD e de onde a chapa está.
+
+---
+
+## 5. Usar
+
+**Modo Grade** — cada janelinha com sua mídia.
+Toque numa das 6 teclas no controle e escolha a imagem/vídeo. Ainda dá pra
+ajustar **zoom** e **deslocamento** (pra centralizar o que importa dentro do
+quadradinho) e escrever um **texto** embaixo.
+
+**Modo Tela cheia** — o LCD inteiro vira um player: passa as fotos no tempo que
+você escolher e toca os vídeos em loop. Dá pra marcar quais arquivos entram,
+ordem aleatória e som ligado/desligado.
+
+A tela se atualiza sozinha em ~2 segundos depois de qualquer mudança — não
+precisa mexer no aparelho. O botão **Recarregar telas** força o recarregamento.
+
+---
+
+## 6. Ligar sozinho quando o aparelho liga (Raspberry Pi / Linux)
+
+```bash
+# 1) o servidor
+sudo cp deploy/painel.service /etc/systemd/system/
+sudo nano /etc/systemd/system/painel.service   # confira User= e os caminhos
+sudo systemctl enable --now painel
+
+# 2) a tela em kiosk
+mkdir -p ~/.config/autostart
+cat > ~/.config/autostart/painel-tela.desktop <<'DESKTOP'
+[Desktop Entry]
+Type=Application
+Name=Painel Tela
+Exec=/home/pi/painel/deploy/kiosk.sh http://localhost:8080/ 1920,0
+X-GNOME-Autostart-enabled=true
+DESKTOP
+```
+
+No Windows, um atalho pro `iniciar.bat` na pasta
+`shell:startup` resolve o servidor; pro navegador, crie outro atalho com
+`chrome.exe --kiosk http://localhost:8080/`.
+
+---
+
+## Atalhos na tela
+
+| Tecla / gesto     | O que faz              |
+|-------------------|------------------------|
+| **F** ou 2 cliques| Entra/sai de tela cheia|
+| **R**             | Recarrega              |
+
+---
+
+## Detalhes técnicos
+
+- Os arquivos ficam em `painel/midia/`. Dá pra copiar direto pra lá, sem usar
+  o controle — o programa percebe sozinho.
+- As configurações ficam em `painel/midia/_config.json`.
+- Vídeo é servido com suporte a *Range*, então funciona em iOS/Safari também.
+- O servidor é feito pra **rede local**. Não tem senha: não exponha na internet.
+- Trocar a pasta de mídia: `python3 server.py --midia /caminho/da/pasta`.

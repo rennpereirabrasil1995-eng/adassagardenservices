@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Painel - Controle</title>
+<style>
+  :root {
+    --bg:#0f1113; --card:#171a1e; --card2:#1e2227; --linha:#2a2f36;
+    --txt:#e8eaed; --fraco:#9aa0a6; --azul:#2f81f7; --verde:#1f9d55; --vermelho:#d93025;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--txt); padding:14px 14px 60px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; font-size:15px;
+  }
+  h1 { font-size:19px; margin:0 0 3px; }
+  h2 { font-size:14px; margin:0 0 10px; color:var(--fraco); text-transform:uppercase; letter-spacing:.6px; }
+  .sub { color:var(--fraco); font-size:12.5px; margin-bottom:14px; }
+  .card { background:var(--card); border:1px solid var(--linha); border-radius:12px; padding:14px; margin-bottom:12px; }
+
+  button, .botao {
+    background:var(--card2); color:var(--txt); border:1px solid var(--linha);
+    border-radius:9px; padding:9px 13px; font-size:14px; cursor:pointer;
+    font-family:inherit; display:inline-flex; align-items:center; gap:6px; text-decoration:none;
+  }
+  button:active { transform:scale(.97); }
+  button.primario { background:var(--azul); border-color:var(--azul); color:#fff; font-weight:600; }
+  button.perigo   { background:transparent; border-color:#5c2b28; color:#ff8a80; padding:6px 10px; font-size:13px; }
+  .linha-botoes { display:flex; gap:8px; flex-wrap:wrap; }
+
+  .modos { display:flex; gap:8px; }
+  .modos button { flex:1; justify-content:center; }
+  .modos button.sel { background:var(--azul); border-color:var(--azul); color:#fff; font-weight:600; }
+
+  input[type=text], input[type=number], select {
+    background:var(--card2); border:1px solid var(--linha); color:var(--txt);
+    border-radius:8px; padding:8px 10px; font-size:14px; width:100%; font-family:inherit;
+  }
+  label.campo { display:block; font-size:12px; color:var(--fraco); margin:0 0 4px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+  .deslizante { display:grid; grid-template-columns:1fr 62px; gap:8px; align-items:center; margin-bottom:9px; }
+  .deslizante input[type=range] { width:100%; accent-color:var(--azul); }
+  .deslizante .valor { text-align:right; font-variant-numeric:tabular-nums; font-size:13px; color:var(--fraco); }
+  .rotulo-desl { font-size:12px; color:var(--fraco); margin-bottom:2px; }
+
+  .teclas { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
+  .tecla {
+    background:var(--card2); border:1px solid var(--linha); border-radius:10px;
+    padding:7px; text-align:center; cursor:pointer; position:relative;
+  }
+  .tecla.sel { border-color:var(--azul); box-shadow:0 0 0 1px var(--azul); }
+  .tecla .mini {
+    width:100%; aspect-ratio:1/1; border-radius:6px; background:#000; overflow:hidden;
+    display:flex; align-items:center; justify-content:center; margin-bottom:5px;
+  }
+  .tecla .mini img, .tecla .mini video { width:100%; height:100%; object-fit:cover; }
+  .tecla .mini span { color:#3a3f46; font-size:20px; font-weight:800; }
+  .tecla .nome { font-size:10.5px; color:var(--fraco); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tecla .num {
+    position:absolute; top:4px; left:5px; background:rgba(0,0,0,.65); color:#fff;
+    font-size:10px; padding:1px 5px; border-radius:20px;
+  }
+
+  .arquivos { display:flex; flex-direction:column; gap:7px; max-height:330px; overflow-y:auto; }
+  .arq {
+    display:flex; align-items:center; gap:9px; background:var(--card2);
+    border:1px solid var(--linha); border-radius:9px; padding:7px 9px;
+  }
+  .arq .mini { width:42px; height:42px; border-radius:6px; background:#000; flex:none; overflow:hidden; }
+  .arq .mini img, .arq .mini video { width:100%; height:100%; object-fit:cover; }
+  .arq .info { flex:1; min-width:0; }
+  .arq .info b { display:block; font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .arq .info small { color:var(--fraco); font-size:11px; }
+  .arq .aviso { color:#ffb74d; font-size:11px; }
+
+  .marcar { display:flex; align-items:center; gap:9px; padding:7px 0; font-size:14px; }
+  .marcar input { width:19px; height:19px; accent-color:var(--azul); }
+
+  #solta {
+    border:2px dashed var(--linha); border-radius:11px; padding:18px; text-align:center;
+    color:var(--fraco); font-size:13.5px; cursor:pointer;
+  }
+  #solta.sobre { border-color:var(--azul); color:var(--azul); background:rgba(47,129,247,.07); }
+  #barra { height:5px; background:var(--card2); border-radius:4px; overflow:hidden; margin-top:9px; display:none; }
+  #barra.on { display:block; }
+  #barra i { display:block; height:100%; width:0; background:var(--azul); transition:width .15s; }
+
+  #aviso-salvo {
+    position:fixed; left:50%; bottom:16px; transform:translateX(-50%);
+    background:var(--verde); color:#fff; padding:8px 16px; border-radius:22px; font-size:13px;
+    opacity:0; pointer-events:none; transition:opacity .25s; z-index:99;
+  }
+  #aviso-salvo.on { opacity:1; }
+  .dica { font-size:12px; color:var(--fraco); line-height:1.5; margin-top:8px; }
+</style>
+</head>
+<body>
+
+<h1>Controle do painel</h1>
+<div class="sub" id="sub">carregando…</div>
+
+<div class="card">
+  <h2>Modo da tela</h2>
+  <div class="modos">
+    <button data-modo="grade">Grade</button>
+    <button data-modo="cheio">Tela cheia</button>
+    <button data-modo="calibrar">Calibrar</button>
+  </div>
+  <div class="dica" id="dica-modo"></div>
+  <div class="linha-botoes" style="margin-top:11px">
+    <a class="botao" id="link-tela" href="/" target="_blank">Abrir a tela ↗</a>
+    <button id="btn-recarregar">Recarregar telas</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Enviar imagens e vídeos</h2>
+  <div id="solta">Toque aqui para escolher — ou arraste os arquivos<br><small>JPG, PNG, GIF, WEBP, MP4, WEBM</small></div>
+  <input type="file" id="arquivo" multiple accept="image/*,video/*" hidden>
+  <div id="barra"><i></i></div>
+</div>
+
+<div class="card" id="card-teclas">
+  <h2>Teclas</h2>
+  <div class="teclas" id="teclas"></div>
+  <div id="editor-tecla" style="margin-top:13px" hidden>
+    <div style="border-top:1px solid var(--linha); padding-top:12px">
+      <label class="campo">Mídia da tecla <b id="tecla-num"></b></label>
+      <select id="tecla-midia"></select>
+      <div class="grid2" style="margin-top:10px">
+        <div>
+          <label class="campo">Enquadramento</label>
+          <select id="tecla-ajuste">
+            <option value="cover">Preencher (corta)</option>
+            <option value="contain">Caber inteira</option>
+          </select>
+        </div>
+        <div>
+          <label class="campo">Texto embaixo (opcional)</label>
+          <input type="text" id="tecla-rotulo" placeholder="ex: Cortar grama" maxlength="40">
+        </div>
+      </div>
+      <div style="margin-top:11px">
+        <div class="rotulo-desl">Zoom</div>
+        <div class="deslizante"><input type="range" id="tecla-zoom" min="0.2" max="3" step="0.05"><span class="valor" id="v-zoom"></span></div>
+        <div class="rotulo-desl">Deslocar ↔</div>
+        <div class="deslizante"><input type="range" id="tecla-dx" min="-150" max="150" step="1"><span class="valor" id="v-dx"></span></div>
+        <div class="rotulo-desl">Deslocar ↕</div>
+        <div class="deslizante"><input type="range" id="tecla-dy" min="-150" max="150" step="1"><span class="valor" id="v-dy"></span></div>
+      </div>
+      <div class="linha-botoes" style="margin-top:6px">
+        <button id="tecla-limpar">Tirar a mídia desta tecla</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card" id="card-calib">
+  <h2>Calibragem da máscara</h2>
+  <div class="dica" style="margin:0 0 11px">
+    Use o modo <b>Calibrar</b>: a tela mostra os números 1 a 6 em quadrados azuis.
+    Ajuste até cada quadrado ficar exatamente atrás de uma janelinha da chapa.
+  </div>
+  <div class="grid2" style="margin-bottom:12px">
+    <div><label class="campo">Colunas</label><input type="number" id="colunas" min="1" max="8"></div>
+    <div><label class="campo">Linhas</label><input type="number" id="linhas" min="1" max="8"></div>
+  </div>
+  <div class="rotulo-desl">Largura da janela</div>
+  <div class="deslizante"><input type="range" id="largura" min="20" max="600" step="1"><span class="valor" id="v-largura"></span></div>
+  <div class="rotulo-desl">Altura da janela</div>
+  <div class="deslizante"><input type="range" id="altura" min="20" max="600" step="1"><span class="valor" id="v-altura"></span></div>
+  <div class="rotulo-desl">Espaço entre colunas</div>
+  <div class="deslizante"><input type="range" id="gap_x" min="-100" max="300" step="1"><span class="valor" id="v-gap_x"></span></div>
+  <div class="rotulo-desl">Espaço entre linhas</div>
+  <div class="deslizante"><input type="range" id="gap_y" min="-100" max="300" step="1"><span class="valor" id="v-gap_y"></span></div>
+  <div class="rotulo-desl">Mover tudo ↔</div>
+  <div class="deslizante"><input type="range" id="offset_x" min="-600" max="600" step="1"><span class="valor" id="v-offset_x"></span></div>
+  <div class="rotulo-desl">Mover tudo ↕</div>
+  <div class="deslizante"><input type="range" id="offset_y" min="-600" max="600" step="1"><span class="valor" id="v-offset_y"></span></div>
+  <div class="rotulo-desl">Canto arredondado</div>
+  <div class="deslizante"><input type="range" id="raio" min="0" max="60" step="1"><span class="valor" id="v-raio"></span></div>
+  <div class="grid2" style="margin-top:4px">
+    <div>
+      <label class="campo">Girar a tela</label>
+      <select id="rotacao"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select>
+    </div>
+    <div>
+      <label class="campo">Cor do fundo</label>
+      <input type="text" id="fundo" placeholder="#000000" maxlength="7">
+    </div>
+  </div>
+  <label class="marcar"><input type="checkbox" id="espelhar"> Espelhar (se a tela está invertida)</label>
+</div>
+
+<div class="card" id="card-cheio">
+  <h2>Modo tela cheia</h2>
+  <div class="grid2">
+    <div>
+      <label class="campo">Segundos por imagem</label>
+      <input type="number" id="duracao" min="1" max="600">
+    </div>
+    <div>
+      <label class="campo">Enquadramento</label>
+      <select id="cheio-ajuste">
+        <option value="contain">Caber inteira</option>
+        <option value="cover">Preencher (corta)</option>
+      </select>
+    </div>
+  </div>
+  <label class="marcar"><input type="checkbox" id="embaralhar"> Ordem aleatória</label>
+  <label class="marcar"><input type="checkbox" id="som"> Som nos vídeos</label>
+  <div class="dica">Sem nada marcado na lista abaixo, ele passa <b>todos</b> os arquivos enviados.</div>
+  <div id="lista-cheio" style="margin-top:9px"></div>
+</div>
+
+<div class="card">
+  <h2>Arquivos</h2>
+  <div class="arquivos" id="arquivos"></div>
+</div>
+
+<div id="aviso-salvo">salvo</div>
+
+<script>
+(() => {
+  "use strict";
+
+  let cfg = null, arquivos = [], assinatura = null, teclaSel = 0, segurando = false;
+
+  const $ = id => document.getElementById(id);
+  const url = n => "/midia/" + encodeURIComponent(n);
+  const ehVideo = n => ["mp4","webm","m4v","ogv","mov","mkv","avi"]
+      .includes((n.split(".").pop()||"").toLowerCase());
+  const tamanho = b => b > 1048576 ? (b/1048576).toFixed(1)+" MB" : Math.max(1,Math.round(b/1024))+" KB";
+
+  function toast(txt) {
+    const el = $("aviso-salvo");
+    el.textContent = txt || "salvo";
+    el.classList.add("on");
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove("on"), 1100);
+  }
+
+  // -------------------------------------------------------------- salvar
+  let pendente = null, tmrSalvar = null;
+  function salvar(parcial, naHora) {
+    pendente = pendente ? fundir(pendente, parcial) : parcial;
+    clearTimeout(tmrSalvar);
+    tmrSalvar = setTimeout(enviar, naHora ? 0 : 250);
+  }
+  function fundir(a, b) {
+    const r = { ...a };
+    for (const k in b) {
+      r[k] = (r[k] && typeof r[k] === "object" && !Array.isArray(r[k]) &&
+              b[k] && typeof b[k] === "object" && !Array.isArray(b[k]))
+        ? fundir(r[k], b[k]) : b[k];
+    }
+    return r;
+  }
+  async function enviar() {
+    if (!pendente) return;
+    const corpo = pendente; pendente = null;
+    try {
+      const r = await fetch("/api/config", {
+        method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(corpo)
+      });
+      const j = await r.json();
+      if (j.config) { cfg = j.config; assinatura = null; }
+      toast();
+    } catch (e) { toast("erro ao salvar"); }
+  }
+
+  // ------------------------------------------------------------- desenhar
+  function desenhar() {
+    // modo
+    document.querySelectorAll(".modos button").forEach(b =>
+      b.classList.toggle("sel", b.dataset.modo === cfg.modo));
+    $("dica-modo").textContent = {
+      grade:   "Cada janelinha da chapa mostra uma mídia diferente.",
+      cheio:   "A tela inteira vira um player: passa as imagens e toca os vídeos em loop.",
+      calibrar:"Mostrando os quadrados numerados para você alinhar a chapa."
+    }[cfg.modo] || "";
+    $("card-teclas").style.display = cfg.modo === "cheio" ? "none" : "";
+    $("card-cheio").style.display  = cfg.modo === "cheio" ? "" : "none";
+
+    // teclas
+    const total = cfg.grade.colunas * cfg.grade.linhas;
+    if (teclaSel >= total) teclaSel = 0;
+    const cx = $("teclas");
+    cx.style.gridTemplateColumns = `repeat(${Math.min(cfg.grade.colunas,4)},1fr)`;
+    cx.innerHTML = "";
+    cfg.teclas.forEach((t, i) => {
+      const d = document.createElement("div");
+      d.className = "tecla" + (i === teclaSel ? " sel" : "");
+      const existe = t.midia && arquivos.some(a => a.nome === t.midia);
+      d.innerHTML =
+        `<div class="num">${i+1}</div>` +
+        `<div class="mini">${existe
+          ? (ehVideo(t.midia)
+              ? `<video src="${url(t.midia)}" muted playsinline preload="metadata"></video>`
+              : `<img src="${url(t.midia)}" alt="">`)
+          : `<span>${i+1}</span>`}</div>` +
+        `<div class="nome">${existe ? t.midia : "vazia"}</div>`;
+      d.onclick = () => { teclaSel = i; desenhar(); };
+      cx.appendChild(d);
+    });
+
+    // editor da tecla
+    const t = cfg.teclas[teclaSel] || {};
+    $("editor-tecla").hidden = false;
+    $("tecla-num").textContent = teclaSel + 1;
+    const sel = $("tecla-midia");
+    sel.innerHTML = `<option value="">— vazia —</option>` +
+      arquivos.map(a => `<option value="${a.nome}">${a.nome}</option>`).join("");
+    sel.value = arquivos.some(a => a.nome === t.midia) ? t.midia : "";
+    $("tecla-ajuste").value = t.ajuste || "cover";
+    $("tecla-rotulo").value = t.rotulo || "";
+    pos("tecla-zoom","v-zoom", t.zoom ?? 1, v => v.toFixed(2) + "×");
+    pos("tecla-dx","v-dx", t.dx ?? 0, v => v + " px");
+    pos("tecla-dy","v-dy", t.dy ?? 0, v => v + " px");
+
+    // calibragem
+    const c = cfg.calibragem;
+    $("colunas").value = cfg.grade.colunas;
+    $("linhas").value  = cfg.grade.linhas;
+    ["largura","altura","gap_x","gap_y","offset_x","offset_y","raio"]
+      .forEach(k => pos(k, "v-"+k, c[k], v => v + " px"));
+    $("rotacao").value = String(c.rotacao);
+    $("espelhar").checked = c.espelhar;
+    $("fundo").value = cfg.fundo;
+
+    // tela cheia
+    $("duracao").value = cfg.cheio.duracao;
+    $("cheio-ajuste").value = cfg.cheio.ajuste;
+    $("embaralhar").checked = cfg.cheio.embaralhar;
+    $("som").checked = cfg.cheio.som;
+    $("lista-cheio").innerHTML = arquivos.length
+      ? arquivos.map(a => `
+          <label class="marcar">
+            <input type="checkbox" class="sel-cheio" value="${a.nome}"
+              ${cfg.cheio.lista.includes(a.nome) ? "checked" : ""}>
+            <span style="font-size:13.5px">${a.nome}</span>
+          </label>`).join("")
+      : `<div class="dica">Nenhum arquivo enviado ainda.</div>`;
+    document.querySelectorAll(".sel-cheio").forEach(cb => cb.onchange = () => {
+      const marcados = [...document.querySelectorAll(".sel-cheio:checked")].map(x => x.value);
+      cfg.cheio.lista = marcados;
+      salvar({ cheio: { lista: marcados } }, true);
+    });
+
+    // arquivos
+    $("arquivos").innerHTML = arquivos.length
+      ? arquivos.map(a => `
+          <div class="arq">
+            <div class="mini">${ehVideo(a.nome)
+              ? `<video src="${url(a.nome)}" muted playsinline preload="metadata"></video>`
+              : `<img src="${url(a.nome)}" alt="">`}</div>
+            <div class="info">
+              <b>${a.nome}</b>
+              <small>${a.tipo} · ${tamanho(a.tamanho)}</small>
+              ${a.suportado ? "" : `<div class="aviso">⚠ o navegador pode não tocar esse formato — converta para MP4</div>`}
+            </div>
+            <button class="perigo" data-apagar="${a.nome}">apagar</button>
+          </div>`).join("")
+      : `<div class="dica">Nada enviado ainda.</div>`;
+    document.querySelectorAll("[data-apagar]").forEach(b => b.onclick = async () => {
+      if (!confirm("Apagar " + b.dataset.apagar + "?")) return;
+      await fetch("/api/excluir", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ nome:b.dataset.apagar })
+      });
+      assinatura = null; consultar(); toast("apagado");
+    });
+  }
+
+  function pos(idRange, idValor, valor, fmt) {
+    const el = $(idRange);
+    if (!segurando || document.activeElement !== el) el.value = valor;
+    $(idValor).textContent = fmt(Number(el.value));
+  }
+
+  // --------------------------------------------------------------- liga
+  document.querySelectorAll(".modos button").forEach(b => b.onclick = () => {
+    cfg.modo = b.dataset.modo; desenhar(); salvar({ modo: b.dataset.modo }, true);
+  });
+
+  $("btn-recarregar").onclick = async () => {
+    await fetch("/api/recarregar", { method:"POST" }); toast("telas recarregadas");
+  };
+
+  function mudouTecla(campo, valor) {
+    cfg.teclas[teclaSel][campo] = valor;
+    salvar({ teclas: cfg.teclas });
+  }
+  $("tecla-midia").onchange  = e => { mudouTecla("midia", e.target.value); desenhar(); };
+  $("tecla-ajuste").onchange = e => mudouTecla("ajuste", e.target.value);
+  $("tecla-rotulo").oninput  = e => mudouTecla("rotulo", e.target.value);
+  $("tecla-limpar").onclick  = () => { mudouTecla("midia",""); desenhar(); };
+  [["tecla-zoom","zoom","v-zoom",v=>v.toFixed(2)+"×"],
+   ["tecla-dx","dx","v-dx",v=>v+" px"],
+   ["tecla-dy","dy","v-dy",v=>v+" px"]].forEach(([id,campo,vid,fmt]) => {
+    $(id).oninput = e => { $(vid).textContent = fmt(Number(e.target.value)); mudouTecla(campo, Number(e.target.value)); };
+  });
+
+  ["largura","altura","gap_x","gap_y","offset_x","offset_y","raio"].forEach(k => {
+    $(k).oninput = e => {
+      const v = Number(e.target.value);
+      $("v-"+k).textContent = v + " px";
+      cfg.calibragem[k] = v;
+      salvar({ calibragem: { [k]: v } });
+    };
+  });
+  $("rotacao").onchange  = e => { cfg.calibragem.rotacao = Number(e.target.value); salvar({ calibragem:{ rotacao:Number(e.target.value) } }, true); };
+  $("espelhar").onchange = e => { cfg.calibragem.espelhar = e.target.checked; salvar({ calibragem:{ espelhar:e.target.checked } }, true); };
+  $("fundo").oninput     = e => { if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) salvar({ fundo:e.target.value }); };
+  $("colunas").onchange  = e => { cfg.grade.colunas = Number(e.target.value); salvar({ grade:{ colunas:Number(e.target.value) } }, true); };
+  $("linhas").onchange   = e => { cfg.grade.linhas  = Number(e.target.value); salvar({ grade:{ linhas:Number(e.target.value) } }, true); };
+
+  $("duracao").onchange      = e => salvar({ cheio:{ duracao:Number(e.target.value) } }, true);
+  $("cheio-ajuste").onchange = e => salvar({ cheio:{ ajuste:e.target.value } }, true);
+  $("embaralhar").onchange   = e => salvar({ cheio:{ embaralhar:e.target.checked } }, true);
+  $("som").onchange          = e => salvar({ cheio:{ som:e.target.checked } }, true);
+
+  document.addEventListener("pointerdown", e => { if (e.target.type === "range") segurando = true; });
+  document.addEventListener("pointerup",   () => { segurando = false; });
+
+  // ------------------------------------------------------------- upload
+  const solta = $("solta"), entrada = $("arquivo"), barra = $("barra");
+  solta.onclick = () => entrada.click();
+  entrada.onchange = () => { subir([...entrada.files]); entrada.value = ""; };
+  ["dragenter","dragover"].forEach(ev => solta.addEventListener(ev, e => {
+    e.preventDefault(); solta.classList.add("sobre");
+  }));
+  ["dragleave","drop"].forEach(ev => solta.addEventListener(ev, e => {
+    e.preventDefault(); solta.classList.remove("sobre");
+  }));
+  solta.addEventListener("drop", e => subir([...e.dataTransfer.files]));
+
+  async function subir(lista) {
+    if (!lista.length) return;
+    barra.classList.add("on");
+    for (let i = 0; i < lista.length; i++) {
+      try { await um(lista[i], i, lista.length); }
+      catch (e) { alert("Falhou ao enviar " + lista[i].name + ": " + e.message); }
+    }
+    barra.classList.remove("on");
+    barra.querySelector("i").style.width = "0";
+    assinatura = null;
+    consultar();
+    toast("enviado");
+  }
+
+  function um(arq, i, total) {
+    return new Promise((ok, falha) => {
+      const x = new XMLHttpRequest();
+      x.open("POST", "/api/upload");
+      x.setRequestHeader("X-Nome", encodeURIComponent(arq.name));
+      x.upload.onprogress = e => {
+        if (!e.lengthComputable) return;
+        const pct = ((i + e.loaded / e.total) / total) * 100;
+        barra.querySelector("i").style.width = pct.toFixed(1) + "%";
+      };
+      x.onload  = () => x.status < 300 ? ok() : falha(new Error(x.responseText || x.status));
+      x.onerror = () => falha(new Error("sem conexão"));
+      x.send(arq);
+    });
+  }
+
+  // ------------------------------------------------------------- estado
+  async function consultar() {
+    try {
+      const r = await fetch("/api/estado", { cache:"no-store" });
+      const e = await r.json();
+      if (e.assinatura === assinatura) return;
+      assinatura = e.assinatura;
+      cfg = e.config; arquivos = e.arquivos;
+      if (!document.querySelector("input:focus, select:focus") && !segurando) desenhar();
+    } catch (err) { /* servidor caiu; tenta de novo no proximo ciclo */ }
+  }
+
+  fetch("/api/info").then(r => r.json()).then(i => {
+    $("sub").innerHTML = `Tela: <b>http://${i.ip}:${i.porta}/</b> &nbsp;·&nbsp; pasta: ${i.pasta}`;
+    $("link-tela").href = `http://${i.ip}:${i.porta}/`;
+  }).catch(() => { $("sub").textContent = ""; });
+
+  consultar();
+  setInterval(consultar, 3000);
+})();
+</script>
+</body>
+</html>

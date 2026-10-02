@@ -1,0 +1,17 @@
+# Liga o painel sozinho no boot (Raspberry Pi / Linux).
+#   sudo cp deploy/painel.service /etc/systemd/system/
+#   sudo systemctl enable --now painel
+[Unit]
+Description=Painel de Midia
+After=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/painel
+ExecStart=/usr/bin/python3 /home/pi/painel/server.py --porta 8080
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

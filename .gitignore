@@ -1,0 +1,4 @@
+painel/midia/*
+!painel/midia/.gitkeep
+__pycache__/
+*.parcial
