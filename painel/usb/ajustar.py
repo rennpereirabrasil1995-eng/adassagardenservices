@@ -42,8 +42,7 @@ except ImportError:
 
 # proporcoes comuns em LCD pequeno
 SERIE = [
-    (384, 384), (400, 300), (432, 324), (480, 320),
-    (480, 360), (512, 384), (480, 272), (320, 480),
+    (320, 480), (300, 400), (272, 480), (384, 384),
 ]
 
 
@@ -95,8 +94,8 @@ def principal():
     p.add_argument("--larg", type=int, default=480)
     p.add_argument("--alt", type=int, default=320)
     p.add_argument("--serie", action="store_true", help="testa varias proporcoes")
-    p.add_argument("--segundos", type=float, default=3.0)
-    p.add_argument("--max-kb", type=float, default=6.0, dest="max_kb")
+    p.add_argument("--segundos", type=float, default=5.0)
+    p.add_argument("--max-kb", type=float, default=5.0, dest="max_kb")
     p.add_argument("--tecla", type=int, default=1)
     args = p.parse_args()
 
@@ -127,7 +126,6 @@ def principal():
                 continue
             print(f"    {larg}x{alt} -> {len(dados)} bytes (qualidade {q})")
             try:
-                d.limpar_tudo()
                 d.definir_jpeg(args.tecla - 1, dados)
                 d.aplicar()
             except Exception as e:

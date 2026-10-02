@@ -165,23 +165,25 @@ def principal():
     p = argparse.ArgumentParser(description="Imagem e video em tela cheia no aparelho.")
     p.add_argument("--arquivo", help="um arquivo so (senao passa a pasta inteira)")
     p.add_argument("--midia", default=PASTA_PADRAO)
-    p.add_argument("--lado", type=int, default=384,
-                   help="tamanho quadrado (atalho para --larg e --alt)")
-    p.add_argument("--larg", type=int, help="largura, se o painel nao for quadrado")
-    p.add_argument("--alt", type=int, help="altura, se o painel nao for quadrado")
-    p.add_argument("--max-kb", type=float, default=6.0,
-                   dest="max_kb", help="orcamento por imagem (padrao 6 KB)")
+    p.add_argument("--lado", type=int, help="tamanho quadrado (atalho para --larg e --alt)")
+    p.add_argument("--larg", type=int, default=320, help="largura (padrao 320)")
+    p.add_argument("--alt", type=int, default=480, help="altura (padrao 480)")
+    p.add_argument("--max-kb", type=float, default=5.5,
+                   dest="max_kb", help="orcamento por imagem (padrao 5.5 KB)")
     p.add_argument("--fps", type=int, default=5)
-    p.add_argument("--nitidez", type=int, default=35,
-                   help="qualidade JPEG minima aceitavel (padrao 35)")
+    p.add_argument("--nitidez", type=int, default=12,
+                   help="qualidade JPEG minima (padrao 12: enche a tela). "
+                        "Subir deixa mais nitido porem menor")
     p.add_argument("--segundos", type=float, default=6, help="tempo de cada imagem parada")
+    p.add_argument("--pausa", type=float, default=0.2,
+                   help="descanso entre envios, em segundos (padrao 0.2)")
     p.add_argument("--brilho", type=int, default=100)
     p.add_argument("--tecla", type=int, default=1)
     args = p.parse_args()
 
     max_bytes = int(args.max_kb * 1024)
-    larg_alvo = args.larg or args.lado
-    alt_alvo = args.alt or args.lado
+    larg_alvo = args.lado or args.larg
+    alt_alvo = args.lado or args.alt
     pasta = os.path.abspath(args.midia)
 
     if args.arquivo:
@@ -209,6 +211,8 @@ def principal():
     print("  ==========")
     print(f"  Imagem:    ate {larg_alvo}x{alt_alvo}")
     print(f"  Orcamento: {args.max_kb:.1f} KB por quadro")
+    print(f"  Nitidez:   minimo {args.nitidez} "
+          f"(baixo = enche a tela, alto = mais nitido porem menor)")
     print(f"  Arquivos:  {len(caminhos)}")
     print()
     print("  Se o aparelho travar, despluga e pluga, e rode de novo com")
@@ -254,10 +258,12 @@ def principal():
                     try:
                         d.definir_jpeg(args.tecla - 1, pacote[i % len(pacote)])
                         d.aplicar()
+                        if args.pausa > 0:
+                            time.sleep(args.pausa)
                     except Exception as e:
                         print(f"    o aparelho recusou: {e}")
                         try:
-                            d.reconectar()
+                            d.reconectar(espera=3.0)
                             max_bytes = int(max_bytes * 0.8)
                             print(f"    reconectado; baixando o orcamento para "
                                   f"{max_bytes/1024:.1f} KB")
