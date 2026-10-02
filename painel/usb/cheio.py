@@ -69,6 +69,10 @@ def enquadrar(im, larg_alvo, alt_alvo):
 
 OTIMIZAR = True   # trocado pelo --sem-otimizar
 MARCADORES = 0    # trocado pelo --marcadores; 0 = nenhum
+SUBAMOSTRAGEM = 2 # 2 = 4:2:0 (blocos de 16x16), 0 = 4:4:4 (blocos de 8x8)
+#
+# A subamostragem muda o TAMANHO do bloco do JPEG. Se as listras mudarem
+# de espacamento ao trocar isso, elas estao mesmo nas fronteiras de bloco.
 #
 # Marcador de reinicio e um ponto de sincronia que o JPEG carrega de
 # tantas em tantas linhas de blocos. Decodificador simples que perca o
@@ -86,6 +90,7 @@ def _tentar(im, larg, alt, max_bytes):
         q = (baixo + alto) // 2
         buf = io.BytesIO()
         extra = {"restart_marker_rows": MARCADORES} if MARCADORES else {}
+        extra["subsampling"] = SUBAMOSTRAGEM
         quadro.save(buf, format="JPEG", quality=q, optimize=OTIMIZAR, **extra)
         dados = buf.getvalue()
         if len(dados) <= max_bytes:
@@ -197,6 +202,9 @@ def principal():
     p.add_argument("--reconectar", action="store_true",
                    help="fecha e reabre o aparelho antes de cada imagem; "
                         "mais lento, porem e o que aguenta trocar imagem grande")
+    p.add_argument("--blocos", type=int, default=16, choices=[8, 16],
+                   help="tamanho do bloco do JPEG: 16 (padrao) ou 8. "
+                        "Se as listras mudarem de espacamento, sao de bloco")
     p.add_argument("--marcadores", type=int, default=0,
                    help="marcadores de reinicio a cada N linhas de blocos. "
                         "Tente 1 ou 2 se a imagem vier com listras")
@@ -213,6 +221,8 @@ def principal():
     global OTIMIZAR, MARCADORES
     OTIMIZAR = not args.sem_otimizar
     MARCADORES = max(0, args.marcadores)
+    global SUBAMOSTRAGEM
+    SUBAMOSTRAGEM = 2 if args.blocos == 16 else 0
     max_bytes = int(args.max_kb * 1024)
     larg_alvo = args.lado or args.larg
     alt_alvo = args.lado or args.alt
@@ -262,6 +272,7 @@ def principal():
     print(f"  Atraso entre pedacos: {args.atraso} ms")
     print(f"  Tabela JPEG: {'padrao' if args.sem_otimizar else 'otimizada'}")
     print(f"  Marcadores de reinicio: {args.marcadores or 'nenhum'}")
+    print(f"  Bloco do JPEG: {args.blocos}x{args.blocos}")
     print("  Conectado. Ctrl+C para parar.\n")
     preparados = {}   # caminho+orcamento -> lista de jpegs ja prontos
     try:
