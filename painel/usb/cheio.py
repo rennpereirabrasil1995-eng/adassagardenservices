@@ -350,7 +350,9 @@ def principal():
                         if animada:
                             if i >= len(pacote) and len(caminhos) > 1:
                                 break
-                            time.sleep(1.0 / args.fps)
+                            # a pausa de seguranca ja foi dormida acima:
+                            # desconta ela, senao o video roda na metade
+                            time.sleep(max(0.0, 1.0 / args.fps - args.pausa))
                         else:
                             time.sleep(args.segundos)
                             break
@@ -399,7 +401,9 @@ def principal():
                     if animada:
                         if i >= len(pacote) and len(caminhos) > 1:
                             break
-                        time.sleep(1.0 / args.fps)
+                        # a pausa de seguranca ja foi dormida acima:
+                        # desconta ela, senao o video roda na metade
+                        time.sleep(max(0.0, 1.0 / args.fps - args.pausa))
                     else:
                         time.sleep(args.segundos)
                         break
