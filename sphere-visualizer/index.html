@@ -720,7 +720,7 @@ function evalShot(s, tt){
       break; }
     case "crane": {
       const z = s.z0 + tt*s.v*0.45;
-      const h = -3.9 + 12.5*e;
+      const h = -3.9 + 8.6*e;
       pos = [s.x*0.5, h, z];
       tgt = [0, h - 2.5 - 5.0*e, z + 15];
       break; }
@@ -736,7 +736,7 @@ function evalShot(s, tt){
       break; }
     case "driftHigh": {
       const z = s.z0 + tt*s.v*0.8;
-      pos = [Math.sin(tt*0.19 + s.ph)*2.6, 6.6 + Math.sin(tt*0.11)*0.8, z];
+      pos = [Math.sin(tt*0.19 + s.ph)*2.6, 4.5 + Math.sin(tt*0.11)*0.6, z];
       tgt = [Math.sin(tt*0.13)*3.0, 1.0, z + 13];
       break; }
     case "vertigo": {
@@ -751,9 +751,9 @@ function evalShot(s, tt){
       tgt = [s.side*2.8, s.y*0.3 + 1.0, z + 7];
       break; }
     case "tiltUp": {
-      const z = s.z0 + tt*0.9;
-      pos = [s.x*0.5, -2.0 + tt*0.12, z];
-      tgt = [s.x*0.3, -4.0 + 14.0*e, z + 8];
+      const z = s.z0 + tt*1.6;
+      pos = [s.x*0.5, -2.6 + tt*0.10, z];
+      tgt = [s.x*0.3, -3.0 + 9.0*e, z + 18];
       break; }
     default: {
       const z = s.z0 + tt*s.v;
@@ -761,7 +761,7 @@ function evalShot(s, tt){
     }
   }
   pos[0] = clamp(pos[0], -4.3, 4.3);
-  pos[1] = clamp(pos[1], -4.25, 10.5);
+  pos[1] = clamp(pos[1], -4.25, 5.3);
   return { pos, tgt, fov };
 }
 
